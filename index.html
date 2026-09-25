@@ -213,7 +213,7 @@
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: at least 3 and at most 6 branches, 2 to 4 steps each; a map with fewer than 3 branches is wrong. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are facts stated in the sentence that would change the map if different (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
+      '\nRules: at least 3 and at most 6 branches, 2 to 4 steps each; a map with fewer than 3 branches is wrong. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
       '\nNever invent a URL. Do not state deadlines, amounts or validity periods unless the chosen catalog entry covers them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -224,10 +224,15 @@
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, depends_on: s.depends_on })) })) });
     return u;
   }
-  function validate(j) {
+  function validate(j, story) {
     const snake = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x';
     const vars = (Array.isArray(j.variables) ? j.variables : []).slice(0, 8).map(v => ({ id: snake(v.id), label: String(v.label || v.id || ''), value: String(v.value || ''), span: String(v.span || ''), alternatives: (Array.isArray(v.alternatives) ? v.alternatives : []).map(String).filter(a => a && a !== v.value).slice(0, 3) })).filter(v => v.value);
+    const said = String(story || '').toLowerCase();
+    const grounded = v => { const a = v.span.toLowerCase().trim(), b = v.value.toLowerCase().trim(); return (a && said.includes(a)) || (b && said.includes(b)); };
+    const inferred = vars.filter(v => !grounded(v));
     const questions = (Array.isArray(j.questions) ? j.questions : []).slice(0, 4).map(q => ({ id: snake(q.id), text: String(q.text || ''), why: String(q.why || ''), type: ['yesno', 'choice', 'text'].includes(q.type) ? q.type : 'text', options: Array.isArray(q.options) ? q.options.map(String).slice(0, 5) : [] })).filter(q => q.text);
+    // Apertus assumed these; the person never said them. Ask instead of asserting.
+    inferred.forEach(v => { if (!questions.some(q => q.id === v.id)) questions.push({ id: v.id, text: v.label.charAt(0).toUpperCase() + v.label.slice(1) + ' ?', why: t('Vous ne l’avez pas dit ; Apertus avait supposé « ', 'You did not say it; Apertus had assumed “') + v.value + t(' ». La carte en dépend, alors nous demandons.', '”. The map depends on it, so we ask.'), type: 'choice', options: [v.value].concat(v.alternatives).slice(0, 5), inferred: true }); });
     const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => ({
       id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
@@ -236,7 +241,7 @@
       confirm_with: s.confirm_with ? String(s.confirm_with) : null
     })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
     if (!branches.length) throw new Error(t('aucune piste exploitable dans la réponse', 'no usable branch in the answer'));
-    return { variables: vars, questions, branches, note: String(j.note || '') };
+    return { variables: vars.filter(grounded), questions: questions.slice(0, 6), branches, note: String(j.note || '') };
   }
   const treeKey = (story, vars, answers) => hash(LANG + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
@@ -251,7 +256,7 @@
       if (raw.length > 1000 && !/\}\s*$/.test(raw)) throw new Error(t('réponse coupée après ', 'answer cut off after ') + raw.length + t(' caractères : le proxy limite encore les réponses (ancien serveur). Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', ' characters: the proxy still caps answers (old server). In the Codespace: git pull; pkill node; bash proxy/start.sh'));
       throw e;
     }
-    const tree = validate(parsed);
+    const tree = validate(parsed, story);
     tree.prov = res.prov; tree.key = key;
     state.trees[key] = tree; return tree;
   }
@@ -368,8 +373,10 @@
       document.getElementById('legend').hidden = true; return;
     }
     const rows = d.rows, n = rows.length;
-    const H = Math.max(520, 60 + n * 170), YS = rows.map((_, i) => 100 + i * ((H - 160) / Math.max(1, n - 1)) * (n > 1 ? 1 : 0) + (n === 1 ? 300 : 0));
-    const ROOT = { x: 36, y: H / 2 }, X0 = 170, XSTEP = 165;
+    const qsOpen = (d.tree.questions || []).filter(q => !(q.id in s.answers));
+    const GAP = 170, YS = rows.map((_, i) => 110 + i * GAP), lastRowY = YS[n - 1];
+    const H = lastRowY + 90 + (qsOpen.length ? 110 : 0), QY = lastRowY + 140;
+    const ROOT = { x: 36, y: (YS[0] + lastRowY) / 2 }, X0 = 170, XSTEP = 165;
     const seg = (p, q) => { const mx = (p.x + q.x) / 2; return ' C ' + mx + ' ' + p.y + ', ' + mx + ' ' + q.y + ', ' + q.x + ' ' + q.y; };
     const pathThrough = (start, pts, tailX) => { let dd = 'M ' + start.x + ' ' + start.y, prev = start; pts.forEach(p => { dd += seg(prev, p); prev = p; }); if (tailX) dd += ' L ' + tailX + ' ' + prev.y; return dd; };
     let out = '';
@@ -413,12 +420,12 @@
       out += '</g>';
     });
     // open questions hang under the tree as dashed points
-    const qs = (d.tree.questions || []).filter(q => !(q.id in s.answers));
+    const qs = qsOpen;
     if (qs.length) {
-      const qy = H - 40; out += '<text x="' + X0 + '" y="' + (qy - 26) + '" font-size="12" fill="#5A5751">' + t('Questions qui changeraient la carte :', 'Questions that would change the map:') + '</text>';
+      const qy = QY; out += '<text x="' + X0 + '" y="' + (qy - 26) + '" font-size="12" fill="#5A5751">' + t('Questions qui changeraient la carte :', 'Questions that would change the map:') + '</text>';
       qs.forEach((q, i) => { const x = X0 + i * 190; out += '<g data-q="' + esc(q.id) + '" tabindex="0" role="button" style="cursor:pointer"><circle cx="' + x + '" cy="' + qy + '" r="10" fill="#FFFFFF" stroke="#8A867C" stroke-width="2" stroke-dasharray="3 3"/><text x="' + x + '" y="' + (qy + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#8A867C">?</text><text x="' + (x + 16) + '" y="' + (qy + 4) + '" font-size="12" fill="#1B1A17">' + esc(q.text.length > 26 ? q.text.slice(0, 25) + '…' : q.text) + '</text></g>'; });
     }
-    out += '<circle cx="36" cy="' + (H / 2) + '" r="17" fill="#1B1A17"/><circle cx="36" cy="' + (H / 2) + '" r="6" fill="#FFFFFF"/><text x="36" y="' + (H / 2 + 38) + '" text-anchor="middle" font-size="10" fill="#5A5751">' + t('Vous', 'You') + '</text>';
+    out += '<circle cx="36" cy="' + ROOT.y + '" r="17" fill="#1B1A17"/><circle cx="36" cy="' + ROOT.y + '" r="6" fill="#FFFFFF"/><text x="36" y="' + (ROOT.y + 38) + '" text-anchor="middle" font-size="10" fill="#5A5751">' + t('Vous', 'You') + '</text>';
     host.innerHTML = overlay + '<svg viewBox="0 0 900 ' + H + '" aria-label="' + t('Carte des pistes', 'Map of paths') + '">' + out + '</svg>';
     const lg = document.getElementById('legend'); lg.hidden = !(d.previewOn || s.prevTree || d.exploreOn);
     lg.innerHTML = '<span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot"></i>' + t('Étape', 'Step') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';
@@ -481,7 +488,7 @@
     document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr')); document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
   }
   function render() { const d = derive(); renderChrome(); document.body.classList.toggle('explore', d.exploreOn); document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn)); document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn)); renderStory(d); renderTree(d); renderDetail(d); }
-  async function setLang(l) { LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render(); if (state.story && live()) { set({ loading: t('Apertus traduit la carte…', 'Apertus is translating the map…') }); try { const tree = await fetchTree(state.story, state.vars, state.answers, state.tree, null); set({ tree, vars: tree.variables.length ? state.vars : state.vars, loading: '' }, true); } catch (e) { set({ loading: '' }); } } }
+  async function setLang(l) { LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render(); if (state.story && live()) { set({ loading: t('Apertus traduit la carte…', 'Apertus is translating the map…') }); try { const tree = await fetchTree(state.story, state.vars, state.answers, null, null); set({ tree, prevTree: null, pending: null, sel: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); } catch (e) { set({ loading: '' }); } } }
 
   // ---- Events ----
   document.addEventListener('click', e => {
