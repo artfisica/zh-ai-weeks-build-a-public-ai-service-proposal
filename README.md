@@ -2,6 +2,9 @@
 
 Swiss {ai} Weeks, Zurich · "Build a public AI service" challenge
 
+![One sentence in, a map of official steps out](demo.gif)
+
+## See the complete Demo
 [![Silent demo, 3 minutes: one sentence in, a map of official steps out](https://img.youtube.com/vi/FTBebfGJwR4/maxresdefault.jpg)](https://www.youtube.com/watch?v=FTBebfGJwR4)
 
 Three-minute silent demo: six situations typed in, the maps Apertus draws, a source followed to vd.ch, French and English.
