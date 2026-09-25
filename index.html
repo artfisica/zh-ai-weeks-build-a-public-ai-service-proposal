@@ -249,20 +249,33 @@
   }
   function extractJSON(raw) {
     const s = raw.indexOf('{'); if (s < 0) throw new Error(t('pas de JSON dans la réponse', 'no JSON in the answer'));
-    const stack = []; let inStr = false, esc = false, lastClean = -1, lastCleanStack = [];
+    const stack = []; let inStr = false, esc = false, lastValid = null;
+    // Only retain prefixes that really parse into a map with a complete step.
+    // Closing a quote is not enough: it might be a property name or a partial step.
+    const keepIfValid = end => {
+      if (!stack.length) return;
+      const prefix = raw.slice(s, end).replace(/,\s*$/, '');
+      const candidate = prefix + stack.slice().reverse().join('');
+      try {
+        const parsed = JSON.parse(candidate);
+        if (Array.isArray(parsed.branches) &&
+            parsed.branches.some(b => Array.isArray(b.steps) && b.steps.length) &&
+            parsed.branches.every(b => !Array.isArray(b.steps) || b.steps.every(st => st && typeof st.title === 'string' && st.title.trim()))) lastValid = candidate;
+      } catch (e) { /* wait for the next complete value */ }
+    };
     for (let i = s; i < raw.length; i++) {
       const ch = raw[i];
-      if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') { inStr = false; lastClean = i + 1; lastCleanStack = stack.slice(); } continue; }
+      if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') { inStr = false; keepIfValid(i + 1); } continue; }
       if (ch === '"') { inStr = true; continue; }
       if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
-      else if (ch === '}' || ch === ']') { stack.pop(); lastClean = i + 1; lastCleanStack = stack.slice(); if (!stack.length) return { text: raw.slice(s, i + 1), truncated: false }; }
-      else if (ch === ',' ) { lastClean = i; lastCleanStack = stack.slice(); }
-      else if (/[0-9el]/.test(ch) === false && /\s/.test(ch)) { /* whitespace: nothing */ }
+      else if (ch === '}' || ch === ']') {
+        if (stack.pop() !== ch) throw new Error(t('réponse illisible (parenthèses)', 'unreadable answer (brackets)'));
+        if (!stack.length) return { text: raw.slice(s, i + 1), truncated: false };
+        keepIfValid(i + 1);
+      } else if (ch === ',') keepIfValid(i);
     }
-    // never closed: cut at the last complete value and close everything still open
-    if (lastClean < 0) throw new Error(t('réponse coupée', 'answer cut off'));
-    let text = raw.slice(s, lastClean).replace(/,\s*$/, '') + lastCleanStack.slice().reverse().join('');
-    return { text, truncated: true };
+    if (!lastValid) throw new Error(t('réponse coupée avant une étape complète', 'answer cut off before a complete step'));
+    return { text: lastValid, truncated: true };
   }
   const treeKey = (story, vars, answers) => hash(LANG + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
@@ -274,10 +287,21 @@
     let parsed;
     try { parsed = JSON.parse(ex.text); }
     catch (e) { throw new Error(t('réponse illisible (', 'unreadable answer (') + (e.message || 'JSON') + ')'); }
-    const tree = validate(parsed, story);
-    if (ex.truncated) tree.note = (tree.note ? tree.note + ' ' : '') + t('Réponse coupée : la carte est incomplète, redessinez pour la compléter.', 'Answer cut off: the map is incomplete, redraw to complete it.');
+    let tree = validate(parsed, story);
+    if (tree.branches.length < 3 && !ex.truncated) {
+      // thin map: ask once more, naming the gap
+      try {
+        const again = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: userPrompt(story, vars, answers, tree, change) + '\nYour previous map had only ' + tree.branches.length + ' branch(es), which is wrong for this situation. Return at least 3 branches from different families, keeping the existing branch and its step ids.' }], 3000);
+        const ex2 = extractJSON(again.text.replace(/```json|```/g, '').trim());
+        const t2 = validate(JSON.parse(ex2.text), story);
+        if (t2.branches.length > tree.branches.length) { tree = t2; res.prov = again.prov; ex.truncated = ex2.truncated; }
+      } catch (e) { /* keep the thin map rather than fail */ }
+    }
+    tree.incomplete = ex.truncated;
     tree.prov = res.prov; tree.key = key;
-    state.trees[key] = tree; return tree;
+    // An incomplete map must be fetched again when the person presses Redraw.
+    if (!ex.truncated) state.trees[key] = tree;
+    return tree;
   }
 
   // ---- Flows ----
@@ -374,6 +398,7 @@
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     const note = s.note && s.note.text ? s.note : null;
     html += '<div class="spacer"></div>' + (note ? '<div class="note"><div class="who live"><i></i>' + esc(provLabel(note.prov)) + '</div><div>' + esc(note.text) + '</div></div>' : '');
+    if (d.tree && d.tree.incomplete) html += '<div class="err">' + t('Réponse coupée : la carte est incomplète. Cliquez sur Redessiner pour réessayer.', 'Answer cut off: the map is incomplete. Click Redraw to try again.') + '</div>';
     if (s.error) html += '<div class="err">' + esc(s.error) + '</div>';
     html += '<form class="ask" data-story-form><label for="ask" class="hint">' + t('Corriger ou compléter votre situation (redessine la carte)', 'Correct or complete your situation (redraws the map)') + '</label><div class="field"><input id="ask" name="text" type="text" value="' + esc(s.story) + '"' + (live() ? '' : ' disabled') + '><button type="submit"' + (live() ? '' : ' disabled') + '>' + t('Redessiner', 'Redraw') + '</button></div></form>';
     document.getElementById('story').innerHTML = html;
@@ -415,7 +440,7 @@
         out += '<path class="grow" d="' + pathThrough(start, route, null) + '" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6"/>';
       }
       const tag = d.previewOn ? (affected ? t('changerait', 'would change') : t('ne bouge pas', 'does not move')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
-      const nameX = X0 + (m - 1) * XSTEP + 52, lastY = pts[m - 1].y;
+      const nameX = X0 + (m - 1) * XSTEP + 70, lastY = pts[m - 1].y;
       out += '<text class="branch-name" x="' + nameX + '" y="' + (lastY + 5) + '" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '">' + esc(row.name) + '</text>';
       if (tag) out += '<text x="' + nameX + '" y="' + (lastY + 20) + '" font-size="10" fill="' + ((affected || applied) ? ACCENT : '#7A766E') + '">' + esc(tag) + '</text>';
       row.cmp.forEach((c, i) => {
@@ -428,14 +453,14 @@
           if (k === 'changed' || removed) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="' + ACCENT + '" opacity="0.14"/>';
           out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + (changed ? ACCENT : done ? '#2E6A4B' : '#FFFFFF') + '" stroke="' + (changed ? '#FFFFFF' : done ? '#2E6A4B' : '#8A867C') + '" stroke-width="' + (changed ? 3 : 2) + '"/>';
           if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-          out += '<text x="' + p.x + '" y="' + (p.y - 17) + '" text-anchor="middle" font-size="12" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : '') + '>' + esc(st.short) + '</text>';
+          out += '<text x="' + p.x + '" y="' + (p.y - 17) + '" text-anchor="middle" font-size="12" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : '') + '>' + esc(st.short.length > 26 ? st.short.slice(0, 25) + '…' : st.short) + '</text>';
           const sub = k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
           if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="10" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + esc(sub) + '</text>';
           out += '</g>';
         }
         if (k === 'changed' || k === 'added') {
           const ay = p.y + 48, alt = c.b, selA = s.sel && s.sel.li === li && s.sel.id === c.id && s.sel.alt;
-          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.title) + '">' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><text x="' + p.x + '" y="' + (ay + 26) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">' + esc(alt.short) + (k === 'added' ? t(' (nouvelle)', ' (new)') : '') + '</text></g>';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.title) + '">' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><text x="' + p.x + '" y="' + (ay + 26) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">' + esc(alt.short.length > 26 ? alt.short.slice(0, 25) + '…' : alt.short) + (k === 'added' ? t(' (nouvelle)', ' (new)') : '') + '</text></g>';
         }
       });
       out += '</g>';
@@ -526,7 +551,7 @@
   });
   document.addEventListener('submit', e => {
     const sf = e.target.closest('[data-start-form]'); if (sf) { e.preventDefault(); startStory(sf.elements.text.value); return; }
-    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); if (st.elements.text.value.trim() !== state.story) startStory(st.elements.text.value); return; }
+    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); if (st.elements.text.value.trim() !== state.story || (state.tree && state.tree.incomplete)) startStory(st.elements.text.value); return; }
     const pf = e.target.closest('[data-propose-form]'); if (pf) { e.preventDefault(); propose(pf.dataset.proposeForm, pf.elements.value.value); return; }
     const af = e.target.closest('[data-answer-form]'); if (af) { e.preventDefault(); answer(af.dataset.answerForm, af.elements.answer.value); }
   });
