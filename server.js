@@ -26,7 +26,7 @@ const crypto = require('crypto');
 const cfgPath = path.join(__dirname, 'proxy.config.json');
 const cfg = Object.assign({
   provider: 'swisscom', upstreamBase: '', upstreamModel: '', allowedOrigins: [],
-  dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 400, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
+  dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 3500, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
 }, fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {});
 // Codespaces secrets override the committed config, so a fresh Codespace needs no file edits.
 if (process.env.UPSTREAM_BASE) cfg.upstreamBase = process.env.UPSTREAM_BASE;
@@ -86,7 +86,7 @@ const server = http.createServer(async (req, res) => {
 
   const rd = readiness();
   if (url.pathname === '/health' && req.method === 'GET') {
-    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, tokenRequired: TOKENS.length > 0, budget: peek() });
+    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, maxTokens: cfg.maxTokens, tokenRequired: TOKENS.length > 0, budget: peek() });
   }
 
   if (url.pathname === '/chat' && req.method === 'POST') {

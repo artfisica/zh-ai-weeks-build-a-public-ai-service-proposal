@@ -200,6 +200,7 @@
       const r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/health'); let h = null; try { h = await r.json(); } catch (e) {}
       if (!h) throw new Error('HTTP ' + r.status);
       if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing ? ' : ' + h.missing.join(', ') : ''));
+      if (h.maxTokens && h.maxTokens < 2500) throw new Error(t('le proxy limite les réponses à ', 'the proxy caps answers at ') + h.maxTokens + t(' tokens ; une carte en demande 3000. Dans le Codespace : git pull, puis bash proxy/start.sh', ' tokens; a map needs 3000. In the Codespace: git pull, then bash proxy/start.sh'));
       conn.prov = { provider: h.provider || 'proxy', model: h.model || '' }; conn.status = 'ok';
     } catch (e) { conn.status = 'error'; conn.error = (e && e.message) || 'failed'; }
     renderConn(); render();
@@ -213,7 +214,7 @@
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
       '\nRules: 3 to 6 branches, 2 to 4 steps each. Steps are concrete actions the person takes, with the office that handles them. "variables" are facts stated in the sentence that would change the map if different (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
-      '\nNever invent a URL. Do not state deadlines, amounts or validity periods unless the chosen catalog entry covers them. Use the same step ids for steps that stay the same when a variable changes. No text outside the JSON.';
+      '\nNever invent a URL. Do not state deadlines, amounts or validity periods unless the chosen catalog entry covers them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
     let u = 'Situation: ' + story;
