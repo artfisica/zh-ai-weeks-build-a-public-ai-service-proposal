@@ -203,6 +203,7 @@
       const r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/health'); let h = null; try { h = await r.json(); } catch (e) {}
       if (!h) throw new Error('HTTP ' + r.status);
       if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing ? ' : ' + h.missing.join(', ') : ''));
+      if (h.maxTokens === undefined) throw new Error(t('le proxy tourne avec un ancien serveur. Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', 'the proxy is running an old server. In the Codespace: git pull; pkill node; bash proxy/start.sh'));
       if (h.maxTokens && h.maxTokens < 2500) throw new Error(t('le proxy limite les réponses à ', 'the proxy caps answers at ') + h.maxTokens + t(' tokens ; une carte en demande 3000. Dans le Codespace : git pull, puis bash proxy/start.sh', ' tokens; a map needs 3000. In the Codespace: git pull, then bash proxy/start.sh'));
       conn.prov = { provider: h.provider || 'proxy', model: h.model || '' }; conn.status = 'ok';
     } catch (e) { conn.status = 'error'; conn.error = (e && e.message) || 'failed'; }
@@ -216,7 +217,7 @@
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: at least 3 and at most 6 branches, 2 to 4 steps each; a map with fewer than 3 branches is wrong. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
+      '\nRules: at least 3 and at most 5 branches, 2 to 3 steps each; a map with fewer than 3 branches is wrong. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
       '\nNever invent a URL. Do not state deadlines, amounts or validity periods unless the chosen catalog entry covers them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -246,20 +247,35 @@
     if (!branches.length) throw new Error(t('aucune piste exploitable dans la réponse', 'no usable branch in the answer'));
     return { variables: vars.filter(grounded), questions: questions.slice(0, 6), branches, note: String(j.note || '') };
   }
+  function extractJSON(raw) {
+    const s = raw.indexOf('{'); if (s < 0) throw new Error(t('pas de JSON dans la réponse', 'no JSON in the answer'));
+    const stack = []; let inStr = false, esc = false, lastClean = -1, lastCleanStack = [];
+    for (let i = s; i < raw.length; i++) {
+      const ch = raw[i];
+      if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') { inStr = false; lastClean = i + 1; lastCleanStack = stack.slice(); } continue; }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
+      else if (ch === '}' || ch === ']') { stack.pop(); lastClean = i + 1; lastCleanStack = stack.slice(); if (!stack.length) return { text: raw.slice(s, i + 1), truncated: false }; }
+      else if (ch === ',' ) { lastClean = i; lastCleanStack = stack.slice(); }
+      else if (/[0-9el]/.test(ch) === false && /\s/.test(ch)) { /* whitespace: nothing */ }
+    }
+    // never closed: cut at the last complete value and close everything still open
+    if (lastClean < 0) throw new Error(t('réponse coupée', 'answer cut off'));
+    let text = raw.slice(s, lastClean).replace(/,\s*$/, '') + lastCleanStack.slice().reverse().join('');
+    return { text, truncated: true };
+  }
   const treeKey = (story, vars, answers) => hash(LANG + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
     const key = treeKey(story, vars, answers);
     if (state.trees[key]) return state.trees[key];
     const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: userPrompt(story, vars, answers, prev, change) }], 3000);
     const raw = res.text.replace(/```json|```/g, '').trim();
-    const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+    const ex = extractJSON(raw);
     let parsed;
-    try { parsed = JSON.parse(raw.slice(start, end + 1)); }
-    catch (e) {
-      if (raw.length > 1000 && !/\}\s*$/.test(raw)) throw new Error(t('réponse coupée après ', 'answer cut off after ') + raw.length + t(' caractères : le proxy limite encore les réponses (ancien serveur). Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', ' characters: the proxy still caps answers (old server). In the Codespace: git pull; pkill node; bash proxy/start.sh'));
-      throw e;
-    }
+    try { parsed = JSON.parse(ex.text); }
+    catch (e) { throw new Error(t('réponse illisible (', 'unreadable answer (') + (e.message || 'JSON') + ')'); }
     const tree = validate(parsed, story);
+    if (ex.truncated) tree.note = (tree.note ? tree.note + ' ' : '') + t('Réponse coupée : la carte est incomplète, redessinez pour la compléter.', 'Answer cut off: the map is incomplete, redraw to complete it.');
     tree.prov = res.prov; tree.key = key;
     state.trees[key] = tree; return tree;
   }
