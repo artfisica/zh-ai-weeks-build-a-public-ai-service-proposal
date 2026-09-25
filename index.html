@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Arbre de parcours — Public AI pour chaque commune (prototype)</title>
+<title>Public AI pour chaque commune — arbre de parcours</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -39,6 +39,9 @@
   .mode button{height:34px;padding:0 14px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-weight:500}
   .mode button[aria-pressed="true"]{background:var(--white);color:var(--ink)}
   .mode button.explore[aria-pressed="true"]{background:var(--accent);color:var(--white)}
+  .lang{display:flex;gap:2px;font-size:12px}
+  .lang button{height:30px;padding:0 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600}
+  .lang button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
 
   .layout{display:grid;grid-template-columns:320px minmax(0,1fr) 400px;min-height:calc(100vh - 56px)}
   @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}}
@@ -131,15 +134,19 @@
 <header>
   <div class="brand">
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#1F4E8C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="3"/><circle cx="21" cy="7" r="3"/><circle cx="14" cy="22" r="3"/><path d="M9 9l5 10M19 9l-5 10"/></svg>
-    Public AI pour chaque commune
+    <span id="brand-text">Public AI pour chaque commune</span>
   </div>
   <div class="right">
     <span class="saved-note" id="saved-note"></span>
-    <button type="button" class="link-btn" id="clear-btn">Effacer mon parcours</button>
-    <button type="button" class="conn-btn" id="conn-btn" aria-expanded="false"><i></i><span id="conn-label">Apertus non connecté</span></button>
+    <button type="button" class="link-btn" id="clear-btn"></button>
+    <button type="button" class="conn-btn" id="conn-btn" aria-expanded="false"><i></i><span id="conn-label"></span></button>
     <div class="mode" role="group" aria-label="Mode">
-      <button type="button" id="mode-situation" aria-pressed="true">Ma situation</button>
-      <button type="button" id="mode-explore" class="explore" aria-pressed="false">Explorer</button>
+      <button type="button" id="mode-situation" aria-pressed="true"></button>
+      <button type="button" id="mode-explore" class="explore" aria-pressed="false"></button>
+    </div>
+    <div class="lang" role="group" aria-label="Langue / Language">
+      <button type="button" id="lang-fr" aria-pressed="true">FR</button>
+      <button type="button" id="lang-en" aria-pressed="false">EN</button>
     </div>
   </div>
   <div class="conn-panel" id="conn-panel" hidden></div>
@@ -148,15 +155,8 @@
 <div class="layout">
   <aside class="story" id="story"></aside>
   <main class="tree">
-    <svg id="tree" viewBox="0 0 840 860" aria-label="Arbre des pistes"></svg>
-    <div class="legend">
-      <span><i class="dot done"></i>Faite (marquée par vous)</span>
-      <span><i class="dot current"></i>Prochaine étape</span>
-      <span><i class="dot"></i>À venir</span>
-      <span><i class="dot ghost"></i>Question en attente</span>
-      <span><i class="dot alt"></i>Branche proposée</span>
-      <span><i class="dot changed"></i>Modifiée ou ajoutée</span>
-    </div>
+    <svg id="tree" viewBox="0 0 900 860" aria-label="Arbre des pistes"></svg>
+    <div class="legend" id="legend"></div>
   </main>
   <aside class="detail" id="detail"></aside>
 </div>
@@ -164,17 +164,23 @@
 <script>
 (function () {
   'use strict';
-  // Set once after starting the Codespace. Leave empty for an offline, portable copy.
+  // Set once after starting the Codespace (proxy/server.js). Leave empty for an offline, portable copy.
   const PUBLIC_PROXY_URL = '';
   const LOCAL_DEV = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
-  const ACCENT = '#1F4E8C', STORE_KEY = 'public-ai-commune.arbre.v4', CONN_KEY = 'public-ai-commune.conn.v4';
-  const LV = { conf: { name: 'Confédération', bg: '#2C3140' }, vd: { name: 'Canton de Vaud', bg: '#2E6A4B' }, com: { name: 'Commune', bg: '#9A452A' } };
-  const LABEL = { dest: v => v, tenure: v => v === 'owner' ? 'propriétaire' : 'locataire', permit: v => 'permis ' + v };
-  const DEP_NAME = { dest: 'la commune d’arrivée', tenure: 'votre statut de logement', permit: 'votre type de permis', answers: 'une réponse que vous avez donnée' };
+
+  const ACCENT = '#1F4E8C', STORE_KEY = 'public-ai-commune.arbre.v4', CONN_KEY = 'public-ai-commune.conn.v4', LANG_KEY = 'public-ai-commune.lang';
+  // ---- Language: every visible string is t(french, english) ----
+  let LANG = 'fr';
+  try { LANG = localStorage.getItem(LANG_KEY) || ((navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'fr'); } catch (e) { /* keep fr */ }
+  const t = (fr, en) => LANG === 'en' ? en : fr;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const hash = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+
+  const LV = () => ({ conf: { name: t('Confédération', 'Confederation'), bg: '#2C3140' }, vd: { name: t('Canton de Vaud', 'Canton of Vaud'), bg: '#2E6A4B' }, com: { name: t('Commune', 'Commune'), bg: '#9A452A' } });
+  const LABEL = { dest: v => v, tenure: v => v === 'owner' ? t('propriétaire', 'a homeowner') : t('locataire', 'a tenant'), permit: v => t('permis ', 'permit ') + v };
+  const LABEL_SHORT = { dest: v => v, tenure: v => v === 'owner' ? t('Propriétaire', 'Homeowner') : t('Locataire', 'Tenant'), permit: v => t('Permis ', 'Permit ') + v };
+  const DEP_NAME = () => ({ dest: t('la commune d’arrivée', 'the commune you move to'), tenure: t('votre statut de logement', 'your housing status'), permit: t('votre type de permis', 'your permit type'), answers: t('une réponse que vous avez donnée', 'an answer you gave') });
   const ALT = { dest: v => v === 'Saint-Cergue' ? 'Gland' : 'Saint-Cergue', tenure: v => v === 'owner' ? 'tenant' : 'owner', permit: v => v === 'B' ? 'C' : 'B' };
-  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
-  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const hash = t => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 
   // ---- State (persisted in this browser) ----
   const fresh = () => ({ dest: 'Saint-Cergue', tenure: 'owner', permit: 'B' });
@@ -185,7 +191,7 @@
       const raw = localStorage.getItem(STORE_KEY); if (!raw) return;
       const d = JSON.parse(raw);
       if (d && d.saved) { state.saved = d.saved; state.explore = d.explore || Object.assign({}, d.saved); state.applied = d.applied || null; state.answers = Array.isArray(d.answers) ? d.answers : []; state.done = Array.isArray(d.done) ? d.done : []; state.savedAt = d.savedAt || null; state.resumed = true; }
-    } catch (e) { /* storage unavailable: run in memory */ }
+    } catch (e) { /* storage unavailable */ }
   }
   function persist() {
     state.savedAt = new Date().toISOString();
@@ -193,12 +199,12 @@
   }
   const set = (patch, save) => { Object.assign(state, patch); if (save) persist(); render(); };
 
-  // ---- Connection to Apertus. Proxy first: the browser never sees a key. Direct mode is for local development only. ----
-  const PRESETS = {
-    swisscom: { name: 'Swisscom', base: '', model: '', hint: 'Copiez l’adresse et l’identifiant de modèle depuis le guide Swisscom ; rien n’est prérempli pour ne pas envoyer votre clé au mauvais fournisseur.' },
-    publicai: { name: 'Public AI', base: 'https://api.publicai.co/v1', model: 'swiss-ai/apertus-v1.5-8b', hint: 'Valeurs de platform.publicai.co/docs ; autre modèle possible : swiss-ai/apertus-v1.5-70b.' },
-    other: { name: '', base: '', model: '', hint: 'Toute API compatible chat/completions.' }
-  };
+  // ---- Connection to Apertus through the proxy (the browser never sees a key) ----
+  const PRESETS = () => ({
+    swisscom: { name: 'Swisscom', base: '', model: '', hint: t('Copiez l’adresse et l’identifiant de modèle depuis le guide Swisscom ; rien n’est prérempli pour ne pas envoyer votre clé au mauvais fournisseur.', 'Copy the address and model id from the Swisscom guide; nothing is prefilled so your key cannot be sent to the wrong provider.') },
+    publicai: { name: 'Public AI', base: 'https://api.publicai.co/v1', model: 'swiss-ai/apertus-v1.5-8b', hint: t('Valeurs de platform.publicai.co/docs ; autre modèle possible : swiss-ai/apertus-v1.5-70b.', 'Values from platform.publicai.co/docs; another model: swiss-ai/apertus-v1.5-70b.') },
+    other: { name: '', base: '', model: '', hint: t('Toute API compatible chat/completions.', 'Any chat/completions-compatible API.') }
+  });
   const conn = Object.assign({ mode: 'proxy', proxyUrl: '', demoToken: '', provider: 'swisscom', base: '', model: '', key: '', status: 'off', error: '', prov: null }, (() => { try { return JSON.parse(sessionStorage.getItem(CONN_KEY) || '{}'); } catch (e) { return {}; } })());
   conn.status = 'off'; conn.prov = null;
   if (!LOCAL_DEV) { conn.mode = 'proxy'; conn.key = ''; conn.demoToken = ''; }
@@ -206,7 +212,7 @@
   const saveConn = () => { try { sessionStorage.setItem(CONN_KEY, JSON.stringify({ mode: conn.mode, proxyUrl: conn.proxyUrl, demoToken: conn.demoToken, provider: conn.provider, base: conn.base, model: conn.model, key: conn.mode === 'direct' ? conn.key : '' })); } catch (e) {} };
   const live = () => conn.status === 'ok';
   const provName = () => conn.prov ? conn.prov.provider : '';
-  const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : 'Texte préparé';
+  const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : t('Texte préparé', 'Prepared text');
 
   async function chat(messages, maxTokens) {
     let r, j;
@@ -215,32 +221,33 @@
     } else {
       r = await fetch(conn.base.replace(/\/$/, '') + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + conn.key }, body: JSON.stringify({ model: conn.model, messages, temperature: 0.2, max_tokens: maxTokens || 400 }) });
     }
-    if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 || r.status === 403 ? ' (accès refusé)' : r.status === 429 ? ' (limite atteinte)' : ''));
+    if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 || r.status === 403 ? t(' (accès refusé)', ' (access refused)') : r.status === 429 ? t(' (limite atteinte)', ' (limit reached)') : ''));
     j = await r.json();
     const text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
-    const prov = j.provenance || { provider: PRESETS[conn.provider] ? (PRESETS[conn.provider].name || conn.provider) : conn.provider, model: j.model || conn.model };
+    const P = PRESETS();
+    const prov = j.provenance || { provider: P[conn.provider] ? (P[conn.provider].name || conn.provider) : conn.provider, model: j.model || conn.model };
     return { text, prov };
   }
   async function connect() {
     conn.status = 'testing'; conn.error = ''; conn.prov = null; saveConn(); renderConn();
     try {
       if (conn.mode === 'proxy') {
-        if (!conn.proxyUrl) throw new Error('adresse du proxy manquante');
+        if (!conn.proxyUrl) throw new Error(t('adresse du proxy manquante', 'proxy address missing'));
         const r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/health', { headers: conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {} });
         let h = null; try { h = await r.json(); } catch (e) { h = null; }
         if (!h) throw new Error('HTTP ' + r.status);
-        if (!h.ready) throw new Error('le proxy n’est pas prêt' + (h.missing && h.missing.length ? ' : ' + h.missing.join(', ') : ''));
-        if (h.budget && h.budget.remaining === 0) throw new Error('le budget quotidien de la démo est épuisé');
+        if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing && h.missing.length ? ' : ' + h.missing.join(', ') : ''));
+        if (h.budget && h.budget.remaining === 0) throw new Error(t('le budget quotidien de la démo est épuisé', 'the daily demo budget is used up'));
         conn.prov = { provider: h.provider || 'proxy', model: h.model || '' };
       } else {
-        if (!conn.base || !conn.model || !conn.key) throw new Error('adresse, modèle et clé sont requis');
-        const res = await chat([{ role: 'user', content: 'ping' }], 1); // a one-token completion: works on any chat-completions provider
+        if (!conn.base || !conn.model || !conn.key) throw new Error(t('adresse, modèle et clé sont requis', 'address, model and key are required'));
+        const res = await chat([{ role: 'user', content: 'ping' }], 1);
         conn.prov = res.prov;
       }
       conn.status = 'ok';
     } catch (e) {
       conn.status = 'error';
-      conn.error = (e && e.message ? e.message : 'échec') + (String(e).includes('Failed to fetch') ? ' — le navigateur a bloqué l’appel (CORS ou adresse injoignable). Avec un fournisseur direct, passez par le proxy.' : '');
+      conn.error = (e && e.message ? e.message : t('échec', 'failed')) + (String(e).includes('Failed to fetch') ? t(' — le navigateur a bloqué l’appel (CORS ou adresse injoignable).', ' — the browser blocked the call (CORS or unreachable address).') : '');
     }
     renderConn(); render();
   }
@@ -248,12 +255,15 @@
 
   // ---- Prepared texts (always available, always labelled as prepared) ----
   function PREPARED_EXPLAIN(key, to) {
-    if (key === 'dest') return 'Ce qui change : la commune d’arrivée détermine où votre enfant est scolarisé, quelles taxes communales s’appliquent et quelle ligne vous relie à Nyon. Les démarches à Nyon et l’étape liée au permis n’en dépendent pas. Comparez les coefficients de l’année dans les arrêtés officiels ; ils ne suffisent pas à prédire le montant final de vos impôts.';
-    if (key === 'tenure') return to === 'tenant' ? 'Ce qui change : locataire, vous n’avez rien à vendre ; la question devient le délai de résiliation et le nouveau bail.' : 'Ce qui change : propriétaire, le départ de Nyon implique une vente ou une mise en location, avec un impôt cantonal sur le gain immobilier.';
-    return 'Ce qui change : la démarche communale est la même pour un permis B et un permis C. Ce qui diffère est la validité de votre autorisation, et donc ce qu’il faut vérifier au moment d’un renouvellement. La validité d’un permis B dépend de votre nationalité.';
+    if (key === 'dest') return t('Ce qui change : la commune d’arrivée détermine où votre enfant est scolarisé, quelles taxes communales s’appliquent et quelle ligne vous relie à Nyon. Les démarches à Nyon et l’étape liée au permis n’en dépendent pas. Comparez les coefficients de l’année dans les arrêtés officiels ; ils ne suffisent pas à prédire le montant final de vos impôts.',
+      'What changes: the commune you move to determines where your child goes to school, which communal taxes apply and which line connects you to Nyon. The steps in Nyon and the permit step do not depend on it. Compare this year’s coefficients in the official decrees; on their own they do not predict your final tax bill.');
+    if (key === 'tenure') return to === 'tenant' ? t('Ce qui change : locataire, vous n’avez rien à vendre ; la question devient le délai de résiliation et le nouveau bail.', 'What changes: as a tenant you have nothing to sell; the question becomes the notice period and the new lease.')
+      : t('Ce qui change : propriétaire, le départ de Nyon implique une vente ou une mise en location, avec un impôt cantonal sur le gain immobilier.', 'What changes: as a homeowner, leaving Nyon means selling or letting, with a cantonal tax on the property gain.');
+    return t('Ce qui change : la démarche communale est la même pour un permis B et un permis C. Ce qui diffère est la validité de votre autorisation, et donc ce qu’il faut vérifier au moment d’un renouvellement. La validité d’un permis B dépend de votre nationalité.',
+      'What changes: the communal procedure is the same for a B and a C permit. What differs is how long your authorisation is valid, and therefore what to check at renewal. A B permit’s validity depends on your nationality.');
   }
-  const review = r => r === null ? { text: 'Source officielle (fédérale ou cantonale)', color: ACCENT }
-    : (r ? { text: 'Relu par ' + r, color: '#2E6A4B' } : { text: 'Page officielle reliée ; relecture communale en attente', color: '#7A766E' });
+  const review = r => r === null ? { text: t('Source officielle (fédérale ou cantonale)', 'Official source (federal or cantonal)'), color: ACCENT }
+    : (r ? { text: t('Relu par ', 'Reviewed by ') + r, color: '#2E6A4B' } : { text: t('Page officielle reliée ; relecture communale en attente', 'Official page linked; commune review pending'), color: '#7A766E' });
 
   // ---- Answers and done-marks belong to the scenario that produced them ----
   const scopeFor = (card, P) => { const s = {}; (card.deps || []).filter(k => k !== 'answers').forEach(k => { s[k] = P[k]; }); return s; };
@@ -268,72 +278,75 @@
     const ghost = (id, deps, short, q, why, answer) => ({ id, deps, ghost: true, short, title: q, ghostWhy: why, answer });
     const stc = P.dest === 'Saint-Cergue';
     const D = stc ? 'St-Cergue' : 'Gland';
-    const destName = stc ? 'Commune de Saint-Cergue' : 'Ville de Gland';
+    const destName = stc ? t('Commune de Saint-Cergue', 'Commune of Saint-Cergue') : t('Ville de Gland', 'Town of Gland');
     const destDomain = stc ? 'st-cergue.ch' : 'gland.ch';
     const arriveeUrl = stc ? 'https://www.st-cergue.ch/prestations-communales/113320' : 'https://www.gland.ch';
-    const nyonCdH = S('com', 'nyon.ch', 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', 'Ville de Nyon — Contrôle des habitants', false);
-    const vdEdem = S('vd', 'vd.ch', 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', 'État de Vaud — Annoncer son changement d’adresse : conditions selon le permis, communes raccordées à eDéménagement', null);
-    const vdEdemAlso = { title: 'Conditions eDéménagement selon le permis, liste des communes (vd.ch)', url: vdEdem.url };
-    const voteAlso = { title: 'Directive cantonale sur le droit de vote en matière communale (vd.ch, PDF)', url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf' };
-    const semB = S('conf', 'sem.admin.ch', 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', 'SEM — Permis B UE/AELE : validité de cinq ans', null);
-    const semTiers = S('conf', 'sem.admin.ch', 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', 'SEM — Permis de séjour pour les ressortissants d’États tiers', null);
-    const chChecklist = S('conf', 'ch.ch', 'https://www.ch.ch/fr/checkliste-demenagement', 'ch.ch — Aide-mémoire pour un déménagement', null);
-    const coeff = S('vd', 'vd.ch', 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', 'Statistique Vaud — Arrêtés d’imposition des communes', null);
+    const nyonCdH = S('com', 'nyon.ch', 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', t('Ville de Nyon — Contrôle des habitants', 'Town of Nyon — Residents’ registry office'), false);
+    const vdEdem = S('vd', 'vd.ch', 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', t('État de Vaud — Annoncer son changement d’adresse : conditions selon le permis, communes raccordées à eDéménagement', 'Canton of Vaud — Reporting a change of address: conditions by permit, communes connected to eDéménagement'), null);
+    const vdEdemAlso = { title: t('Conditions eDéménagement selon le permis, liste des communes (vd.ch)', 'eDéménagement conditions by permit, list of communes (vd.ch)'), url: vdEdem.url };
+    const voteAlso = { title: t('Directive cantonale sur le droit de vote en matière communale (vd.ch, PDF)', 'Cantonal directive on communal voting rights (vd.ch, PDF)'), url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf' };
+    const semB = S('conf', 'sem.admin.ch', 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', t('SEM — Permis B UE/AELE : validité de cinq ans', 'SEM — B permit EU/EFTA: valid five years'), null);
+    const semTiers = S('conf', 'sem.admin.ch', 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', t('SEM — Permis de séjour pour les ressortissants d’États tiers', 'SEM — Residence permits for third-country nationals'), null);
+    const chChecklist = S('conf', 'ch.ch', 'https://www.ch.ch/fr/checkliste-demenagement', t('ch.ch — Aide-mémoire pour un déménagement', 'ch.ch — Moving checklist'), null);
+    const coeff = S('vd', 'vd.ch', 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', t('Statistique Vaud — Arrêtés d’imposition des communes', 'Statistique Vaud — Communal tax decrees'), null);
 
     const nat = A['q.nationalite'];
     let permit;
-    if (P.permit === 'C') permit = step('reg.permis', ['permit'], 'Permis C · adresse à jour', 'Permis C : la nouvelle adresse suffit', 'L’autorisation d’établissement est de durée indéterminée ; le titre est renouvelé à des fins de contrôle. Un déménagement dans le canton ne la remet pas en cause ; il reste à annoncer l’adresse.', semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
-    else if (nat === 'UE/AELE') permit = step('reg.permis', ['permit', 'answers'], 'Permis B UE/AELE · 5 ans', 'Permis B UE/AELE : annoncer la nouvelle adresse', 'Votre autorisation est valable cinq ans (SEM) ; le déménagement ne la remet pas en cause. Les conditions de l’annonce en ligne selon le permis sont sur la page cantonale.', semB, { also: vdEdemAlso, confirm: 'SPOP' });
-    else if (nat === 'État tiers') permit = step('reg.permis', ['permit', 'answers'], 'Permis B (État tiers) · 1 an', 'Permis B d’un État tiers : annoncer l’adresse et suivre le renouvellement', 'L’autorisation initiale est en général valable un an et se renouvelle ; l’adresse doit être à jour au renouvellement (SEM). Les conditions de l’annonce en ligne selon le permis sont sur la page cantonale.', semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
-    else permit = step('reg.permis', ['permit'], 'Permis B · selon nationalité', 'Permis B : ce qui s’applique dépend de votre nationalité', 'La validité d’un permis B n’est pas la même pour tous : cinq ans pour un ressortissant UE/AELE, en général un an renouvelable pour un État tiers (SEM). Répondez à la question voisine pour préciser cette étape.', semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
+    if (P.permit === 'C') permit = step('reg.permis', ['permit'], t('Permis C · adresse à jour', 'Permit C · address up to date'), t('Permis C : la nouvelle adresse suffit', 'Permit C: the new address is enough'), t('L’autorisation d’établissement est de durée indéterminée ; le titre est renouvelé à des fins de contrôle. Un déménagement dans le canton ne la remet pas en cause ; il reste à annoncer l’adresse.', 'The settlement permit has no time limit; the card is renewed for control purposes. Moving within the canton does not affect it; you still report the address.'), semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
+    else if (nat === 'UE/AELE') permit = step('reg.permis', ['permit', 'answers'], t('Permis B UE/AELE · 5 ans', 'Permit B EU/EFTA · 5 years'), t('Permis B UE/AELE : annoncer la nouvelle adresse', 'Permit B EU/EFTA: report the new address'), t('Votre autorisation est valable cinq ans (SEM) ; le déménagement ne la remet pas en cause. Les conditions de l’annonce en ligne selon le permis sont sur la page cantonale.', 'Your permit is valid five years (SEM); the move does not affect it. Conditions for reporting online, by permit type, are on the cantonal page.'), semB, { also: vdEdemAlso, confirm: 'SPOP' });
+    else if (nat === 'État tiers') permit = step('reg.permis', ['permit', 'answers'], t('Permis B (État tiers) · 1 an', 'Permit B (third country) · 1 year'), t('Permis B d’un État tiers : annoncer l’adresse et suivre le renouvellement', 'Permit B, third-country national: report the address and follow the renewal'), t('L’autorisation initiale est en général valable un an et se renouvelle ; l’adresse doit être à jour au renouvellement (SEM). Les conditions de l’annonce en ligne selon le permis sont sur la page cantonale.', 'The initial permit is generally valid one year and renewable; the address must be current at renewal (SEM). Conditions for reporting online, by permit type, are on the cantonal page.'), semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
+    else permit = step('reg.permis', ['permit'], t('Permis B · selon nationalité', 'Permit B · depends on nationality'), t('Permis B : ce qui s’applique dépend de votre nationalité', 'Permit B: what applies depends on your nationality'), t('La validité d’un permis B n’est pas la même pour tous : cinq ans pour un ressortissant UE/AELE, en général un an renouvelable pour un État tiers (SEM). Répondez à la question voisine pour préciser cette étape.', 'A B permit is not valid for the same time for everyone: five years for EU/EFTA nationals, generally one renewable year for third-country nationals (SEM). Answer the neighbouring question to make this step precise.'), semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
     const inscription = [
-      step('reg.depart', [], 'Départ · Nyon', 'Annoncer votre départ à Nyon', 'Le Contrôle des habitants clôt votre dossier avant toute inscription ailleurs ; Nyon accepte l’annonce en ligne via eDéménagementCH.', nyonCdH, { also: vdEdemAlso }),
-      step('reg.arrivee', ['dest'], 'Arrivée · ' + D, 'Annoncer votre arrivée à ' + P.dest, stc ? 'L’inscription établit votre domicile : école, taxes communales. Le délai d’annonce court depuis votre arrivée effective. Saint-Cergue figure dans la liste cantonale des communes raccordées à eDéménagement ; sinon, au guichet, après avoir annoncé votre départ. Pour les étrangers, le droit de vote communal dépend de conditions de séjour et de permis distinctes.' : 'L’inscription établit votre domicile : école, taxes communales. Le délai d’annonce court depuis votre arrivée effective. Vérifiez sur la page cantonale si Gland est raccordée à eDéménagement. Pour les étrangers, le droit de vote communal dépend de conditions de séjour et de permis distinctes.', S('com', destDomain, arriveeUrl, destName + (stc ? ' — Arrivée à St-Cergue' : ' — Contrôle des habitants'), false), { also: [vdEdemAlso, voteAlso] })
+      step('reg.depart', [], t('Départ · Nyon', 'Departure · Nyon'), t('Annoncer votre départ à Nyon', 'Report your departure to Nyon'), t('Le Contrôle des habitants clôt votre dossier avant toute inscription ailleurs ; Nyon accepte l’annonce en ligne via eDéménagementCH.', 'The residents’ registry closes your file before any registration elsewhere; Nyon accepts online reporting through eDéménagementCH.'), nyonCdH, { also: vdEdemAlso }),
+      step('reg.arrivee', ['dest'], t('Arrivée · ', 'Arrival · ') + D, t('Annoncer votre arrivée à ', 'Report your arrival in ') + P.dest,
+        stc ? t('L’inscription établit votre domicile : école, taxes communales. Le délai d’annonce court depuis votre arrivée effective. Saint-Cergue figure dans la liste cantonale des communes raccordées à eDéménagement ; sinon, au guichet, après avoir annoncé votre départ. Pour les étrangers, le droit de vote communal dépend de conditions de séjour et de permis distinctes.', 'Registration establishes your residence: school, communal taxes. The reporting deadline runs from your actual arrival. Saint-Cergue is on the cantonal list of communes connected to eDéménagement; otherwise at the counter, after reporting your departure. For foreign residents, communal voting rights depend on separate residence and permit conditions.')
+            : t('L’inscription établit votre domicile : école, taxes communales. Le délai d’annonce court depuis votre arrivée effective. Vérifiez sur la page cantonale si Gland est raccordée à eDéménagement. Pour les étrangers, le droit de vote communal dépend de conditions de séjour et de permis distinctes.', 'Registration establishes your residence: school, communal taxes. The reporting deadline runs from your actual arrival. Check on the cantonal page whether Gland is connected to eDéménagement. For foreign residents, communal voting rights depend on separate residence and permit conditions.'),
+        S('com', destDomain, arriveeUrl, destName + (stc ? t(' — Arrivée à St-Cergue', ' — Arrival in St-Cergue') : t(' — Contrôle des habitants', ' — Residents’ registry')), false), { also: [vdEdemAlso, voteAlso] })
     ];
-    if (P.permit === 'B' && !nat) inscription.push(ghost('q.nationalite', [], 'UE/AELE ou État tiers ?', 'Votre nationalité relève-t-elle de l’UE/AELE ou d’un État tiers ?', 'La validité de votre permis B, et donc ce qu’il faut vérifier au renouvellement, dépend de cette réponse.', { type: 'choice', options: ['UE/AELE', 'État tiers'] }));
+    if (P.permit === 'B' && !nat) inscription.push(ghost('q.nationalite', [], t('UE/AELE ou État tiers ?', 'EU/EFTA or third country?'), t('Votre nationalité relève-t-elle de l’UE/AELE ou d’un État tiers ?', 'Is your nationality EU/EFTA or a third country?'), t('La validité de votre permis B, et donc ce qu’il faut vérifier au renouvellement, dépend de cette réponse.', 'How long your B permit is valid, and what to check at renewal, depends on this answer.'), { type: 'choice', options: ['UE/AELE', 'État tiers'], labels: [t('UE/AELE', 'EU/EFTA'), t('État tiers', 'Third country')] }));
     inscription.push(permit);
 
     const logement = P.tenure === 'owner' ? [
-      step('log.vendre', ['tenure'], 'Vendre ou louer · Nyon', 'Vendre ou louer votre bien à Nyon', 'Un gain immobilier est imposé par le canton ; une location crée un revenu à déclarer.', S('vd', 'vd.ch', 'https://www.vd.ch', 'ACI — Impôt sur les gains immobiliers', null), { confirm: 'Notaire / ACI' }),
-      step('log.acheter', ['tenure', 'dest'], 'Acheter ou louer · ' + D, 'Acheter ou louer à ' + P.dest, 'Le régime de votre logement détermine les étapes suivantes : taxes, assurances, travaux.', chChecklist),
-      ghost('q.residence-secondaire', ['tenure'], 'Résidence secondaire ?', 'Le bien à Nyon reste-t-il une résidence secondaire ?', 'Une résidence secondaire modifie l’imposition et l’assurance du bien conservé.', { type: 'yesno' })
+      step('log.vendre', ['tenure'], t('Vendre ou louer · Nyon', 'Sell or let · Nyon'), t('Vendre ou louer votre bien à Nyon', 'Sell or let your property in Nyon'), t('Un gain immobilier est imposé par le canton ; une location crée un revenu à déclarer.', 'A property gain is taxed by the canton; letting creates income to declare.'), S('vd', 'vd.ch', 'https://www.vd.ch', t('ACI — Impôt sur les gains immobiliers', 'ACI — Property gains tax'), null), { confirm: t('Notaire / ACI', 'Notary / ACI') }),
+      step('log.acheter', ['tenure', 'dest'], t('Acheter ou louer · ', 'Buy or rent · ') + D, t('Acheter ou louer à ', 'Buy or rent in ') + P.dest, t('Le régime de votre logement détermine les étapes suivantes : taxes, assurances, travaux.', 'Your housing arrangement determines the next steps: taxes, insurance, works.'), chChecklist),
+      ghost('q.residence-secondaire', ['tenure'], t('Résidence secondaire ?', 'Second home?'), t('Le bien à Nyon reste-t-il une résidence secondaire ?', 'Does the Nyon property remain a second home?'), t('Une résidence secondaire modifie l’imposition et l’assurance du bien conservé.', 'A second home changes the taxation and insurance of the property you keep.'), { type: 'yesno' })
     ] : [
-      step('log.resilier', ['tenure'], 'Résilier le bail · Nyon', 'Résilier le bail à Nyon', 'Les termes et délais de résiliation sont fixés par le bail et le droit fédéral ; résiliez par écrit, idéalement en recommandé.', chChecklist),
-      step('log.nouveau-bail', ['tenure', 'dest'], 'Nouveau bail · ' + D, 'Trouver un logement à ' + P.dest, 'Le contrat de bail sera demandé lors de l’inscription au Contrôle des habitants.', S('com', destDomain, arriveeUrl, destName + ' — Arrivée dans la commune', false)),
-      ghost('q.bail-signe', ['tenure'], 'Bail déjà signé ?', 'Avez-vous déjà signé un nouveau bail ?', 'Le bail peut être utile pour la démarche ; indiquez votre date d’arrivée effective séparément.', { type: 'yesno' })
+      step('log.resilier', ['tenure'], t('Résilier le bail · Nyon', 'Give notice · Nyon'), t('Résilier le bail à Nyon', 'Terminate the lease in Nyon'), t('Les termes et délais de résiliation sont fixés par le bail et le droit fédéral ; résiliez par écrit, idéalement en recommandé.', 'Notice dates and periods are set by the lease and federal law; give notice in writing, ideally by registered mail.'), chChecklist),
+      step('log.nouveau-bail', ['tenure', 'dest'], t('Nouveau bail · ', 'New lease · ') + D, t('Trouver un logement à ', 'Find a home in ') + P.dest, t('Le contrat de bail sera demandé lors de l’inscription au Contrôle des habitants.', 'The lease will be requested when you register with the residents’ registry.'), S('com', destDomain, arriveeUrl, destName + t(' — Arrivée dans la commune', ' — Arrival in the commune'), false)),
+      ghost('q.bail-signe', ['tenure'], t('Bail déjà signé ?', 'Lease already signed?'), t('Avez-vous déjà signé un nouveau bail ?', 'Have you already signed a new lease?'), t('Le bail peut être utile pour la démarche ; indiquez votre date d’arrivée effective séparément.', 'The lease can help with the procedure; state your actual arrival date separately.'), { type: 'yesno' })
     ];
-    if (A['q.residence-secondaire'] === 'oui') logement[2] = step('log.residence-secondaire', ['tenure', 'answers'], 'Déclarer la résidence secondaire', 'Déclarer le bien de Nyon comme résidence secondaire', 'Le bien conservé reste imposé à Nyon ; son usage déclaré change la valeur locative et l’assurance.', S('vd', 'vd.ch', 'https://www.vd.ch', 'ACI — Résidences secondaires', null), { confirm: 'ACI' });
+    if (A['q.residence-secondaire'] === 'oui') logement[2] = step('log.residence-secondaire', ['tenure', 'answers'], t('Déclarer la résidence secondaire', 'Declare the second home'), t('Déclarer le bien de Nyon comme résidence secondaire', 'Declare the Nyon property as a second home'), t('Le bien conservé reste imposé à Nyon ; son usage déclaré change la valeur locative et l’assurance.', 'The property you keep stays taxed in Nyon; its declared use changes the imputed rental value and insurance.'), S('vd', 'vd.ch', 'https://www.vd.ch', t('ACI — Résidences secondaires', 'ACI — Second homes'), null), { confirm: 'ACI' });
     if (A['q.residence-secondaire'] === 'non') logement.splice(2, 1);
-    if (A['q.bail-signe'] === 'oui') logement[2] = step('log.date-arrivee', ['tenure', 'answers'], 'Date d’arrivée effective', 'Annoncer votre date d’arrivée effective', 'Le délai d’annonce court depuis le jour où vous emménagez réellement, pas depuis la signature du bail.', S('com', destDomain, arriveeUrl, destName + ' — Arrivée dans la commune', false));
+    if (A['q.bail-signe'] === 'oui') logement[2] = step('log.date-arrivee', ['tenure', 'answers'], t('Date d’arrivée effective', 'Actual arrival date'), t('Annoncer votre date d’arrivée effective', 'Report your actual arrival date'), t('Le délai d’annonce court depuis le jour où vous emménagez réellement, pas depuis la signature du bail.', 'The reporting deadline runs from the day you actually move in, not from the lease signature.'), S('com', destDomain, arriveeUrl, destName + t(' — Arrivée dans la commune', ' — Arrival in the commune'), false));
     if (A['q.bail-signe'] === 'non') logement.splice(2, 1);
 
-    const otd = S('conf', 'opentransportdata.swiss', 'https://opentransportdata.swiss', 'Plateforme open data mobilité (horaires publiés en données ouvertes)', null);
+    const otd = S('conf', 'opentransportdata.swiss', 'https://opentransportdata.swiss', t('Plateforme open data mobilité (horaires publiés en données ouvertes)', 'Open transport data platform (timetables published as open data)'), null);
     const transport = [
-      stc ? step('tra.ligne', ['dest'], 'NStCM Nyon – St-Cergue', 'Ligne Nyon – Saint-Cergue (NStCM)', 'Le train relie directement les deux communes. Les horaires sont publiés en données ouvertes ; ce prototype ne les charge pas encore.', otd)
-          : step('tra.ligne', ['dest'], 'RER Nyon – Gland', 'RER Vaud Nyon – Gland (CFF)', 'Les deux communes sont sur la ligne du lac. Les horaires sont publiés en données ouvertes ; ce prototype ne les charge pas encore.', otd),
-      step('tra.mobilis', [], 'Zones Mobilis', 'Abonnement Mobilis : vos zones peuvent changer', 'Le nombre de zones dépend de votre trajet quotidien, pas seulement de votre domicile.', S('vd', 'mobilis-vaud.ch', 'https://www.mobilis-vaud.ch', 'Mobilis — Plan des zones', null), { confirm: 'Mobilis' }),
-      A['q.travail'] ? step('tra.trajet', ['dest', 'answers'], 'Trajet vers ' + A['q.travail'], 'Votre trajet quotidien : ' + P.dest + ' – ' + A['q.travail'], 'Le trajet fixe les zones Mobilis à payer et le temps de porte à porte ; comparez train et voiture sur ce trajet précis.', otd, { confirm: 'Mobilis' })
-        : ghost('q.travail', [], 'Où travaillez-vous ?', 'Où travaillez-vous, et combien de jours par semaine ?', 'Le trajet quotidien décide des zones Mobilis et du choix train ou voiture.', { type: 'text', placeholder: 'Genève, Lausanne, Nyon…' })
+      stc ? step('tra.ligne', ['dest'], 'NStCM Nyon – St-Cergue', t('Ligne Nyon – Saint-Cergue (NStCM)', 'Nyon – Saint-Cergue line (NStCM)'), t('Le train relie directement les deux communes. Les horaires sont publiés en données ouvertes ; ce prototype ne les charge pas encore.', 'The train links the two communes directly. Timetables are published as open data; this prototype does not load them yet.'), otd)
+          : step('tra.ligne', ['dest'], 'RER Nyon – Gland', t('RER Vaud Nyon – Gland (CFF)', 'RER Vaud Nyon – Gland (SBB)'), t('Les deux communes sont sur la ligne du lac. Les horaires sont publiés en données ouvertes ; ce prototype ne les charge pas encore.', 'Both communes are on the lakeside line. Timetables are published as open data; this prototype does not load them yet.'), otd),
+      step('tra.mobilis', [], t('Zones Mobilis', 'Mobilis zones'), t('Abonnement Mobilis : vos zones peuvent changer', 'Mobilis pass: your zones may change'), t('Le nombre de zones dépend de votre trajet quotidien, pas seulement de votre domicile.', 'The number of zones depends on your daily commute, not only on where you live.'), S('vd', 'mobilis-vaud.ch', 'https://www.mobilis-vaud.ch', t('Mobilis — Plan des zones', 'Mobilis — Zone map'), null), { confirm: 'Mobilis' }),
+      A['q.travail'] ? step('tra.trajet', ['dest', 'answers'], t('Trajet vers ', 'Commute to ') + A['q.travail'], t('Votre trajet quotidien : ', 'Your daily commute: ') + P.dest + ' – ' + A['q.travail'], t('Le trajet fixe les zones Mobilis à payer et le temps de porte à porte ; comparez train et voiture sur ce trajet précis.', 'The commute sets the Mobilis zones to pay for and the door-to-door time; compare train and car on this exact trip.'), otd, { confirm: 'Mobilis' })
+        : ghost('q.travail', [], t('Où travaillez-vous ?', 'Where do you work?'), t('Où travaillez-vous, et combien de jours par semaine ?', 'Where do you work, and how many days a week?'), t('Le trajet quotidien décide des zones Mobilis et du choix train ou voiture.', 'The daily commute decides the Mobilis zones and the train-or-car choice.'), { type: 'text', placeholder: t('Genève, Lausanne, Nyon…', 'Geneva, Lausanne, Nyon…') })
     ];
 
     const couts = [
-      step('cou.coefficient', ['dest'], 'Coefficient d’impôt · ' + D, 'Comparer le coefficient communal de ' + P.dest + ' avec Nyon', 'Chaque commune vaudoise fixe un coefficient. Consultez les arrêtés de l’année avant de comparer les deux communes : le coefficient seul ne donne pas votre impôt final.', coeff, { confirm: 'Arrêté d’imposition de l’année' }),
-      step('cou.taxes', ['dest'], 'Taxes communales · ' + D, 'Taxes communales : déchets, eau, épuration', 'Fixées par la commune d’arrivée ; elles diffèrent souvent de Nyon.', S('com', destDomain, stc ? 'https://www.st-cergue.ch' : 'https://www.gland.ch', destName + ' — Taxes communales', false)),
-      A['q.parascolaire'] === 'oui' ? step('cou.accueil', ['dest', 'answers'], 'Accueil parascolaire · ' + D, 'Inscrire votre enfant à l’accueil parascolaire de ' + P.dest, 'L’accueil de jour est facturé selon le revenu ; l’inscription passe par le réseau d’accueil de la commune.', S('com', destDomain, stc ? 'https://www.st-cergue.ch' : 'https://www.gland.ch', destName + ' — Garde d’enfants', false), { confirm: 'Réseau d’accueil de jour' })
+      step('cou.coefficient', ['dest'], t('Coefficient d’impôt · ', 'Tax coefficient · ') + D, t('Comparer le coefficient communal de ', 'Compare the communal coefficient of ') + P.dest + t(' avec Nyon', ' with Nyon'), t('Chaque commune vaudoise fixe un coefficient. Consultez les arrêtés de l’année avant de comparer les deux communes : le coefficient seul ne donne pas votre impôt final.', 'Each Vaud commune sets a coefficient. Read this year’s decrees before comparing the two communes: the coefficient alone does not give your final tax.'), coeff, { confirm: t('Arrêté d’imposition de l’année', 'This year’s tax decree') }),
+      step('cou.taxes', ['dest'], t('Taxes communales · ', 'Communal fees · ') + D, t('Taxes communales : déchets, eau, épuration', 'Communal fees: waste, water, wastewater'), t('Fixées par la commune d’arrivée ; elles diffèrent souvent de Nyon.', 'Set by the commune you move to; they often differ from Nyon.'), S('com', destDomain, stc ? 'https://www.st-cergue.ch' : 'https://www.gland.ch', destName + t(' — Taxes communales', ' — Communal fees'), false)),
+      A['q.parascolaire'] === 'oui' ? step('cou.accueil', ['dest', 'answers'], t('Accueil parascolaire · ', 'After-school care · ') + D, t('Inscrire votre enfant à l’accueil parascolaire de ', 'Enrol your child in after-school care in ') + P.dest, t('L’accueil de jour est facturé selon le revenu ; l’inscription passe par le réseau d’accueil de la commune.', 'Day care is billed according to income; enrolment goes through the commune’s care network.'), S('com', destDomain, stc ? 'https://www.st-cergue.ch' : 'https://www.gland.ch', destName + t(' — Garde d’enfants', ' — Childcare'), false), { confirm: t('Réseau d’accueil de jour', 'Day-care network') })
         : A['q.parascolaire'] === 'non' ? null
-        : ghost('q.parascolaire', [], 'Parascolaire ?', 'Votre enfant utilisera-t-il un accueil parascolaire ?', 'L’accueil de jour est facturé par la commune selon le revenu ; il pèse dans le budget.', { type: 'yesno' })
+        : ghost('q.parascolaire', [], t('Parascolaire ?', 'After-school care?'), t('Votre enfant utilisera-t-il un accueil parascolaire ?', 'Will your child use after-school care?'), t('L’accueil de jour est facturé par la commune selon le revenu ; il pèse dans le budget.', 'Day care is billed by the commune according to income; it weighs on the budget.'), { type: 'yesno' })
     ].filter(Boolean);
 
     return [
-      { id: 'inscription', name: 'Inscription & permis', cards: inscription },
-      { id: 'ecole', name: 'École', cards: [
-        step('eco.prevenir', [], 'Prévenir l’école · Nyon', 'Informer l’école actuelle à Nyon', 'Le dossier scolaire suit l’enfant vers le nouvel établissement.', S('com', 'nyon.ch', 'https://www.nyon.ch', 'Ville de Nyon — Établissements scolaires', false)),
-        step('eco.inscription', ['dest'], 'Inscription · ' + D, 'Inscrire votre enfant dans l’établissement de ' + P.dest, stc ? 'Saint-Cergue fait partie d’une association scolaire intercommunale ; l’inscription se fait auprès de la direction de l’établissement.' : 'L’établissement dépend de la commune de domicile ; l’inscription se fait auprès de sa direction.', S('vd', 'vd.ch', 'https://www.vd.ch', 'DGEO — Changement d’établissement', null)),
-        stc ? step('eco.transport-scolaire', ['dest'], 'Transport scolaire', 'Transport scolaire', 'Selon le lieu de l’école, un transport peut être organisé pour les élèves de Saint-Cergue.', S('com', 'st-cergue.ch', 'https://www.st-cergue.ch', 'Commune de Saint-Cergue — Éducation', false), { confirm: 'Secrétariat de l’établissement' })
-            : step('eco.parascolaire-gland', ['dest'], 'Accueil de jour · Gland', 'Accueil parascolaire à Gland', 'Une commune plus grande organise un accueil de jour ; conditions et tarifs sont communaux.', S('com', 'gland.ch', 'https://www.gland.ch', 'Ville de Gland — Accueil de jour', false), { confirm: 'Ville de Gland' }) ] },
-      { id: 'logement', name: 'Logement', cards: logement },
+      { id: 'inscription', name: t('Inscription & permis', 'Registration & permit'), cards: inscription },
+      { id: 'ecole', name: t('École', 'School'), cards: [
+        step('eco.prevenir', [], t('Prévenir l’école · Nyon', 'Tell the school · Nyon'), t('Informer l’école actuelle à Nyon', 'Inform the current school in Nyon'), t('Le dossier scolaire suit l’enfant vers le nouvel établissement.', 'The school file follows the child to the new school.'), S('com', 'nyon.ch', 'https://www.nyon.ch', t('Ville de Nyon — Établissements scolaires', 'Town of Nyon — Schools'), false)),
+        step('eco.inscription', ['dest'], t('Inscription · ', 'Enrolment · ') + D, t('Inscrire votre enfant dans l’établissement de ', 'Enrol your child in the school of ') + P.dest, stc ? t('Saint-Cergue fait partie d’une association scolaire intercommunale ; l’inscription se fait auprès de la direction de l’établissement.', 'Saint-Cergue belongs to an inter-communal school association; enrolment is with the school management.') : t('L’établissement dépend de la commune de domicile ; l’inscription se fait auprès de sa direction.', 'The school depends on the commune of residence; enrolment is with its management.'), S('vd', 'vd.ch', 'https://www.vd.ch', t('DGEO — Changement d’établissement', 'DGEO — Change of school'), null)),
+        stc ? step('eco.transport-scolaire', ['dest'], t('Transport scolaire', 'School transport'), t('Transport scolaire', 'School transport'), t('Selon le lieu de l’école, un transport peut être organisé pour les élèves de Saint-Cergue.', 'Depending on where the school is, transport may be organised for Saint-Cergue pupils.'), S('com', 'st-cergue.ch', 'https://www.st-cergue.ch', t('Commune de Saint-Cergue — Éducation', 'Commune of Saint-Cergue — Education'), false), { confirm: t('Secrétariat de l’établissement', 'School secretariat') })
+            : step('eco.parascolaire-gland', ['dest'], t('Accueil de jour · Gland', 'Day care · Gland'), t('Accueil parascolaire à Gland', 'After-school care in Gland'), t('Une commune plus grande organise un accueil de jour ; conditions et tarifs sont communaux.', 'A larger commune organises day care; conditions and fees are communal.'), S('com', 'gland.ch', 'https://www.gland.ch', t('Ville de Gland — Accueil de jour', 'Town of Gland — Day care'), false), { confirm: t('Ville de Gland', 'Town of Gland') }) ] },
+      { id: 'logement', name: t('Logement', 'Housing'), cards: logement },
       { id: 'transport', name: 'Transport', cards: transport },
-      { id: 'couts', name: 'Coûts', cards: couts }
+      { id: 'couts', name: t('Coûts', 'Costs'), cards: couts }
     ];
   }
 
@@ -349,7 +362,7 @@
   }
 
   // ---- Geometry ----
-  const ROOT = { x: 36, y: 440 }, YS = [100, 270, 440, 610, 780], X0 = 170, XSTEP = 165, LX = 820;
+  const ROOT = { x: 36, y: 440 }, YS = [100, 270, 440, 610, 780], X0 = 170, XSTEP = 165;
   const WOB = [[0, -8, 6, -4, 4], [4, -6, 10, 2, -2], [-6, 4, -8, 6, 0], [6, -10, 2, -6, 4], [-4, 8, -6, 4, -2]];
   const seg = (p, q) => { const mx = (p.x + q.x) / 2; return ' C ' + mx + ' ' + p.y + ', ' + mx + ' ' + q.y + ', ' + q.x + ' ' + q.y; };
   const pathThrough = (start, pts, tailX) => { let d = 'M ' + start.x + ' ' + start.y, prev = start; pts.forEach(p => { d += seg(prev, p); prev = p; }); if (tailX) d += ' L ' + tailX + ' ' + prev.y; return d; };
@@ -371,11 +384,10 @@
       return { lane: l, cmp, currentId: firstOpen ? firstOpen.id : null };
     });
     const d = { exploreOn, params, A, lanes, previewOn, candParams, candLanes, prevLanes, appliedKeys, rows };
-    d.diffKey = previewOn ? hash(s.pending.key + '>' + s.pending.to + '|' + JSON.stringify(params) + '|' + JSON.stringify(A) + '|' + JSON.stringify(diffSummary(d))) : null;
+    d.diffKey = previewOn ? hash(LANG + '|' + s.pending.key + '>' + s.pending.to + '|' + JSON.stringify(params) + '|' + JSON.stringify(A) + '|' + JSON.stringify(diffSummary(d))) : null;
     return d;
   }
-  const diffSummary = d => d.rows.map(r => ({ piste: r.lane.name, changements: r.cmp.filter(c => c.kind !== 'same').map(c => ({ type: c.kind, avant: c.a ? c.a.title : null, apres: c.b ? c.b.title : null, depend_de: (c.b || c.a).deps })) })).filter(r => r.changements.length);
-  // The explanation of a proposal: generated for this exact scenario and diff, or prepared.
+  const diffSummary = d => d.rows.map(r => ({ branch: r.lane.name, changes: r.cmp.filter(c => c.kind !== 'same').map(c => ({ type: c.kind, before: c.a ? c.a.title : null, after: c.b ? c.b.title : null, depends_on: (c.b || c.a).deps })) })).filter(r => r.changes.length);
   const explanation = d => { const g = d.diffKey && state.ai.explain[d.diffKey]; if (g) return { text: g.text, prov: g.prov }; const p = state.pending; return { text: p ? PREPARED_EXPLAIN(p.key, p.to) : '', prov: null }; };
   const appliedExplanation = d => d.appliedKeys.map(k => PREPARED_EXPLAIN(k, state.saved[k])).join(' ');
   function countAffected(d) {
@@ -388,7 +400,8 @@
     }));
     return { affected, added, removed, total: affected + added + removed, unaffected, ghosts, lanes: laneIds.size };
   }
-  const whoLine = prov => prov ? '<div class="who live"><i></i>' + esc(provLabel(prov)) + '</div>' : '<div class="who"><i></i>Texte préparé' + (live() ? ' — Apertus (' + esc(provName()) + ') n’a pas écrit celui-ci' : ', Apertus non connecté') + '</div>';
+  const whoLine = prov => prov ? '<div class="who live"><i></i>' + esc(provLabel(prov)) + '</div>' : '<div class="who"><i></i>' + t('Texte préparé', 'Prepared text') + (live() ? ' — Apertus (' + esc(provName()) + t(') n’a pas écrit celui-ci', ') did not write this one') : t(', Apertus non connecté', ', Apertus not connected')) + '</div>';
+  const plural = (n, fr1, frN, en1, enN) => n + ' ' + (LANG === 'en' ? (n > 1 ? enN : en1) : (n > 1 ? frN : fr1));
 
   // ---- Story ----
   function renderStory(d) {
@@ -400,46 +413,47 @@
       const label = pend ? LABEL[key](v) + ' → ' + LABEL[key](s.pending.to) + ' ?' : LABEL[key](v);
       return '<button type="button" class="word ' + cls + '" data-word="' + key + '">' + esc(label) + '</button>';
     };
-    const fromLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.from)) : '';
-    const toLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.to)) : '';
-    const savedSummary = s.saved.dest + ', ' + LABEL.tenure(s.saved.tenure) + ', ' + LABEL.permit(s.saved.permit);
-    let html = '<div class="eyebrow story-label">' + (d.exploreOn ? 'Hypothèse, non enregistrée' : (s.resumed ? 'Votre histoire, reprise' : 'Votre histoire')) + '</div>';
-    html += '<p class="sentence">J’habite à <span class="fixed">Nyon</span>, je suis ' + word('tenure') + ', mon enfant a <span class="fixed">8 ans</span> et j’envisage de déménager à ' + word('dest') + '. J’ai un ' + word('permit') + '.</p>';
+    const fromLabel = s.pending ? LABEL_SHORT[s.pending.key](s.pending.from) : '';
+    const toLabel = s.pending ? LABEL_SHORT[s.pending.key](s.pending.to) : '';
+    const savedSummary = s.saved.dest + ', ' + LABEL_SHORT.tenure(s.saved.tenure).toLowerCase() + ', ' + LABEL.permit(s.saved.permit);
+    let html = '<div class="eyebrow story-label">' + (d.exploreOn ? t('Hypothèse, non enregistrée', 'Hypothesis, not saved') : (s.resumed ? t('Votre histoire, reprise', 'Your story, resumed') : t('Votre histoire', 'Your story'))) + '</div>';
+    html += '<p class="sentence">' + (LANG === 'en'
+      ? 'I live in <span class="fixed">Nyon</span>, I am ' + word('tenure') + ', my child is <span class="fixed">8</span> and I am thinking of moving to ' + word('dest') + '. I hold a ' + word('permit') + '.'
+      : 'J’habite à <span class="fixed">Nyon</span>, je suis ' + word('tenure') + ', mon enfant a <span class="fixed">8 ans</span> et j’envisage de déménager à ' + word('dest') + '. J’ai un ' + word('permit') + '.') + '</p>';
     const A = d.A, lines = [];
-    if (A['q.nationalite']) lines.push(A['q.nationalite'] === 'UE/AELE' ? 'Je suis ressortissant d’un pays de l’<b>UE/AELE</b>.' : 'Je suis ressortissant d’un <b>État tiers</b>.');
-    if (A['q.travail']) lines.push('Je travaille à <b>' + esc(A['q.travail']) + '</b>.');
-    if (A['q.residence-secondaire']) lines.push(A['q.residence-secondaire'] === 'oui' ? 'Je garde le bien de Nyon en <b>résidence secondaire</b>.' : 'Je ne garde <b>pas</b> le bien de Nyon.');
-    if (A['q.bail-signe']) lines.push(A['q.bail-signe'] === 'oui' ? 'J’ai <b>déjà signé</b> un bail.' : 'Je n’ai <b>pas encore</b> de bail.');
-    if (A['q.parascolaire']) lines.push(A['q.parascolaire'] === 'oui' ? 'Mon enfant ira à l’<b>accueil parascolaire</b>.' : 'Pas d’accueil parascolaire.');
+    if (A['q.nationalite']) lines.push(A['q.nationalite'] === 'UE/AELE' ? t('Je suis ressortissant d’un pays de l’<b>UE/AELE</b>.', 'I am an <b>EU/EFTA</b> national.') : t('Je suis ressortissant d’un <b>État tiers</b>.', 'I am a <b>third-country</b> national.'));
+    if (A['q.travail']) lines.push(t('Je travaille à <b>', 'I work in <b>') + esc(A['q.travail']) + '</b>.');
+    if (A['q.residence-secondaire']) lines.push(A['q.residence-secondaire'] === 'oui' ? t('Je garde le bien de Nyon en <b>résidence secondaire</b>.', 'I keep the Nyon property as a <b>second home</b>.') : t('Je ne garde <b>pas</b> le bien de Nyon.', 'I do <b>not</b> keep the Nyon property.'));
+    if (A['q.bail-signe']) lines.push(A['q.bail-signe'] === 'oui' ? t('J’ai <b>déjà signé</b> un bail.', 'I have <b>already signed</b> a lease.') : t('Je n’ai <b>pas encore</b> de bail.', 'I do <b>not yet</b> have a lease.'));
+    if (A['q.parascolaire']) lines.push(A['q.parascolaire'] === 'oui' ? t('Mon enfant ira à l’<b>accueil parascolaire</b>.', 'My child will use <b>after-school care</b>.') : t('Pas d’accueil parascolaire.', 'No after-school care.'));
     const doneNow = d.lanes.flatMap(l => l.cards).filter(c => !c.ghost && isDone(c, d.params));
-    if (doneNow.length) lines.push('Déjà fait : <b>' + doneNow.map(c => esc(c.short)).join('</b>, <b>') + '</b>.');
+    if (doneNow.length) lines.push(t('Déjà fait : <b>', 'Already done: <b>') + doneNow.map(c => esc(c.short)).join('</b>, <b>') + '</b>.');
     if (lines.length) html += '<p class="answered">' + lines.join(' ') + '</p>';
     const dormant = s.answers.filter(a => !scopeMatches(a.scope || {}, d.params)).length + s.done.filter(x => !scopeMatches(x.scope || {}, d.params)).length;
-    if (dormant) html += '<div class="hint">' + dormant + (dormant > 1 ? ' éléments donnés dans un autre scénario sont mis de côté' : ' élément donné dans un autre scénario est mis de côté') + ' ; ils reviendront si vous y revenez.</div>';
-    html += '<div class="hint">' + (d.exploreOn ? 'Chaque mot souligné se change librement ici.' : 'Les mots soulignés sont vos réponses. Touchez-en un pour proposer un changement : l’arbre montre d’abord ce qui pousserait.') + '</div>';
+    if (dormant) html += '<div class="hint">' + (LANG === 'en' ? dormant + (dormant > 1 ? ' answers given in another scenario are set aside' : ' answer given in another scenario is set aside') + '; they return if you go back.' : dormant + (dormant > 1 ? ' éléments donnés dans un autre scénario sont mis de côté' : ' élément donné dans un autre scénario est mis de côté') + ' ; ils reviendront si vous y revenez.') + '</div>';
+    html += '<div class="hint">' + (d.exploreOn ? t('Chaque mot souligné se change librement ici.', 'Every underlined word changes freely here.') : t('Les mots soulignés sont vos réponses. Touchez-en un pour proposer un changement : l’arbre montre d’abord ce qui pousserait.', 'The underlined words are your answers. Touch one to propose a change: the tree first shows what would grow.')) + '</div>';
     if (d.previewOn) {
       const c = countAffected(d), parts = [];
-      if (c.affected) parts.push(c.affected + (c.affected > 1 ? ' étapes changeraient' : ' étape changerait'));
-      if (c.added) parts.push(c.added + (c.added > 1 ? ' étapes apparaîtraient' : ' étape apparaîtrait'));
-      if (c.removed) parts.push(c.removed + (c.removed > 1 ? ' disparaîtraient' : ' disparaîtrait'));
-      html += '<div class="banner"><div class="eyebrow">Proposition, rien n’est appliqué</div><div class="small">La branche « ' + esc(toLabel) + ' » pousse en pointillé : ' + parts.join(', ') + ' dans ' + c.lanes + (c.lanes > 1 ? ' pistes' : ' piste') + '. ' + c.unaffected + ' étapes et ' + c.ghosts + ' questions en attente ne bougent pas.</div>' +
-        '<div class="row"><button type="button" class="btn ink" data-action="keep">Garder ' + esc(fromLabel) + '</button><button type="button" class="btn primary" data-action="adopt">Adopter ' + esc(toLabel) + ' partout (' + c.total + ' étapes)</button></div>' +
-        '<div class="caption">Adopter applique « ' + esc(toLabel) + ' » à toutes les branches en pointillé, pas seulement à l’étape que vous regardez.</div></div>';
+      if (c.affected) parts.push(plural(c.affected, 'étape changerait', 'étapes changeraient', 'step would change', 'steps would change'));
+      if (c.added) parts.push(plural(c.added, 'étape apparaîtrait', 'étapes apparaîtraient', 'step would appear', 'steps would appear'));
+      if (c.removed) parts.push(plural(c.removed, 'disparaîtrait', 'disparaîtraient', 'would disappear', 'would disappear'));
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div><div class="small">' + t('La branche « ', 'The “') + esc(toLabel) + t(' » pousse en pointillé : ', '” branch grows dashed: ') + parts.join(', ') + t(' dans ', ' in ') + plural(c.lanes, 'piste', 'pistes', 'branch', 'branches') + '. ' + c.unaffected + t(' étapes et ', ' steps and ') + c.ghosts + t(' questions en attente ne bougent pas.', ' open questions do not move.') + '</div>' +
+        '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(fromLabel) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(toLabel) + t(' partout (', ' everywhere (') + c.total + t(' étapes)', ' steps)') + '</button></div>' +
+        '<div class="caption">' + t('Adopter applique « ', 'Adopt applies “') + esc(toLabel) + t(' » à toutes les branches en pointillé, pas seulement à l’étape que vous regardez.', '” to every dashed branch, not only to the step you are looking at.') + '</div></div>';
     }
     if (d.exploreOn) {
-      html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">Hypothèse, non enregistrée</div><div class="small">Touchez un mot de l’histoire : l’arbre se redessine sans toucher votre parcours. Enregistré : ' + esc(savedSummary) + '.</div>' +
-        '<div class="row"><button type="button" class="btn" data-action="reset-explore">Repartir de ma situation</button><button type="button" class="btn primary" data-action="mode-situation">Revenir à ma situation</button></div></div>';
+      html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse, non enregistrée', 'Hypothesis, not saved') + '</div><div class="small">' + t('Touchez un mot de l’histoire : l’arbre se redessine sans toucher votre parcours. Enregistré : ', 'Touch a word in the story: the tree redraws without touching your saved path. Saved: ') + esc(savedSummary) + '.</div>' +
+        '<div class="row"><button type="button" class="btn" data-action="reset-explore">' + t('Repartir de ma situation', 'Start again from my situation') + '</button><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     }
-    // The guide's note, with its own provenance.
     let note, prov = null;
-    if (d.exploreOn) note = 'Mode exploration : vous regardez « ' + s.explore.dest + ', ' + LABEL.tenure(s.explore.tenure) + ', ' + LABEL.permit(s.explore.permit) + ' ». Votre parcours enregistré (' + savedSummary + ') n’est pas modifié.';
+    if (d.exploreOn) note = t('Mode exploration : vous regardez « ', 'Explore mode: you are looking at “') + s.explore.dest + ', ' + LABEL_SHORT.tenure(s.explore.tenure).toLowerCase() + ', ' + LABEL.permit(s.explore.permit) + t(' ». Votre parcours enregistré (', '”. Your saved path (') + savedSummary + t(') n’est pas modifié.', ') is untouched.');
     else if (d.previewOn) { const ex = explanation(d); note = ex.text; prov = ex.prov; }
     else if (s.ai.note) { note = s.ai.note.text; prov = s.ai.note.prov; }
-    else if (d.appliedKeys.length) note = 'Changement appliqué : ' + d.appliedKeys.map(k => cap(LABEL[k](s.saved[k]))).join(', ') + '. Les étapes recalculées gardent leur ancienne version lisible ; les autres et les questions en attente n’ont pas bougé.';
-    else if (s.resumed) note = 'Vous reprenez votre parcours là où vous l’aviez laissé. Les questions en pointillé attendent toujours une réponse.';
-    else note = 'Cinq pistes partent de votre histoire. Rien n’est encore marqué comme fait : ouvrez une étape et dites-le si vous l’avez déjà accomplie. La validité de votre permis dépend d’une question encore ouverte.';
-    html += '<div class="spacer"></div><div class="note">' + whoLine(prov) + (s.ai.busy ? '<div class="caption">Apertus répond…</div>' : '') + '<div>' + esc(note) + '</div>' + (s.ai.error ? '<div class="err">' + esc(s.ai.error) + '</div>' : '') + (live() ? '' : '<div class="caption">Ce prototype n’appelle aucun modèle tant qu’Apertus n’est pas connecté (bouton en haut à droite).</div>') + '</div>';
-    html += '<form class="ask" data-story-form><label for="ask" class="hint">' + (live() ? 'Ajoutez à votre histoire : Apertus (' + esc(provName()) + ') la lit et propose ce qui change' : 'Ajouter à votre histoire — disponible une fois Apertus connecté') + '</label><div class="field"><input id="ask" name="text" type="text" ' + (live() ? '' : 'disabled ') + 'placeholder="Je suis française et je travaille à Genève."><button type="submit" aria-label="Envoyer" ' + (live() ? '' : 'disabled') + '><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg></button></div><div class="caption">Quand vous utilisez Apertus, votre phrase ou les réponses utiles à la comparaison sont envoyées au fournisseur via le proxy. Votre parcours est conservé dans ce navigateur ; « Effacer mon parcours » le supprime ici.</div></form>';
+    else if (d.appliedKeys.length) note = t('Changement appliqué : ', 'Change applied: ') + d.appliedKeys.map(k => LABEL_SHORT[k](s.saved[k])).join(', ') + t('. Les étapes recalculées gardent leur ancienne version lisible ; les autres et les questions en attente n’ont pas bougé.', '. Recalculated steps keep their previous version readable; the others and the open questions did not move.');
+    else if (s.resumed) note = t('Vous reprenez votre parcours là où vous l’aviez laissé. Les questions en pointillé attendent toujours une réponse.', 'You are picking up your path where you left it. The dashed questions are still waiting for an answer.');
+    else note = t('Cinq pistes partent de votre histoire. Rien n’est encore marqué comme fait : ouvrez une étape et dites-le si vous l’avez déjà accomplie. La validité de votre permis dépend d’une question encore ouverte.', 'Five branches grow from your story. Nothing is marked done yet: open a step and say so if you have already completed it. Your permit’s validity depends on a question still open.');
+    html += '<div class="spacer"></div><div class="note">' + whoLine(prov) + (s.ai.busy ? '<div class="caption">' + t('Apertus répond…', 'Apertus is answering…') + '</div>' : '') + '<div>' + esc(note) + '</div>' + (s.ai.error ? '<div class="err">' + esc(s.ai.error) + '</div>' : '') + (live() ? '' : '<div class="caption">' + t('Ce prototype n’appelle aucun modèle tant qu’Apertus n’est pas connecté.', 'This prototype calls no model until Apertus is connected.') + '</div>') + '</div>';
+    html += '<form class="ask" data-story-form><label for="ask" class="hint">' + (live() ? t('Ajoutez à votre histoire : Apertus (', 'Add to your story: Apertus (') + esc(provName()) + t(') la lit et propose ce qui change', ') reads it and proposes what changes') : t('Ajouter à votre histoire — disponible une fois Apertus connecté', 'Add to your story — available once Apertus is connected')) + '</label><div class="field"><input id="ask" name="text" type="text" ' + (live() ? '' : 'disabled ') + 'placeholder="' + t('Je suis française et je travaille à Genève.', 'I am French and I work in Geneva.') + '"><button type="submit" aria-label="' + t('Envoyer', 'Send') + '" ' + (live() ? '' : 'disabled') + '><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg></button></div></form>';
     document.getElementById('story').innerHTML = html;
   }
 
@@ -463,10 +477,11 @@
         for (let i = first; i < n; i++) { const k = row.cmp[i].kind; if (k === 'removed') continue; route.push({ x: pts[i].x, y: k === 'same' ? pts[i].y : pts[i].y + 48 }); }
         out += '<path class="grow" d="' + pathThrough(start, route, null) + '" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6"/>';
       }
-      const tag = d.previewOn ? (laneAffected ? 'changerait' : 'ne bouge pas') : (d.prevLanes ? (laneApplied ? 'recalculée' : 'inchangée') : '');
+      const tag = d.previewOn ? (laneAffected ? t('changerait', 'would change') : t('ne bouge pas', 'does not move')) : (d.prevLanes ? (laneApplied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
       const lastY = pts[n - 1].y;
-      out += '<text class="branch-name" x="' + LX + '" y="' + (lastY + 5) + '" text-anchor="end" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '">' + esc(l.name) + '</text>';
-      if (tag) out += '<text x="' + LX + '" y="' + (lastY + 20) + '" text-anchor="end" font-size="10" fill="' + ((tag === 'changerait' || tag === 'recalculée') ? ACCENT : '#7A766E') + '">' + tag + '</text>';
+      const nameX = X0 + (n - 1) * XSTEP + 52;
+      out += '<text class="branch-name" x="' + nameX + '" y="' + (lastY + 5) + '" text-anchor="start" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '">' + esc(l.name) + '</text>';
+      if (tag) out += '<text x="' + nameX + '" y="' + (lastY + 20) + '" text-anchor="start" font-size="10" fill="' + ((laneAffected || laneApplied) ? ACCENT : '#7A766E') + '">' + esc(tag) + '</text>';
       row.cmp.forEach((c, i) => {
         const p = pts[i], k = c.kind;
         if (k !== 'added') {
@@ -477,119 +492,122 @@
           const fill = card.ghost ? '#FFFFFF' : (changed ? ACCENT : (done ? '#2E6A4B' : '#FFFFFF'));
           const stroke = card.ghost ? '#8A867C' : (changed ? '#FFFFFF' : (done ? '#2E6A4B' : (current ? ACCENT : '#8A867C')));
           const removed = k === 'removed';
-          out += '<g data-sel="' + li + '|' + esc(c.id) + '|0" tabindex="0" role="button" aria-label="' + esc(card.ghost ? 'Question : ' + card.title : card.title) + '"' + (removed ? ' opacity="0.55"' : '') + '>';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|0" tabindex="0" role="button" aria-label="' + esc(card.ghost ? t('Question : ', 'Question: ') + card.title : card.title) + '"' + (removed ? ' opacity="0.55"' : '') + '>';
           if (selected) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="19" fill="none" stroke="#1B1A17" stroke-width="1.5" stroke-dasharray="3 3"/>';
           if (k === 'changed' || removed) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="' + ACCENT + '" opacity="0.14"/>';
           out += '<circle class="core" cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + (current || changed ? 3 : 2) + '"' + (card.ghost ? ' stroke-dasharray="3 3"' : '') + '/>';
           if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
           if (card.ghost) out += '<text x="' + p.x + '" y="' + (p.y + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#8A867C">?</text>';
           out += '<text x="' + p.x + '" y="' + (p.y - 17) + '" text-anchor="middle" font-size="12" font-weight="' + (hl || current ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : '') + '>' + esc(card.short) + '</text>';
-          const sub = k === 'changed' ? 'changerait' : removed ? 'disparaîtrait' : k === 'applied-changed' ? 'modifiée' : k === 'applied-added' ? 'ajoutée' : done ? 'faite' : current ? 'prochaine étape' : '';
-          if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="10" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + sub + '</text>';
+          const sub = k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : current ? t('prochaine étape', 'next step') : '';
+          if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="10" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + esc(sub) + '</text>';
           out += '</g>';
         }
         if (k === 'changed' || k === 'added') {
           const ay = p.y + 48, alt = c.b;
           const selA = s.sel && s.sel.li === li && s.sel.id === c.id && s.sel.alt;
-          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc('Version proposée : ' + alt.title) + '">';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(t('Version proposée : ', 'Proposed version: ') + alt.title) + '">';
           if (selA) out += '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>';
           out += '<circle class="core" cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>';
           if (alt.ghost) out += '<text x="' + p.x + '" y="' + (ay + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">?</text>';
-          out += '<text x="' + p.x + '" y="' + (ay + 26) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">' + esc(alt.short) + (k === 'added' ? ' (nouvelle)' : '') + '</text></g>';
+          out += '<text x="' + p.x + '" y="' + (ay + 26) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">' + esc(alt.short) + (k === 'added' ? t(' (nouvelle)', ' (new)') : '') + '</text></g>';
         }
       });
       out += '</g>';
     });
-    out += '<circle cx="36" cy="440" r="17" fill="#1B1A17"/><circle cx="36" cy="440" r="6" fill="#FFFFFF"/><text x="36" y="478" text-anchor="middle" font-size="10" fill="#5A5751">Vous</text>';
+    out += '<circle cx="36" cy="440" r="17" fill="#1B1A17"/><circle cx="36" cy="440" r="6" fill="#FFFFFF"/><text x="36" y="478" text-anchor="middle" font-size="10" fill="#5A5751">' + t('Vous', 'You') + '</text>';
     document.getElementById('tree').innerHTML = out;
+    document.getElementById('legend').innerHTML =
+      '<span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot current"></i>' + t('Prochaine étape', 'Next step') + '</span><span><i class="dot"></i>' + t('À venir', 'Ahead') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';
   }
 
   // ---- Detail ----
   function sourceBlock(card) {
-    const lv = LV[card.src.lv], rv = review(card.src.reviewed);
-    return '<div class="zone' + (card.src.exact ? '' : ' soft') + '"><div class="zone-title">' + (card.src.exact ? 'Ce que la source établit' : 'Où vérifier — site officiel, page précise encore à relier') + '</div>' +
+    const lv = LV()[card.src.lv], rv = review(card.src.reviewed);
+    return '<div class="zone' + (card.src.exact ? '' : ' soft') + '"><div class="zone-title">' + (card.src.exact ? t('Ce que la source établit', 'What the source establishes') : t('Où vérifier — site officiel, page précise encore à relier', 'Where to check — official site, exact page still to be linked')) + '</div>' +
       '<a class="source" href="' + esc(card.src.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + lv.bg + '">' + esc(lv.name) + '</span><span class="link">' + esc(card.src.title) + '</span></a>' +
-      (card.also ? [].concat(card.also).map(a => '<div class="also">Voir aussi : <a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a></div>').join('') : '') +
+      (card.also ? [].concat(card.also).map(a => '<div class="also">' + t('Voir aussi : ', 'See also: ') + '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a></div>').join('') : '') +
       '<div class="status"><span class="rv" style="color:' + rv.color + '"><i></i>' + esc(rv.text) + '</span>' +
-      (card.confirm ? '<span class="cf">À confirmer : <b>' + esc(card.confirm) + '</b></span>' : '') + '</div></div>';
+      (card.confirm ? '<span class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(card.confirm) + '</b></span>' : '') + '</div></div>';
   }
-  const depsLine = card => card.deps && card.deps.length ? '<div class="deps">Dépend de ' + card.deps.map(k => DEP_NAME[k]).join(' et de ') + '.</div>' : '<div class="deps">Ne dépend d’aucune de vos réponses : cette étape reste dans tous les scénarios.</div>';
+  const depsLine = card => { const DN = DEP_NAME(); return card.deps && card.deps.length ? '<div class="deps">' + t('Dépend de ', 'Depends on ') + card.deps.map(k => DN[k]).join(t(' et de ', ' and ')) + '.</div>' : '<div class="deps">' + t('Ne dépend d’aucune de vos réponses : cette étape reste dans tous les scénarios.', 'Depends on none of your answers: this step stays in every scenario.') + '</div>'; };
   const modelZone = (title, body, prov) => '<div class="zone model"><div class="zone-title">' + esc(title) + '</div>' + whoLine(prov) + body + '</div>';
 
   function renderDetail(d) {
     const s = state;
-    const foot = '<div class="foot"><span><i style="background:#7A766E"></i>Nyon, Saint-Cergue, Gland : pages officielles reliées ; aucune commune n’a encore relu le contenu.</span><span><i style="background:#1F4E8C"></i>Sources fédérales et cantonales : ch.ch, sem.admin.ch, vd.ch, opentransportdata.swiss.</span><span><i style="background:#B9B3A5"></i>' + (live() ? 'Apertus est connecté (' + esc(provName()) + ') ; chaque texte indique s’il vient du modèle ou d’un texte préparé.' : 'Aucun modèle n’est appelé ; les explications sont des textes préparés, marqués comme tels.') + '</span></div>';
+    const foot = '<div class="foot"><span><i style="background:#7A766E"></i>' + t('Nyon, Saint-Cergue, Gland : pages officielles reliées ; aucune commune n’a encore relu le contenu.', 'Nyon, Saint-Cergue, Gland: official pages linked; no commune has reviewed the content yet.') + '</span><span><i style="background:#1F4E8C"></i>' + t('Sources fédérales et cantonales : ch.ch, sem.admin.ch, vd.ch, opentransportdata.swiss.', 'Federal and cantonal sources: ch.ch, sem.admin.ch, vd.ch, opentransportdata.swiss.') + '</span><span><i style="background:#B9B3A5"></i>' + (live() ? t('Apertus est connecté (', 'Apertus is connected (') + esc(provName()) + t(') ; chaque texte indique s’il vient du modèle ou d’un texte préparé.', '); every text says whether it comes from the model or is prepared.') : t('Aucun modèle n’est appelé ; les explications sont des textes préparés, marqués comme tels.', 'No model is called; explanations are prepared texts, labelled as such.')) + '</span></div>';
     let html;
     const row = s.sel && d.rows[s.sel.li];
     const cmp = row && row.cmp.find(c => c.id === s.sel.id);
     if (!cmp) {
-      html = '<div class="eyebrow">Détail</div><h2>Touchez un point de l’arbre.</h2><p class="lead">Chaque point est une étape ou une question. Vous verrez où vérifier, si une commune a relu, et ce que le guide explique, avec la provenance de chaque texte.</p><p class="lead">Touchez un mot souligné dans votre histoire : les branches qui changeraient poussent en pointillé avant que vous décidiez.</p>';
+      html = '<div class="eyebrow">' + t('Détail', 'Detail') + '</div><h2>' + t('Touchez un point de l’arbre.', 'Touch a point on the tree.') + '</h2><p class="lead">' + t('Chaque point est une étape ou une question. Vous verrez où vérifier, si une commune a relu, et ce que le guide explique, avec la provenance de chaque texte.', 'Each point is a step or a question. You will see where to check, whether a commune has reviewed it, and what the guide explains, with the provenance of every text.') + '</p><p class="lead">' + t('Touchez un mot souligné dans votre histoire : les branches qui changeraient poussent en pointillé avant que vous décidiez.', 'Touch an underlined word in your story: the branches that would change grow dashed before you decide.') + '</p>';
       document.getElementById('detail').innerHTML = html + foot; return;
     }
     const lane = row.lane;
     const viewingAlt = !!(s.sel.alt && cmp.b);
     const showing = viewingAlt ? cmp.b : cmp.a;
     const other = viewingAlt ? cmp.a : (d.previewOn ? cmp.b : null);
-    const fromLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.from)) : '';
-    const toLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.to)) : '';
+    const fromLabel = s.pending ? LABEL_SHORT[s.pending.key](s.pending.from) : '';
+    const toLabel = s.pending ? LABEL_SHORT[s.pending.key](s.pending.to) : '';
     if (showing.ghost) {
-      html = '<div class="eyebrow">' + esc(lane.name) + ', question en attente</div><h2>' + esc(showing.title) + '</h2>' + modelZone('Pourquoi cette question', '<div>' + esc(showing.ghostWhy) + '</div>', null);
-      if (showing.answer.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="oui">Oui</button><button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="non">Non</button></div>';
-      else if (showing.answer.type === 'choice') html += '<div class="row">' + showing.answer.options.map(o => '<button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
-      else html += '<form data-answer-form="' + esc(showing.id) + '" style="display:flex;flex-direction:column;gap:8px"><label for="answer" class="hint">Votre réponse</label><input id="answer" name="answer" type="text" placeholder="' + esc(showing.answer.placeholder || '') + '" autocomplete="off"><button type="submit" class="btn primary">Répondre et faire pousser la branche</button></form>';
+      html = '<div class="eyebrow">' + esc(lane.name) + t(', question en attente', ', open question') + '</div><h2>' + esc(showing.title) + '</h2>' + modelZone(t('Pourquoi cette question', 'Why this question'), '<div>' + esc(showing.ghostWhy) + '</div>', null);
+      if (showing.answer.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="oui">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="non">' + t('Non', 'No') + '</button></div>';
+      else if (showing.answer.type === 'choice') html += '<div class="row">' + showing.answer.options.map((o, i) => '<button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="' + esc(o) + '">' + esc((showing.answer.labels || showing.answer.options)[i]) + '</button>').join('') + '</div>';
+      else html += '<form data-answer-form="' + esc(showing.id) + '" style="display:flex;flex-direction:column;gap:8px"><label for="answer" class="hint">' + t('Votre réponse', 'Your answer') + '</label><input id="answer" name="answer" type="text" placeholder="' + esc(showing.answer.placeholder || '') + '" autocomplete="off"><button type="submit" class="btn primary">' + t('Répondre et faire pousser la branche', 'Answer and grow the branch') + '</button></form>';
       const sc = scopeFor(showing, d.params), scKeys = Object.keys(sc);
-      html += '<p class="lead">' + (scKeys.length ? 'Cette réponse vaut pour le scénario « ' + scKeys.map(k => LABEL[k](sc[k])).join(', ') + ' » ; si vous changez cela, elle est mise de côté, pas perdue.' : 'Cette réponse vaut dans tous les scénarios.') + ' Elle s’enregistre dans ce navigateur.</p>';
+      html += '<p class="lead">' + (scKeys.length ? t('Cette réponse vaut pour le scénario « ', 'This answer holds for the scenario “') + scKeys.map(k => LABEL_SHORT[k](sc[k])).join(', ') + t(' » ; si vous changez cela, elle est mise de côté, pas perdue.', '”; if you change that, it is set aside, not lost.') : t('Cette réponse vaut dans tous les scénarios.', 'This answer holds in every scenario.')) + t(' Elle s’enregistre dans ce navigateur.', ' It is saved in this browser.') + '</p>';
       document.getElementById('detail').innerHTML = html + foot; return;
     }
     const k = cmp.kind;
     const changed = k === 'applied-changed' || k === 'applied-added';
     const prevCard = (changed && d.prevLanes) ? (d.prevLanes[s.sel.li].cards.find(c => c.id === cmp.id) || null) : null;
     const done = !viewingAlt && isDone(showing, d.params), current = !viewingAlt && row.currentId === showing.id;
-    const status = viewingAlt ? (k === 'added' ? 'nouvelle étape proposée' : 'version proposée') : (done ? 'faite' : (current ? 'prochaine étape' : 'à venir'));
-    const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? 'Apparaîtrait' : 'Proposée') + '</span>' : k === 'applied-changed' ? '<span class="pill solid">Modifiée</span>' : k === 'applied-added' ? '<span class="pill solid">Ajoutée</span>' : d.exploreOn ? '<span class="pill">Hypothèse</span>' : k === 'changed' ? '<span class="pill">Changerait</span>' : k === 'removed' ? '<span class="pill">Disparaîtrait</span>' : '';
+    const status = viewingAlt ? (k === 'added' ? t('nouvelle étape proposée', 'new proposed step') : t('version proposée', 'proposed version')) : (done ? t('faite', 'done') : (current ? t('prochaine étape', 'next step') : t('à venir', 'ahead')));
+    const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? t('Apparaîtrait', 'Would appear') : t('Proposée', 'Proposed')) + '</span>' : k === 'applied-changed' ? '<span class="pill solid">' + t('Modifiée', 'Modified') + '</span>' : k === 'applied-added' ? '<span class="pill solid">' + t('Ajoutée', 'Added') + '</span>' : d.exploreOn ? '<span class="pill">' + t('Hypothèse', 'Hypothesis') + '</span>' : k === 'changed' ? '<span class="pill">' + t('Changerait', 'Would change') + '</span>' : k === 'removed' ? '<span class="pill">' + t('Disparaîtrait', 'Would disappear') + '</span>' : '';
     html = '<div class="head"><div class="eyebrow">' + esc(lane.name) + ', ' + status + '</div>' + pill + '</div><h2>' + esc(showing.title) + '</h2>';
     html += sourceBlock(showing);
-    html += modelZone('Explication de l’étape', '<div>' + esc(showing.why) + '</div>' + depsLine(showing) + (changed ? '<div class="before">Avant : ' + esc(prevCard ? (prevCard.ghost ? 'question en attente' : prevCard.title) : 'cette étape n’existait pas') + '</div><div class="small">' + esc(appliedExplanation(d)) + '</div>' : ''), null);
+    html += modelZone(t('Explication de l’étape', 'Explanation of the step'), '<div>' + esc(showing.why) + '</div>' + depsLine(showing) + (changed ? '<div class="before">' + t('Avant : ', 'Before: ') + esc(prevCard ? (prevCard.ghost ? t('question en attente', 'open question') : prevCard.title) : t('cette étape n’existait pas', 'this step did not exist')) + '</div><div class="small">' + esc(appliedExplanation(d)) + '</div>' : ''), null);
     if (!viewingAlt && !d.previewOn) {
       const sc = scopeFor(showing, d.params), scKeys = Object.keys(sc);
-      html += '<div class="row"><button type="button" class="btn ' + (done ? 'done' : '') + '" data-done="' + esc(showing.id) + '">' + (done ? 'Faite — la remettre à faire' : 'Je l’ai faite') + '</button></div><div class="caption">' + (scKeys.length ? 'Ce marquage vaut pour « ' + scKeys.map(kk => LABEL[kk](sc[kk])).join(', ') + ' » : changer cela le met de côté.' : 'Ce marquage vaut dans tous les scénarios.') + ' Rien n’est marqué à votre place.</div>';
+      html += '<div class="row"><button type="button" class="btn ' + (done ? 'done' : '') + '" data-done="' + esc(showing.id) + '">' + (done ? t('Faite — la remettre à faire', 'Done — mark as not done') : t('Je l’ai faite', 'I have done this')) + '</button></div><div class="caption">' + (scKeys.length ? t('Ce marquage vaut pour « ', 'This mark holds for “') + scKeys.map(kk => LABEL_SHORT[kk](sc[kk])).join(', ') + t(' » : changer cela le met de côté.', '”: changing that sets it aside.') : t('Ce marquage vaut dans tous les scénarios.', 'This mark holds in every scenario.')) + t(' Rien n’est marqué à votre place.', ' Nothing is marked on your behalf.') + '</div>';
     }
     if ((d.previewOn && k !== 'same' && k !== 'removed') || (viewingAlt && other)) {
       const c = countAffected(d), ex = explanation(d);
-      html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? (other ? 'Version enregistrée, ' + esc(fromLabel) : 'Aujourd’hui : cette étape n’existe pas') : (other ? 'Version proposée, ' + esc(toLabel) : 'Proposition')) + '</div>';
+      html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? (other ? t('Version enregistrée, ', 'Saved version, ') + esc(fromLabel) : t('Aujourd’hui : cette étape n’existe pas', 'Today: this step does not exist')) : (other ? t('Version proposée, ', 'Proposed version, ') + esc(toLabel) : t('Proposition', 'Proposal'))) + '</div>';
       if (other) {
-        if (other.ghost) html += '<div style="font-weight:600">Question en attente : ' + esc(other.title) + '</div><div class="small" style="color:var(--faint)">Aucune source encore ; en attente de votre réponse.</div>';
-        else { const lv = LV[other.src.lv], rv = review(other.src.reviewed); html += '<div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><a class="source" href="' + esc(other.src.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + lv.bg + '">' + esc(lv.name) + '</span><span class="link">' + esc(other.src.title) + '</span></a><span class="rv" style="color:' + rv.color + ';font-size:12px"><i></i>' + esc(rv.text) + '</span>' + (other.src.exact ? '' : '<span class="caption">Site officiel ; page précise encore à relier.</span>'); }
+        if (other.ghost) html += '<div style="font-weight:600">' + t('Question en attente : ', 'Open question: ') + esc(other.title) + '</div><div class="small" style="color:var(--faint)">' + t('Aucune source encore ; en attente de votre réponse.', 'No source yet; waiting for your answer.') + '</div>';
+        else { const lv = LV()[other.src.lv], rv = review(other.src.reviewed); html += '<div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><a class="source" href="' + esc(other.src.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + lv.bg + '">' + esc(lv.name) + '</span><span class="link">' + esc(other.src.title) + '</span></a><span class="rv" style="color:' + rv.color + ';font-size:12px"><i></i>' + esc(rv.text) + '</span>' + (other.src.exact ? '' : '<span class="caption">' + t('Site officiel ; page précise encore à relier.', 'Official site; exact page still to be linked.') + '</span>'); }
       }
-      html += modelZone('Ce qui change', '<div class="small">' + esc(ex.text) + '</div>', ex.prov);
-      html += '<div class="row"><button type="button" class="btn ink" data-action="keep">Garder ' + esc(fromLabel) + '</button><button type="button" class="btn primary" data-action="adopt">Adopter ' + esc(toLabel) + ' partout (' + c.total + ' étapes)</button></div><div class="caption">Adopter applique « ' + esc(toLabel) + ' » à toutes les branches en pointillé, pas seulement à celle-ci.</div></div>';
+      html += modelZone(t('Ce qui change', 'What changes'), '<div class="small">' + esc(ex.text) + '</div>', ex.prov);
+      html += '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(fromLabel) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(toLabel) + t(' partout (', ' everywhere (') + c.total + t(' étapes)', ' steps)') + '</button></div><div class="caption">' + t('Adopter applique « ', 'Adopt applies “') + esc(toLabel) + t(' » à toutes les branches en pointillé, pas seulement à celle-ci.', '” to every dashed branch, not only this one.') + '</div></div>';
     }
-    if (k === 'removed') { const ex = explanation(d); html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">Dans « ' + esc(toLabel) + ' », cette étape n’existe plus</div>' + whoLine(ex.prov) + '<div class="small">' + esc(ex.text) + '</div></div>'; }
+    if (k === 'removed') { const ex = explanation(d); html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + t('Dans « ', 'In “') + esc(toLabel) + t(' », cette étape n’existe plus', '”, this step no longer exists') + '</div>' + whoLine(ex.prov) + '<div class="small">' + esc(ex.text) + '</div></div>'; }
     document.getElementById('detail').innerHTML = html + foot;
   }
 
   function renderConn() {
     const btn = document.getElementById('conn-btn'), label = document.getElementById('conn-label'), panel = document.getElementById('conn-panel');
     btn.className = 'conn-btn ' + (conn.status === 'ok' ? 'ok' : conn.status === 'error' ? 'error' : '');
-    label.textContent = conn.status === 'ok' ? 'Apertus via ' + provName() + (conn.prov && conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') : conn.status === 'testing' ? 'Connexion…' : conn.status === 'error' ? ((PUBLIC_PROXY_URL && !LOCAL_DEV) ? 'Apertus indisponible pour l’instant' : 'Connexion échouée') : 'Apertus non connecté';
+    label.textContent = conn.status === 'ok' ? 'Apertus via ' + provName() + (conn.prov && conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') : conn.status === 'testing' ? t('Connexion…', 'Connecting…') : conn.status === 'error' ? ((PUBLIC_PROXY_URL && !LOCAL_DEV) ? t('Apertus indisponible pour l’instant', 'Apertus unavailable for now') : t('Connexion échouée', 'Connection failed')) : t('Apertus non connecté', 'Apertus not connected');
     if (panel.hidden) return;
-    const P = PRESETS[conn.provider] || PRESETS.other;
-    let html = '<div style="font-weight:600">Connecter Apertus</div>' +
-      (LOCAL_DEV ? '<div class="seg" role="group" aria-label="Type de connexion"><button type="button" data-conn="mode-proxy" aria-pressed="' + (conn.mode === 'proxy') + '">Par un proxy (recommandé)</button><button type="button" data-conn="mode-direct" aria-pressed="' + (conn.mode === 'direct') + '">Direct (développement local)</button></div>' : '');
+    const PS = PRESETS(), P = PS[conn.provider] || PS.other;
+    let html = '<div style="font-weight:600">' + t('Connecter Apertus', 'Connect Apertus') + '</div>' +
+      (LOCAL_DEV ? '<div class="seg" role="group"><button type="button" data-conn="mode-proxy" aria-pressed="' + (conn.mode === 'proxy') + '">' + t('Par un proxy (recommandé)', 'Through a proxy (recommended)') + '</button><button type="button" data-conn="mode-direct" aria-pressed="' + (conn.mode === 'direct') + '">' + t('Direct (développement local)', 'Direct (local development)') + '</button></div>' : '');
     if (conn.mode === 'proxy') {
-      html += (PUBLIC_PROXY_URL && !LOCAL_DEV ? '<div class="caption">La connexion publique est configurée. Si elle est indisponible, le parcours et les liens restent accessibles.</div>' : '<label for="c-proxy">Adresse du proxy</label><input id="c-proxy" value="' + esc(conn.proxyUrl) + '" placeholder="https://votre-codespace-8787.app.github.dev">' +
-        '<label for="c-token">Jeton de démo (facultatif ; laissez vide pour la démo publique)</label><input id="c-token" type="password" value="' + esc(conn.demoToken) + '" autocomplete="off">') +
-        '<div class="caption">Le proxy garde la clé côté serveur, tient un budget quotidien et renvoie la provenance des réponses générées.</div>';
+      html += (PUBLIC_PROXY_URL && !LOCAL_DEV ? '<div class="caption">' + t('La connexion publique est configurée. Si elle est indisponible, le parcours et les liens restent accessibles.', 'The public connection is configured. If it is unavailable, the journey and the links remain available.') + '</div>'
+        : '<label for="c-proxy">' + t('Adresse du proxy', 'Proxy address') + '</label><input id="c-proxy" value="' + esc(conn.proxyUrl) + '" placeholder="https://…-8787.app.github.dev">' +
+          '<label for="c-token">' + t('Jeton de démo (facultatif ; laissez vide pour la démo publique)', 'Demo token (optional; leave empty for the public demo)') + '</label><input id="c-token" type="password" value="' + esc(conn.demoToken) + '" autocomplete="off">') +
+        '<div class="caption">' + t('Le proxy garde la clé côté serveur, tient un budget quotidien et renvoie la provenance des réponses générées.', 'The proxy keeps the key server-side, holds a daily budget and returns the provenance of generated answers.') + '</div>';
     } else {
-      html += '<label for="c-provider">Fournisseur</label><select id="c-provider"><option value="swisscom"' + (conn.provider === 'swisscom' ? ' selected' : '') + '>Swisscom (Swiss AI Platform)</option><option value="publicai"' + (conn.provider === 'publicai' ? ' selected' : '') + '>Public AI Inference Utility</option><option value="other"' + (conn.provider === 'other' ? ' selected' : '') + '>Autre API compatible</option></select>' +
+      html += '<label for="c-provider">' + t('Fournisseur', 'Provider') + '</label><select id="c-provider"><option value="swisscom"' + (conn.provider === 'swisscom' ? ' selected' : '') + '>Swisscom (Swiss AI Platform)</option><option value="publicai"' + (conn.provider === 'publicai' ? ' selected' : '') + '>Public AI Inference Utility</option><option value="other"' + (conn.provider === 'other' ? ' selected' : '') + '>' + t('Autre API compatible', 'Other compatible API') + '</option></select>' +
         '<div class="caption">' + esc(P.hint) + '</div>' +
-        '<label for="c-base">Adresse de l’API (base, se terminant avant /chat/completions)</label><input id="c-base" value="' + esc(conn.base) + '" placeholder="' + esc(P.base || 'https://…/v1') + '">' +
-        '<label for="c-model">Identifiant de modèle</label><input id="c-model" value="' + esc(conn.model) + '" placeholder="' + esc(P.model || 'apertus-…') + '">' +
-        '<label for="c-key">Clé API</label><input id="c-key" type="password" value="' + esc(conn.key) + '" autocomplete="off">' +
-        '<div class="caption">Mode local seulement : la clé reste dans cet onglet mais tout script de la page peut la lire. Pour une démo publique, utilisez le proxy et laissez ce champ vide.</div>';
+        '<label for="c-base">' + t('Adresse de l’API (base, avant /chat/completions)', 'API address (base, before /chat/completions)') + '</label><input id="c-base" value="' + esc(conn.base) + '" placeholder="' + esc(P.base || 'https://…/v1') + '">' +
+        '<label for="c-model">' + t('Identifiant de modèle', 'Model id') + '</label><input id="c-model" value="' + esc(conn.model) + '" placeholder="' + esc(P.model || 'apertus-…') + '">' +
+        '<label for="c-key">' + t('Clé API', 'API key') + '</label><input id="c-key" type="password" value="' + esc(conn.key) + '" autocomplete="off">' +
+        '<div class="caption">' + t('Mode local seulement : la clé reste dans cet onglet mais tout script de la page peut la lire.', 'Local mode only: the key stays in this tab but any script on the page can read it.') + '</div>';
     }
     if (conn.error) html += '<div class="err">' + esc(conn.error) + '</div>';
-    html += '<div class="row"><button type="button" class="btn" data-conn="close">Fermer</button>' + (conn.status === 'ok' ? '<button type="button" class="btn ink" data-conn="off">Déconnecter</button>' : '') + '<button type="button" class="btn primary" data-conn="go">' + (conn.status === 'ok' ? 'Reconnecter' : 'Connecter') + '</button></div>';
+    html += '<div class="row"><button type="button" class="btn" data-conn="close">' + t('Fermer', 'Close') + '</button>' + (conn.status === 'ok' ? '<button type="button" class="btn ink" data-conn="off">' + t('Déconnecter', 'Disconnect') + '</button>' : '') + '<button type="button" class="btn primary" data-conn="go">' + (conn.status === 'ok' ? t('Reconnecter', 'Reconnect') : t('Connecter', 'Connect')) + '</button></div>';
     panel.innerHTML = html;
   }
   function readConnForm() {
@@ -601,27 +619,43 @@
     saveConn();
   }
 
+  function renderChrome() {
+    document.documentElement.lang = LANG;
+    document.title = t('Public AI pour chaque commune — arbre de parcours', 'Public AI for every commune — journey tree');
+    document.getElementById('brand-text').textContent = t('Public AI pour chaque commune', 'Public AI for every commune');
+    document.getElementById('clear-btn').textContent = t('Effacer mon parcours', 'Clear my path');
+    document.getElementById('mode-situation').textContent = t('Ma situation', 'My situation');
+    document.getElementById('mode-explore').textContent = t('Explorer', 'Explore');
+    document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr'));
+    document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
+  }
   function render() {
     const d = derive();
+    renderChrome();
     document.body.classList.toggle('explore', d.exploreOn);
     document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn));
     document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn));
-    document.getElementById('saved-note').textContent = state.savedAt ? 'Enregistré dans ce navigateur, ' + new Date(state.savedAt).toLocaleString('fr-CH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Rien n’est encore enregistré';
+    document.getElementById('saved-note').textContent = state.savedAt ? t('Enregistré dans ce navigateur, ', 'Saved in this browser, ') + new Date(state.savedAt).toLocaleString(LANG === 'en' ? 'en-GB' : 'fr-CH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : t('Rien n’est encore enregistré', 'Nothing saved yet');
     renderStory(d); renderTree(d); renderDetail(d);
   }
+  function setLang(l) { LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch (e) {} state.ai.note = null; renderConn(); render(); }
 
   // ---- Apertus tasks (only when connected; each result carries its provenance) ----
+  const langName = () => LANG === 'en' ? 'English' : 'français';
   async function askExplain() {
     const s = state; if (!live() || !s.pending) return;
     const d = derive(); const id = d.diffKey; if (!id || s.ai.explain[id]) return;
     state.ai.busy = true; state.ai.error = ''; render();
+    const DN = DEP_NAME();
     try {
       const res = await chat([
-        { role: 'system', content: 'Tu es le guide d’un service public suisse. Tu expliques, en français, en deux phrases au plus, ce qui change dans le parcours d’une personne quand une de ses réponses change. Appuie-toi uniquement sur la liste fournie ; n’invente aucune règle, aucun délai, aucun montant. Termine par « À vérifier auprès de » suivi de l’autorité la plus pertinente parmi celles citées.' },
-        { role: 'user', content: 'Réponse modifiée : ' + DEP_NAME[s.pending.key] + ', de « ' + LABEL[s.pending.key](s.pending.from) + ' » à « ' + LABEL[s.pending.key](s.pending.to) + ' ». Situation : ' + JSON.stringify(d.params) + '. Changements calculés par l’application : ' + JSON.stringify(diffSummary(d)) }
+        { role: 'system', content: LANG === 'en'
+          ? 'You are the guide of a Swiss public service. In English, in at most two sentences, explain what changes in a person’s journey when one of their answers changes. Rely only on the list provided; invent no rule, deadline or amount. End with “To confirm with” followed by the most relevant authority among those cited.'
+          : 'Tu es le guide d’un service public suisse. Tu expliques, en français, en deux phrases au plus, ce qui change dans le parcours d’une personne quand une de ses réponses change. Appuie-toi uniquement sur la liste fournie ; n’invente aucune règle, aucun délai, aucun montant. Termine par « À vérifier auprès de » suivi de l’autorité la plus pertinente parmi celles citées.' },
+        { role: 'user', content: (LANG === 'en' ? 'Changed answer: ' : 'Réponse modifiée : ') + DN[s.pending.key] + ', ' + LABEL[s.pending.key](s.pending.from) + ' → ' + LABEL[s.pending.key](s.pending.to) + '. ' + (LANG === 'en' ? 'Situation: ' : 'Situation : ') + JSON.stringify(d.params) + '. ' + (LANG === 'en' ? 'Changes computed by the application: ' : 'Changements calculés par l’application : ') + JSON.stringify(diffSummary(d)) }
       ], 220);
       if (res.text.trim()) state.ai.explain[id] = { text: res.text.trim(), prov: res.prov };
-    } catch (e) { state.ai.error = 'Apertus n’a pas répondu (' + (e && e.message ? e.message : 'erreur') + ') ; texte préparé affiché.'; }
+    } catch (e) { state.ai.error = t('Apertus n’a pas répondu (', 'Apertus did not answer (') + (e && e.message ? e.message : t('erreur', 'error')) + t(') ; texte préparé affiché.', '); prepared text shown.'); }
     state.ai.busy = false; render();
   }
   async function readStory(text) {
@@ -631,8 +665,8 @@
     const schema = '{"dest":"Saint-Cergue"|"Gland"|null,"tenure":"owner"|"tenant"|null,"permit":"B"|"C"|null,"answers":{"q.nationalite":"UE/AELE"|"État tiers"|null,"q.travail":string|null,"q.residence-secondaire":"oui"|"non"|null,"q.bail-signe":"oui"|"non"|null,"q.parascolaire":"oui"|"non"|null},"note":string}';
     try {
       const res = await chat([
-        { role: 'system', content: 'Tu lis une phrase qu’une personne ajoute à son histoire et tu renvoies UNIQUEMENT un objet JSON de la forme ' + schema + '. Mets null pour tout ce que la phrase ne dit pas explicitement. Une nationalité d’un pays de l’UE ou de l’AELE → q.nationalite "UE/AELE" ; une autre nationalité → "État tiers". "note" : une phrase en français disant ce que tu as compris. Pas de texte hors du JSON.' },
-        { role: 'user', content: 'Situation actuelle : ' + JSON.stringify(d.params) + '. Phrase : ' + text }
+        { role: 'system', content: 'You read a sentence a person adds to their story and return ONLY a JSON object of the form ' + schema + '. Use null for anything the sentence does not state explicitly. A nationality of an EU or EFTA country → q.nationalite "UE/AELE"; any other nationality → "État tiers". Yes/no answers use "oui"/"non". "note": one sentence in ' + langName() + ' saying what you understood. No text outside the JSON.' },
+        { role: 'user', content: 'Current situation: ' + JSON.stringify(d.params) + '. Sentence: ' + text }
       ], 300);
       const j = JSON.parse(res.text.replace(/```json|```/g, '').trim());
       const applied = [];
@@ -647,10 +681,11 @@
       });
       let pendingKey = null;
       ['dest', 'tenure', 'permit'].forEach(key => { const v = j[key]; if (v && okv[key].includes(v) && v !== d.params[key] && !pendingKey) pendingKey = key; });
-      state.ai.note = { text: (j.note ? String(j.note) + ' ' : '') + (applied.length ? 'Réponses retenues : ' + applied.join(' ; ') + '.' : '') + (pendingKey ? ' Un changement de ' + DEP_NAME[pendingKey] + ' est proposé ci-dessus ; rien n’est appliqué sans vous.' : ''), prov: res.prov };
+      const DN = DEP_NAME();
+      state.ai.note = { text: (j.note ? String(j.note) + ' ' : '') + (applied.length ? t('Réponses retenues : ', 'Answers kept: ') + applied.join(' ; ') + '.' : '') + (pendingKey ? t(' Un changement de ', ' A change of ') + DN[pendingKey] + t(' est proposé ci-dessus ; rien n’est appliqué sans vous.', ' is proposed above; nothing is applied without you.') : ''), prov: res.prov };
       if (pendingKey) { if (d.exploreOn) { const e = Object.assign({}, s.explore); e[pendingKey] = j[pendingKey]; state.explore = e; } else state.pending = { key: pendingKey, from: d.params[pendingKey], to: j[pendingKey] }; }
       persist();
-    } catch (e) { state.ai.error = 'Apertus n’a pas renvoyé de réponse exploitable (' + (e && e.message ? e.message : 'erreur') + ').'; }
+    } catch (e) { state.ai.error = t('Apertus n’a pas renvoyé de réponse exploitable (', 'Apertus did not return a usable answer (') + (e && e.message ? e.message : t('erreur', 'error')) + ').'; }
     state.ai.busy = false; state.sel = null; render();
     if (state.pending) askExplain();
   }
@@ -707,7 +742,7 @@
     const dn = e.target.closest('[data-done]'); if (dn) { toggleDone(dn.dataset.done); return; }
     const n = e.target.closest('[data-sel]'); if (n) set({ sel: parseSel(n) });
   });
-  document.addEventListener('change', e => { if (e.target && e.target.id === 'c-provider') { const P = PRESETS[e.target.value]; conn.provider = e.target.value; conn.base = P.base; conn.model = P.model; saveConn(); renderConn(); } });
+  document.addEventListener('change', e => { if (e.target && e.target.id === 'c-provider') { const P = PRESETS()[e.target.value]; conn.provider = e.target.value; conn.base = P.base; conn.model = P.model; saveConn(); renderConn(); } });
   document.addEventListener('submit', e => {
     const f = e.target.closest('[data-answer-form]'); if (f) { e.preventDefault(); answer(f.dataset.answerForm, f.elements.answer.value); return; }
     const sf = e.target.closest('[data-story-form]'); if (sf) { e.preventDefault(); readStory(sf.elements.text.value); }
@@ -722,6 +757,8 @@
   document.getElementById('mode-situation').addEventListener('click', () => act('mode-situation'));
   document.getElementById('mode-explore').addEventListener('click', () => act('mode-explore'));
   document.getElementById('clear-btn').addEventListener('click', () => act('clear'));
+  document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
+  document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
   document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; document.getElementById('conn-btn').setAttribute('aria-expanded', String(!p.hidden)); renderConn(); });
 
   load();
