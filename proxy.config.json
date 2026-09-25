@@ -1,0 +1,15 @@
+{
+  "provider": "swisscom",
+  "upstreamBase": "",
+  "upstreamModel": "",
+  "allowedOrigins": [
+    "https://artfisica.github.io",
+    "http://localhost:8000"
+  ],
+  "dailyBudget": 120,
+  "hourlyPerCaller": 20,
+  "maxTokens": 3500,
+  "authHeader": "Authorization",
+  "authPrefix": "Bearer ",
+  "extraHeaders": {}
+}
