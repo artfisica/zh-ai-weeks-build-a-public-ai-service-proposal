@@ -17,7 +17,9 @@
   button{font:inherit;cursor:pointer}
   a{color:var(--accent)}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  header{position:relative;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line);background:var(--white)}
+  header{position:relative;min-height:56px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:8px 24px;border-bottom:1px solid var(--line);background:var(--white)}
+  .right{flex-wrap:wrap}
+  @media (max-width:700px){header{padding:8px 14px}.brand{font-size:17px}.conn-btn{max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:32px}.mode button{padding:0 10px}}
   .brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:-.01em}
   .right{display:flex;align-items:center;gap:14px}
   .link-btn{border:none;background:none;color:var(--muted);text-decoration:underline;text-decoration-color:#B9B3A5;padding:6px 2px;font-size:12px}
@@ -26,6 +28,7 @@
   .conn-btn.ok i{background:var(--done)}
   .conn-btn.error i{background:#B4412A}
   .conn-panel{position:absolute;top:60px;right:24px;width:420px;padding:16px;border-radius:12px;background:var(--white);border:1px solid var(--line);box-shadow:0 16px 40px rgba(27,26,23,.14);display:flex;flex-direction:column;gap:10px;z-index:5}
+  .conn-panel[hidden]{display:none}
   .conn-panel label{font-size:12px;color:var(--muted)}
   .conn-panel input{width:100%;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--line);font:inherit;color:var(--ink)}
   .conn-panel .caption,.caption{font-size:11px;color:var(--muted)}
@@ -38,7 +41,7 @@
   .lang button{height:30px;padding:0 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600}
   .lang button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
   .layout{display:grid;grid-template-columns:340px minmax(0,1fr) 400px;min-height:calc(100vh - 56px)}
-  @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}.story.is-empty{display:none}.tree{overflow-x:auto;-webkit-overflow-scrolling:touch}.tree svg{min-width:900px}.detail{border-top:1px solid var(--line)}}
   .story{padding:28px 24px 20px 28px;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:16px}
   .eyebrow{font-size:12px;color:var(--muted)}
   body.explore .eyebrow.story-label{color:var(--accent)}
@@ -269,6 +272,7 @@
     try {
       const tree = await fetchTree(text, [], {}, null, null);
       set({ tree, vars: tree.variables, loading: '', note: { text: tree.note, prov: tree.prov } }, true);
+      if (window.innerWidth < 1100) document.getElementById('tree-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) { set({ loading: '', error: t('Apertus n’a pas renvoyé une carte lisible (', 'Apertus did not return a readable map (') + (e.message || 'error') + t('). Réessayez ou reformulez.', '). Try again or rephrase.') }); }
   }
   function currentVars() { return state.mode === 'explore' && state.exploreVars ? state.exploreVars : state.vars; }
@@ -326,9 +330,10 @@
     const s = state, vars = currentVars();
     let html = '';
     if (!s.story) {
-      html += '<div class="eyebrow story-label">' + t('Votre situation', 'Your situation') + '</div><p class="hint">' + t('Écrivez-la à droite, dans la grande case. La carte se dessine à partir de vos mots.', 'Write it on the right, in the big box. The map is drawn from your words.') + '</p>';
-      document.getElementById('story').innerHTML = html; return;
+      html += '<div class="eyebrow story-label">' + t('Votre situation', 'Your situation') + '</div><p class="hint">' + t('Écrivez-la dans la grande case. La carte se dessine à partir de vos mots.', 'Write it in the big box. The map is drawn from your words.') + '</p>';
+      document.getElementById('story').className = 'story is-empty'; document.getElementById('story').innerHTML = html; return;
     }
+    document.getElementById('story').className = 'story';
     html += '<div class="eyebrow story-label">' + (d.exploreOn ? t('Hypothèse, non enregistrée', 'Hypothesis, not saved') : t('Votre situation', 'Your situation')) + '</div>';
     // the sentence as written, with the variables Apertus found underlined where they appear
     let sentence = esc(s.story), placed = [];
@@ -494,13 +499,14 @@
   document.addEventListener('click', e => {
     const cb = e.target.closest('[data-conn]'); if (cb) { const p = document.getElementById('conn-panel'); if (cb.dataset.conn === 'close') { p.hidden = true; } else { const el = document.getElementById('c-proxy'); if (el) conn.proxyUrl = el.value.trim(); connect(); } return; }
     const ex = e.target.closest('[data-example]'); if (ex) { startStory(ex.dataset.example); return; }
-    const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); return; }
+    const narrow = () => window.innerWidth < 1100 && document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
     const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done; state.done = isDone(id) ? state.done.filter(x => x !== id) : state.done.concat([id]); set({}, true); return; }
-    const q = e.target.closest('[data-q]'); if (q) { set({ sel: { q: q.dataset.q } }); return; }
-    const n = e.target.closest('[data-sel]'); if (n) { const [li, id, alt] = n.dataset.sel.split('|'); set({ sel: { li: Number(li), id, alt: alt === '1' } }); }
+    const q = e.target.closest('[data-q]'); if (q) { set({ sel: { q: q.dataset.q } }); narrow(); return; }
+    const n = e.target.closest('[data-sel]'); if (n) { const [li, id, alt] = n.dataset.sel.split('|'); set({ sel: { li: Number(li), id, alt: alt === '1' } }); narrow(); }
   });
   document.addEventListener('submit', e => {
     const sf = e.target.closest('[data-start-form]'); if (sf) { e.preventDefault(); startStory(sf.elements.text.value); return; }
