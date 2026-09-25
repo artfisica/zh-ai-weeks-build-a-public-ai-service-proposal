@@ -213,7 +213,7 @@
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: 3 to 6 branches, 2 to 4 steps each. Steps are concrete actions the person takes, with the office that handles them. "variables" are facts stated in the sentence that would change the map if different (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
+      '\nRules: at least 3 and at most 6 branches, 2 to 4 steps each; a map with fewer than 3 branches is wrong. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are facts stated in the sentence that would change the map if different (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
       '\nNever invent a URL. Do not state deadlines, amounts or validity periods unless the chosen catalog entry covers them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -245,7 +245,13 @@
     const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: userPrompt(story, vars, answers, prev, change) }], 3000);
     const raw = res.text.replace(/```json|```/g, '').trim();
     const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
-    const tree = validate(JSON.parse(raw.slice(start, end + 1)));
+    let parsed;
+    try { parsed = JSON.parse(raw.slice(start, end + 1)); }
+    catch (e) {
+      if (raw.length > 1000 && !/\}\s*$/.test(raw)) throw new Error(t('réponse coupée après ', 'answer cut off after ') + raw.length + t(' caractères : le proxy limite encore les réponses (ancien serveur). Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', ' characters: the proxy still caps answers (old server). In the Codespace: git pull; pkill node; bash proxy/start.sh'));
+      throw e;
+    }
+    const tree = validate(parsed);
     tree.prov = res.prov; tree.key = key;
     state.trees[key] = tree; return tree;
   }
