@@ -1,6 +1,6 @@
 # Public AI for every commune
 
-Swiss {ai} Weeks, Zurich · "Build a public AI service" challenge
+Swiss {ai} Weeks, Zurich · **["Build a public AI service"](https://zh.ai-weeks.ch/challenges/build-a-public-ai-service)** challenge
 
 ![One sentence in, a map of official steps out](demo.gif)
 
