@@ -8,7 +8,7 @@
   ],
   "dailyBudget": 120,
   "hourlyPerCaller": 20,
-  "maxTokens": 400,
+  "maxTokens": 3500,
   "authHeader": "Authorization",
   "authPrefix": "Bearer ",
   "extraHeaders": {}

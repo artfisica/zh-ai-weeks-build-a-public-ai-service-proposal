@@ -86,7 +86,7 @@ const server = http.createServer(async (req, res) => {
 
   const rd = readiness();
   if (url.pathname === '/health' && req.method === 'GET') {
-    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, tokenRequired: TOKENS.length > 0, budget: peek() });
+    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, maxTokens: cfg.maxTokens, tokenRequired: TOKENS.length > 0, budget: peek() });
   }
 
   if (url.pathname === '/chat' && req.method === 'POST') {
@@ -99,12 +99,12 @@ const server = http.createServer(async (req, res) => {
     const verdict = take(caller);
     if (!verdict.ok) return send(verdict.reason === 'storage' ? 503 : 429, { error: verdict.reason === 'daily' ? 'daily demo budget exhausted' : verdict.reason === 'storage' ? 'budget unavailable' : 'hourly limit reached for this caller', budget: verdict });
 
-    let raw = ''; req.on('data', c => { raw += c; if (raw.length > 64000) req.destroy(); });
+    let raw = ''; req.on('data', c => { raw += c; if (raw.length > 120000) req.destroy(); });
     req.on('end', async () => {
       let body; try { body = JSON.parse(raw); } catch (e) { return send(400, { error: 'invalid JSON' }); }
       const messages = Array.isArray(body.messages) ? body.messages.slice(-8) : null;
       if (!messages || !messages.every(m => m && typeof m.content === 'string' && ['system', 'user', 'assistant'].includes(m.role))) return send(400, { error: 'messages required' });
-      if (messages.reduce((n, m) => n + m.content.length, 0) > 12000) return send(413, { error: 'request too large' });
+      if (messages.reduce((n, m) => n + m.content.length, 0) > 40000) return send(413, { error: 'request too large' });
       const maxTokens = Math.min(Math.max(1, parseInt(body.max_tokens, 10) || cfg.maxTokens), cfg.maxTokens);
       const headers = Object.assign({ 'Content-Type': 'application/json', 'User-Agent': 'arbre-de-parcours-proxy/1.1' }, cfg.extraHeaders || {});
       headers[cfg.authHeader || 'Authorization'] = (cfg.authPrefix === undefined ? 'Bearer ' : cfg.authPrefix) + KEY;
