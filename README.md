@@ -10,13 +10,16 @@ Swiss {ai} Weeks, Zurich · "Build a public AI service" challenge
 
 Live page: https://artfisica.github.io/zh-ai-weeks-build-a-public-ai-service-proposal/
 
+The interface is bilingual: FR / EN toggle in the header; the language follows the browser by default and is remembered. Apertus answers in the chosen language.
+
 ## Repository
 
 ```
 index.html                         the prototype, one self-contained file (GitHub Pages serves it)
 SPEC.md                            interaction and data-model spec
 proxy/server.js                    the proxy (Node, runs in one Codespace): key, demo tokens, budget, provenance
-proxy/proxy.config.json            provider, model, allowed origins, budget (no secrets)
+proxy/proxy.config.json            allowed origins, budget, defaults (no secrets; base and model come from secrets)
+proxy/start.sh                     runs on Codespace start: proxy, public port, proxy-url.json for the page
 .devcontainer/devcontainer.json    starts the proxy in the Codespace, forwards port 8787
 DEMO.md                            the three-minute solo demo script
 ```
@@ -33,16 +36,20 @@ Open http://localhost:8000. Everything works offline except the Apertus connecti
 
 GitHub Pages is static and cannot hold a secret at runtime. The proxy therefore runs in a **GitHub Codespace** (`proxy/server.js`, plain Node, no dependencies), and the key is a **Codespaces secret** injected as an environment variable. It never enters the repository, the build output or the page. Anyone can use the public page and try the model while the Codespace runs. The proxy pins one provider and one model, allows up to 120 requests per UTC day in this Codespace, and limits requests per visitor address to 12 per hour. The total budget is the important protection: browser origins and visitor addresses are not authentication. Another Codespace would have its own counter. If the proxy is unavailable, the prepared journey tree remains usable on GitHub Pages.
 
-## Deploy in order
+## Deploy: three secrets, one button
 
-1. **Pages.** Settings → Pages → Source "Deploy from a branch" → `main` / `(root)`. Live at the URL above within a minute or two, everything labelled "texte préparé".
-2. **Codespaces secret.** Your profile picture → Settings → Codespaces → Secrets → New secret. Create `APERTUS_API_KEY` (the Swisscom key). Under "Repository access", select this repository. Leave `DEMO_TOKEN` unset so every visitor can use the model.
-3. **Provider.** Edit `proxy/proxy.config.json` on GitHub: `upstreamBase` (the API base from the Swisscom hacker guide, the part before `/chat/completions`) and `upstreamModel` (the Apertus model id). Commit to main. Change `authHeader`/`authPrefix` only if the guide documents something other than `Authorization: Bearer`.
-4. **Start the proxy.** Repo → green "Code" button → tab "Codespaces" → "Create codespace on main". Wait for the editor; the startup log shows `ready: yes` (or what is missing). If the log is not visible, run `cat /tmp/public-ai-commune-proxy.log` in the Codespace terminal.
-5. **Make the port public.** Bottom panel → tab "Ports" → row `8787` → right-click → Port Visibility → Public. Copy the "Forwarded Address" (`https://…-8787.app.github.dev`). Paste it in a new tab with `/health` at the end: you want `"ready": true`.
-6. **Let visitors connect automatically.** After port 8787 is public and `/health` is ready, edit the single `PUBLIC_PROXY_URL = ''` line near the start of `index.html` on GitHub. Put the forwarded address between the quotes and commit it. GitHub Pages will then check `/health` when each visitor opens the page and connect automatically. No visitor needs a token, key or setup instructions. Leave the line empty if you only want the static guide online.
+Nothing in the repository is edited by hand. The Swisscom values live in Codespaces secrets next to the key; the Codespace publishes its own address for the page.
 
-Before creating the Codespace, Settings → Codespaces → "Default idle timeout" → 240 minutes (the maximum). Keep interacting with the Codespace during the demo: an open browser tab alone does not reset the idle timer. After a restart, check `/health`, reselect **Public** for port 8787 (GitHub resets port visibility to private), and check its forwarded address before reconnecting the page. GitHub Pages stays online; live AI works only while this Codespace and public port are available.
+1. **Pages.** Settings → Pages → Source "Deploy from a branch" → `main` / `(root)`. The static guide is live at the URL above within a minute or two.
+2. **Secrets.** Profile picture → Settings → Codespaces → Secrets → New secret, three times, each with this repository ticked under "Repository access":
+   - `APERTUS_API_KEY` — the Swisscom key
+   - `UPSTREAM_BASE` — the API base URL from the Swisscom guide (the part before `/chat/completions`, usually ending in `/v1`)
+   - `UPSTREAM_MODEL` — the Apertus model id from the guide
+3. **Codespace.** Repo → green "Code" → Codespaces → "Create codespace on main". When it opens, `proxy/start.sh` runs by itself: it starts the proxy, checks `/health`, makes port 8787 public, and pushes `proxy-url.json` so the page on GitHub Pages connects without anyone editing `index.html`. The terminal prints `ready: yes` and the proxy URL.
+
+If the terminal shows nothing, or after any change, run `bash proxy/start.sh` in the Codespace terminal; it is safe to repeat. If it says the port could not be set automatically, one click: Ports tab → row `8787` → right-click → Port Visibility → Public.
+
+Set Settings → Codespaces → "Default idle timeout" to 240 minutes. Live Apertus works while the Codespace runs; when it stops, reopen it from the repo and the script runs again (same address). The static tree stays online regardless, with every text labelled as prepared.
 
 ## Sources used by the prototype
 

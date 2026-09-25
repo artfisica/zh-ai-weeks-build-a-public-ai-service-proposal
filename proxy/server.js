@@ -28,6 +28,12 @@ const cfg = Object.assign({
   provider: 'swisscom', upstreamBase: '', upstreamModel: '', allowedOrigins: [],
   dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 400, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
 }, fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {});
+// Codespaces secrets override the committed config, so a fresh Codespace needs no file edits.
+if (process.env.UPSTREAM_BASE) cfg.upstreamBase = process.env.UPSTREAM_BASE;
+if (process.env.UPSTREAM_MODEL) cfg.upstreamModel = process.env.UPSTREAM_MODEL;
+if (process.env.UPSTREAM_PROVIDER) cfg.provider = process.env.UPSTREAM_PROVIDER;
+if (process.env.AUTH_HEADER) cfg.authHeader = process.env.AUTH_HEADER;
+if (process.env.AUTH_PREFIX !== undefined) cfg.authPrefix = process.env.AUTH_PREFIX;
 const KEY = process.env.APERTUS_API_KEY || '';
 const TOKENS = String(process.env.DEMO_TOKEN || '').split(',').map(s => s.trim()).filter(Boolean);
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -56,8 +62,8 @@ function take(caller) {
 function readiness() {
   const missing = [];
   if (!KEY) missing.push('APERTUS_API_KEY (Codespaces secret)');
-  if (!cfg.upstreamBase) missing.push('upstreamBase (proxy.config.json)');
-  if (!cfg.upstreamModel) missing.push('upstreamModel (proxy.config.json)');
+  if (!cfg.upstreamBase) missing.push('UPSTREAM_BASE (Codespaces secret) or upstreamBase in proxy.config.json');
+  if (!cfg.upstreamModel) missing.push('UPSTREAM_MODEL (Codespaces secret) or upstreamModel in proxy.config.json');
   if (!cfg.allowedOrigins.length) missing.push('allowedOrigins (proxy.config.json)');
   return { ready: missing.length === 0, missing };
 }

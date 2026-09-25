@@ -7,7 +7,7 @@ One presenter, about three minutes. Every visitor sees the same public page and 
 1. Open the public Pages URL in a private browser window. The tree must appear without a login, a token or an API key.
 2. In your Codespace, run `cat /tmp/public-ai-commune-proxy.log` and check `ready: yes`.
 3. In **Ports**, confirm port 8787 is **Public**. Open its forwarded address with `/health` appended; check `ready: true` and remaining budget.
-4. Verify `PUBLIC_PROXY_URL` in `index.html` matches that address. Reload the public page: the header should become "Apertus via Swisscom (…)" without entering settings.
+4. Verify `proxy-url.json` in the repository holds that address (the start script pushes it). Reload the public page: the header should become "Apertus via Swisscom (…)" without entering settings.
 5. Test once in a second browser without GitHub sign-in. If the proxy is down, the static journey tree remains available and says when text is prepared.
 
 ## The run
