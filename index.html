@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arbre de parcours — Public AI pour chaque commune (prototype)</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F1EC; --panel:#FBFAF7; --white:#FFFFFF; --ink:#1B1A17; --muted:#5A5751; --faint:#7A766E;
+    --line:#DDD8CC; --accent:#1F4E8C; --accent-soft:#E7EEF8; --accent-mist:#EEF2F8;
+    --done:#2E6A4B; --confirm:#8A5300; --serif:'Fraunces',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+  body.explore{background:var(--accent-mist)}
+  button{font:inherit;cursor:pointer}
+  a{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  header{position:relative;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line);background:var(--white)}
+  .brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .right{display:flex;align-items:center;gap:14px}
+  .saved-note{font-size:12px;color:var(--muted)}
+  .link-btn{border:none;background:none;color:var(--muted);text-decoration:underline;text-decoration-color:#B9B3A5;padding:6px 2px;font-size:12px}
+  .conn-btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--white);font-size:12px;color:var(--ink)}
+  .conn-btn i{width:8px;height:8px;border-radius:50%;background:#B9B3A5;display:inline-block}
+  .conn-btn.ok i{background:var(--done)}
+  .conn-btn.error i{background:#B4412A}
+  .conn-panel{position:absolute;top:60px;right:24px;width:420px;padding:16px;border-radius:12px;background:var(--white);border:1px solid var(--line);box-shadow:0 16px 40px rgba(27,26,23,.14);display:flex;flex-direction:column;gap:10px;z-index:5}
+  .conn-panel label{font-size:12px;color:var(--muted)}
+  .conn-panel input,.conn-panel select{width:100%;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--line);font:inherit;color:var(--ink);background:var(--white)}
+  .conn-panel .caption{font-size:11px;color:var(--muted)}
+  .conn-panel .err{font-size:12px;color:#8A3A2A}
+  .seg{display:flex;padding:3px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
+  .seg button{flex:1;height:32px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-weight:500;font-size:13px}
+  .seg button[aria-pressed="true"]{background:var(--white);color:var(--ink)}
+  .mode{display:flex;padding:3px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
+  .mode button{height:34px;padding:0 14px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-weight:500}
+  .mode button[aria-pressed="true"]{background:var(--white);color:var(--ink)}
+  .mode button.explore[aria-pressed="true"]{background:var(--accent);color:var(--white)}
+
+  .layout{display:grid;grid-template-columns:320px minmax(0,1fr) 400px;min-height:calc(100vh - 56px)}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}}
+
+  .story{padding:28px 24px 20px 28px;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:18px}
+  .eyebrow{font-size:12px;color:var(--muted)}
+  body.explore .eyebrow.story-label{color:var(--accent)}
+  .sentence{margin:0;font-family:var(--serif);font-size:22px;font-weight:500;line-height:1.55}
+  .sentence .fixed{border-bottom:2px solid var(--line);padding-bottom:1px}
+  .word{display:inline;padding:0 2px;margin:0;border:none;border-bottom:2px solid #B9B3A5;background:transparent;color:var(--ink);border-radius:3px 3px 0 0}
+  .word.pending{border-bottom-style:dashed;border-bottom-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .word.changed{border-bottom-color:var(--accent);color:var(--accent)}
+  .word.hyp{border-bottom-style:dashed;border-bottom-color:var(--accent);background:var(--accent-mist);color:var(--accent)}
+  .answered{margin:0;font-family:var(--serif);font-size:17px;line-height:1.5;color:var(--muted)}
+  .answered b{font-weight:500;color:var(--ink)}
+  .hint{font-size:12px;color:var(--muted)}
+  .banner{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border-radius:10px;border:1px dashed var(--accent);background:var(--accent-soft)}
+  .banner .eyebrow{color:var(--accent)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{flex:1;min-height:38px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--white);color:var(--ink);font-weight:500;line-height:1.2}
+  .btn.primary{border-color:var(--accent);background:var(--accent);color:var(--white)}
+  .btn.ink{border-color:var(--ink)}
+  .btn.done{border-color:var(--done);color:var(--done)}
+  .spacer{flex:1}
+  .note{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:10px;background:var(--white);border:1px dashed #C9D5E8}
+  .who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
+  .who i{width:8px;height:8px;border-radius:50%;background:#B9B3A5;display:inline-block;flex-shrink:0}
+  .who.live{color:var(--accent)}
+  .who.live i{background:var(--done)}
+  .note .err{font-size:12px;color:#8A3A2A}
+  .ask{display:flex;flex-direction:column;gap:6px}
+  .ask .field{display:flex;gap:8px}
+  .ask input{flex:1;height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--white);font:inherit;color:var(--ink)}
+  .ask input:disabled{border-style:dashed;background:transparent;color:var(--faint)}
+  .ask button{width:40px;height:40px;border-radius:8px;border:none;background:var(--accent);color:var(--white);display:flex;align-items:center;justify-content:center}
+  .ask button:disabled{background:#B9B3A5;cursor:default}
+
+  .tree{padding:16px 12px 10px;display:flex;flex-direction:column}
+  .tree svg{width:100%;height:auto;display:block;overflow:visible}
+  .tree text{font-family:var(--sans)}
+  .tree .branch-name{font-family:var(--serif)}
+  .tree [data-sel]{cursor:pointer}
+  .tree [data-sel]:focus-visible circle.core{stroke:var(--ink);stroke-width:3}
+  .legend{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;padding-top:6px;font-size:11px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--white);border:2px solid #8A867C}
+  .dot.done{background:var(--done);border-color:var(--done)}
+  .dot.current{border-color:var(--accent)}
+  .dot.ghost{border-style:dashed}
+  .dot.alt{border-style:dashed;border-color:var(--accent)}
+  .dot.changed{background:var(--accent);border-color:var(--accent)}
+  @media (prefers-reduced-motion:no-preference){
+    .tree path,.tree circle{transition:stroke .25s,fill .25s,stroke-width .25s}
+    .tree path.grow{animation:grow .7s ease-out}
+    @keyframes grow{from{opacity:0}to{opacity:1}}
+  }
+
+  .detail{padding:24px;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:14px}
+  .detail h2{margin:0;font-family:var(--serif);font-size:20px;font-weight:600;line-height:1.3}
+  .detail .lead{font-size:13px;color:var(--muted);margin:0}
+  .pill{padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px dashed var(--accent);color:var(--accent);background:var(--white);white-space:nowrap}
+  .pill.solid{background:var(--accent);color:var(--white);border-style:solid}
+  .head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .zone{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:10px;background:var(--white);border:1px solid var(--line)}
+  .zone.model{background:var(--accent-mist);border:1px dashed #C9D5E8}
+  .zone.alt{border:2px dashed var(--accent)}
+  .zone.soft{border-style:dashed}
+  .zone-title{font-size:12px;color:var(--faint)}
+  .zone.model .zone-title{color:var(--accent)}
+  .source{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 8px;margin:0 -8px;border-radius:8px;color:var(--ink);text-decoration:none}
+  .source .link{font-size:13px;text-decoration:underline;text-decoration-color:#B9B3A5}
+  .also{font-size:12px}
+  .badge{flex-shrink:0;padding:3px 7px;border-radius:4px;color:var(--white);font-size:10px;font-weight:600;letter-spacing:.03em}
+  .status{display:flex;flex-direction:column;gap:4px;font-size:12px}
+  .rv{display:inline-flex;align-items:center;gap:6px;font-weight:500}
+  .rv i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0}
+  .cf{color:var(--confirm);font-weight:500}
+  .cf b{color:var(--ink);font-weight:400}
+  .deps{font-size:12px;color:var(--muted)}
+  .before{font-size:12px;color:var(--faint);text-decoration:line-through}
+  .small{font-size:12px}
+  .caption{font-size:11px;color:var(--muted)}
+  .detail input{height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--white);font:inherit;color:var(--ink);width:100%}
+  .foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted);padding-top:12px;border-top:1px solid var(--line)}
+  .foot span{display:inline-flex;align-items:flex-start;gap:6px}
+  .foot i{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;margin-top:5px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#1F4E8C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="3"/><circle cx="21" cy="7" r="3"/><circle cx="14" cy="22" r="3"/><path d="M9 9l5 10M19 9l-5 10"/></svg>
+    Public AI pour chaque commune
+  </div>
+  <div class="right">
+    <span class="saved-note" id="saved-note"></span>
+    <button type="button" class="link-btn" id="clear-btn">Effacer mon parcours</button>
+    <button type="button" class="conn-btn" id="conn-btn" aria-expanded="false"><i></i><span id="conn-label">Apertus non connecté</span></button>
+    <div class="mode" role="group" aria-label="Mode">
+      <button type="button" id="mode-situation" aria-pressed="true">Ma situation</button>
+      <button type="button" id="mode-explore" class="explore" aria-pressed="false">Explorer</button>
+    </div>
+  </div>
+  <div class="conn-panel" id="conn-panel" hidden></div>
+</header>
+
+<div class="layout">
+  <aside class="story" id="story"></aside>
+  <main class="tree">
+    <svg id="tree" viewBox="0 0 840 860" aria-label="Arbre des pistes"></svg>
+    <div class="legend">
+      <span><i class="dot done"></i>Faite (marquée par vous)</span>
+      <span><i class="dot current"></i>Prochaine étape</span>
+      <span><i class="dot"></i>À venir</span>
+      <span><i class="dot ghost"></i>Question en attente</span>
+      <span><i class="dot alt"></i>Branche proposée</span>
+      <span><i class="dot changed"></i>Modifiée ou ajoutée</span>
+    </div>
+  </main>
+  <aside class="detail" id="detail"></aside>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  // Set once after starting the Codespace. Leave empty for an offline, portable copy.
+  const PUBLIC_PROXY_URL = '';
+  const LOCAL_DEV = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+  const ACCENT = '#1F4E8C', STORE_KEY = 'public-ai-commune.arbre.v4', CONN_KEY = 'public-ai-commune.conn.v4';
+  const LV = { conf: { name: 'Confédération', bg: '#2C3140' }, vd: { name: 'Canton de Vaud', bg: '#2E6A4B' }, com: { name: 'Commune', bg: '#9A452A' } };
+  const LABEL = { dest: v => v, tenure: v => v === 'owner' ? 'propriétaire' : 'locataire', permit: v => 'permis ' + v };
+  const DEP_NAME = { dest: 'la commune d’arrivée', tenure: 'votre statut de logement', permit: 'votre type de permis', answers: 'une réponse que vous avez donnée' };
+  const ALT = { dest: v => v === 'Saint-Cergue' ? 'Gland' : 'Saint-Cergue', tenure: v => v === 'owner' ? 'tenant' : 'owner', permit: v => v === 'B' ? 'C' : 'B' };
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const hash = t => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+
+  // ---- State (persisted in this browser) ----
+  const fresh = () => ({ dest: 'Saint-Cergue', tenure: 'owner', permit: 'B' });
+  const state = { mode: 'situation', saved: fresh(), explore: fresh(), pending: null, applied: null, answers: [], done: [], hover: null, sel: null, savedAt: null, resumed: false,
+    ai: { note: null, explain: {}, busy: false, error: '' } };
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY); if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d && d.saved) { state.saved = d.saved; state.explore = d.explore || Object.assign({}, d.saved); state.applied = d.applied || null; state.answers = Array.isArray(d.answers) ? d.answers : []; state.done = Array.isArray(d.done) ? d.done : []; state.savedAt = d.savedAt || null; state.resumed = true; }
+    } catch (e) { /* storage unavailable: run in memory */ }
+  }
+  function persist() {
+    state.savedAt = new Date().toISOString();
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ saved: state.saved, explore: state.explore, applied: state.applied, answers: state.answers, done: state.done, savedAt: state.savedAt })); } catch (e) { /* ignore */ }
+  }
+  const set = (patch, save) => { Object.assign(state, patch); if (save) persist(); render(); };
+
+  // ---- Connection to Apertus. Proxy first: the browser never sees a key. Direct mode is for local development only. ----
+  const PRESETS = {
+    swisscom: { name: 'Swisscom', base: '', model: '', hint: 'Copiez l’adresse et l’identifiant de modèle depuis le guide Swisscom ; rien n’est prérempli pour ne pas envoyer votre clé au mauvais fournisseur.' },
+    publicai: { name: 'Public AI', base: 'https://api.publicai.co/v1', model: 'swiss-ai/apertus-v1.5-8b', hint: 'Valeurs de platform.publicai.co/docs ; autre modèle possible : swiss-ai/apertus-v1.5-70b.' },
+    other: { name: '', base: '', model: '', hint: 'Toute API compatible chat/completions.' }
+  };
+  const conn = Object.assign({ mode: 'proxy', proxyUrl: '', demoToken: '', provider: 'swisscom', base: '', model: '', key: '', status: 'off', error: '', prov: null }, (() => { try { return JSON.parse(sessionStorage.getItem(CONN_KEY) || '{}'); } catch (e) { return {}; } })());
+  conn.status = 'off'; conn.prov = null;
+  if (!LOCAL_DEV) { conn.mode = 'proxy'; conn.key = ''; conn.demoToken = ''; }
+  if (PUBLIC_PROXY_URL) { conn.mode = 'proxy'; conn.proxyUrl = PUBLIC_PROXY_URL; conn.demoToken = ''; }
+  const saveConn = () => { try { sessionStorage.setItem(CONN_KEY, JSON.stringify({ mode: conn.mode, proxyUrl: conn.proxyUrl, demoToken: conn.demoToken, provider: conn.provider, base: conn.base, model: conn.model, key: conn.mode === 'direct' ? conn.key : '' })); } catch (e) {} };
+  const live = () => conn.status === 'ok';
+  const provName = () => conn.prov ? conn.prov.provider : '';
+  const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : 'Texte préparé';
+
+  async function chat(messages, maxTokens) {
+    let r, j;
+    if (conn.mode === 'proxy') {
+      r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {}), body: JSON.stringify({ messages, max_tokens: maxTokens || 400, temperature: 0.2 }) });
+    } else {
+      r = await fetch(conn.base.replace(/\/$/, '') + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + conn.key }, body: JSON.stringify({ model: conn.model, messages, temperature: 0.2, max_tokens: maxTokens || 400 }) });
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 || r.status === 403 ? ' (accès refusé)' : r.status === 429 ? ' (limite atteinte)' : ''));
+    j = await r.json();
+    const text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
+    const prov = j.provenance || { provider: PRESETS[conn.provider] ? (PRESETS[conn.provider].name || conn.provider) : conn.provider, model: j.model || conn.model };
+    return { text, prov };
+  }
+  async function connect() {
+    conn.status = 'testing'; conn.error = ''; conn.prov = null; saveConn(); renderConn();
+    try {
+      if (conn.mode === 'proxy') {
+        if (!conn.proxyUrl) throw new Error('adresse du proxy manquante');
+        const r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/health', { headers: conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {} });
+        let h = null; try { h = await r.json(); } catch (e) { h = null; }
+        if (!h) throw new Error('HTTP ' + r.status);
+        if (!h.ready) throw new Error('le proxy n’est pas prêt' + (h.missing && h.missing.length ? ' : ' + h.missing.join(', ') : ''));
+        if (h.budget && h.budget.remaining === 0) throw new Error('le budget quotidien de la démo est épuisé');
+        conn.prov = { provider: h.provider || 'proxy', model: h.model || '' };
+      } else {
+        if (!conn.base || !conn.model || !conn.key) throw new Error('adresse, modèle et clé sont requis');
+        const res = await chat([{ role: 'user', content: 'ping' }], 1); // a one-token completion: works on any chat-completions provider
+        conn.prov = res.prov;
+      }
+      conn.status = 'ok';
+    } catch (e) {
+      conn.status = 'error';
+      conn.error = (e && e.message ? e.message : 'échec') + (String(e).includes('Failed to fetch') ? ' — le navigateur a bloqué l’appel (CORS ou adresse injoignable). Avec un fournisseur direct, passez par le proxy.' : '');
+    }
+    renderConn(); render();
+  }
+  function disconnect() { conn.status = 'off'; conn.error = ''; conn.prov = null; conn.key = ''; saveConn(); state.ai = { note: null, explain: {}, busy: false, error: '' }; renderConn(); render(); }
+
+  // ---- Prepared texts (always available, always labelled as prepared) ----
+  function PREPARED_EXPLAIN(key, to) {
+    if (key === 'dest') return 'Ce qui change : la commune d’arrivée détermine où votre enfant est scolarisé, quelles taxes communales s’appliquent et quelle ligne vous relie à Nyon. Les démarches à Nyon et l’étape liée au permis n’en dépendent pas. Comparez les coefficients de l’année dans les arrêtés officiels ; ils ne suffisent pas à prédire le montant final de vos impôts.';
+    if (key === 'tenure') return to === 'tenant' ? 'Ce qui change : locataire, vous n’avez rien à vendre ; la question devient le délai de résiliation et le nouveau bail.' : 'Ce qui change : propriétaire, le départ de Nyon implique une vente ou une mise en location, avec un impôt cantonal sur le gain immobilier.';
+    return 'Ce qui change : la démarche communale est la même pour un permis B et un permis C. Ce qui diffère est la validité de votre autorisation, et donc ce qu’il faut vérifier au moment d’un renouvellement. La validité d’un permis B dépend de votre nationalité.';
+  }
+  const review = r => r === null ? { text: 'Source officielle (fédérale ou cantonale)', color: ACCENT }
+    : (r ? { text: 'Relu par ' + r, color: '#2E6A4B' } : { text: 'Page officielle reliée ; relecture communale en attente', color: '#7A766E' });
+
+  // ---- Answers and done-marks belong to the scenario that produced them ----
+  const scopeFor = (card, P) => { const s = {}; (card.deps || []).filter(k => k !== 'answers').forEach(k => { s[k] = P[k]; }); return s; };
+  const scopeMatches = (scope, P) => Object.keys(scope).every(k => P[k] === scope[k]);
+  function resolveAnswers(P) { const out = {}; state.answers.forEach(a => { if (scopeMatches(a.scope || {}, P)) out[a.id] = a.value; }); return out; }
+  const isDone = (card, P) => state.done.some(d => d.id === card.id && scopeMatches(d.scope || {}, P));
+
+  // ---- The journey model ----
+  function build(P, A) {
+    const S = (lv, domain, url, title, reviewed) => ({ lv, domain, url, title, reviewed, exact: url.split('/').filter(Boolean).length > 2 });
+    const step = (id, deps, short, title, why, src, extra) => Object.assign({ id, deps, short, title, why, src }, extra || {});
+    const ghost = (id, deps, short, q, why, answer) => ({ id, deps, ghost: true, short, title: q, ghostWhy: why, answer });
+    const stc = P.dest === 'Saint-Cergue';
+    const D = stc ? 'St-Cergue' : 'Gland';
+    const destName = stc ? 'Commune de Saint-Cergue' : 'Ville de Gland';
+    const destDomain = stc ? 'st-cergue.ch' : 'gland.ch';
+    const arriveeUrl = stc ? 'https://www.st-cergue.ch/prestations-communales/113320' : 'https://www.gland.ch';
+    const nyonCdH = S('com', 'nyon.ch', 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', 'Ville de Nyon — Contrôle des habitants', false);
+    const vdEdem = S('vd', 'vd.ch', 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', 'État de Vaud — Annoncer son changement d’adresse : conditions selon le permis, communes raccordées à eDéménagement', null);
+    const vdEdemAlso = { title: 'Conditions eDéménagement selon le permis, liste des communes (vd.ch)', url: vdEdem.url };
+    const voteAlso = { title: 'Directive cantonale sur le droit de vote en matière communale (vd.ch, PDF)', url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf' };
+    const semB = S('conf', 'sem.admin.ch', 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', 'SEM — Permis B UE/AELE : validité de cinq ans', null);
+    const semTiers = S('conf', 'sem.admin.ch', 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', 'SEM — Permis de séjour pour les ressortissants d’États tiers', null);
+    const chChecklist = S('conf', 'ch.ch', 'https://www.ch.ch/fr/checkliste-demenagement', 'ch.ch — Aide-mémoire pour un déménagement', null);
+    const coeff = S('vd', 'vd.ch', 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', 'Statistique Vaud — Arrêtés d’imposition des communes', null);
+
+    const nat = A['q.nationalite'];
+    let permit;
+    if (P.permit === 'C') permit = step('reg.permis', ['permit'], 'Permis C · adresse à jour', 'Permis C : la nouvelle adresse suffit', 'L’autorisation d’établissement est de durée indéterminée ; le titre est renouvelé à des fins de contrôle. Un déménagement dans le canton ne la remet pas en cause ; il reste à annoncer l’adresse.', semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
+    else if (nat === 'UE/AELE') permit = step('reg.permis', ['permit', 'answers'], 'Permis B UE/AELE · 5 ans', 'Permis B UE/AELE : annoncer la nouvelle adresse', 'Votre autorisation est valable cinq ans (SEM) ; le déménagement ne la remet pas en cause. Les conditions de l’annonce en ligne selon le permis sont sur la page cantonale.', semB, { also: vdEdemAlso, confirm: 'SPOP' });
+    else if (nat === 'État tiers') permit = step('reg.permis', ['permit', 'answers'], 'Permis B (État tiers) · 1 an', 'Permis B d’un État tiers : annoncer l’adresse et suivre le renouvellement', 'L’autorisation initiale est en général valable un an et se renouvelle ; l’adresse doit être à jour au renouvellement (SEM). Les conditions de l’annonce en ligne selon le permis sont sur la page cantonale.', semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
+    else permit = step('reg.permis', ['permit'], 'Permis B · selon nationalité', 'Permis B : ce qui s’applique dépend de votre nationalité', 'La validité d’un permis B n’est pas la même pour tous : cinq ans pour un ressortissant UE/AELE, en général un an renouvelable pour un État tiers (SEM). Répondez à la question voisine pour préciser cette étape.', semTiers, { also: vdEdemAlso, confirm: 'SPOP' });
+    const inscription = [
+      step('reg.depart', [], 'Départ · Nyon', 'Annoncer votre départ à Nyon', 'Le Contrôle des habitants clôt votre dossier avant toute inscription ailleurs ; Nyon accepte l’annonce en ligne via eDéménagementCH.', nyonCdH, { also: vdEdemAlso }),
+      step('reg.arrivee', ['dest'], 'Arrivée · ' + D, 'Annoncer votre arrivée à ' + P.dest, stc ? 'L’inscription établit votre domicile : école, taxes communales. Le délai d’annonce court depuis votre arrivée effective. Saint-Cergue figure dans la liste cantonale des communes raccordées à eDéménagement ; sinon, au guichet, après avoir annoncé votre départ. Pour les étrangers, le droit de vote communal dépend de conditions de séjour et de permis distinctes.' : 'L’inscription établit votre domicile : école, taxes communales. Le délai d’annonce court depuis votre arrivée effective. Vérifiez sur la page cantonale si Gland est raccordée à eDéménagement. Pour les étrangers, le droit de vote communal dépend de conditions de séjour et de permis distinctes.', S('com', destDomain, arriveeUrl, destName + (stc ? ' — Arrivée à St-Cergue' : ' — Contrôle des habitants'), false), { also: [vdEdemAlso, voteAlso] })
+    ];
+    if (P.permit === 'B' && !nat) inscription.push(ghost('q.nationalite', [], 'UE/AELE ou État tiers ?', 'Votre nationalité relève-t-elle de l’UE/AELE ou d’un État tiers ?', 'La validité de votre permis B, et donc ce qu’il faut vérifier au renouvellement, dépend de cette réponse.', { type: 'choice', options: ['UE/AELE', 'État tiers'] }));
+    inscription.push(permit);
+
+    const logement = P.tenure === 'owner' ? [
+      step('log.vendre', ['tenure'], 'Vendre ou louer · Nyon', 'Vendre ou louer votre bien à Nyon', 'Un gain immobilier est imposé par le canton ; une location crée un revenu à déclarer.', S('vd', 'vd.ch', 'https://www.vd.ch', 'ACI — Impôt sur les gains immobiliers', null), { confirm: 'Notaire / ACI' }),
+      step('log.acheter', ['tenure', 'dest'], 'Acheter ou louer · ' + D, 'Acheter ou louer à ' + P.dest, 'Le régime de votre logement détermine les étapes suivantes : taxes, assurances, travaux.', chChecklist),
+      ghost('q.residence-secondaire', ['tenure'], 'Résidence secondaire ?', 'Le bien à Nyon reste-t-il une résidence secondaire ?', 'Une résidence secondaire modifie l’imposition et l’assurance du bien conservé.', { type: 'yesno' })
+    ] : [
+      step('log.resilier', ['tenure'], 'Résilier le bail · Nyon', 'Résilier le bail à Nyon', 'Les termes et délais de résiliation sont fixés par le bail et le droit fédéral ; résiliez par écrit, idéalement en recommandé.', chChecklist),
+      step('log.nouveau-bail', ['tenure', 'dest'], 'Nouveau bail · ' + D, 'Trouver un logement à ' + P.dest, 'Le contrat de bail sera demandé lors de l’inscription au Contrôle des habitants.', S('com', destDomain, arriveeUrl, destName + ' — Arrivée dans la commune', false)),
+      ghost('q.bail-signe', ['tenure'], 'Bail déjà signé ?', 'Avez-vous déjà signé un nouveau bail ?', 'Le bail peut être utile pour la démarche ; indiquez votre date d’arrivée effective séparément.', { type: 'yesno' })
+    ];
+    if (A['q.residence-secondaire'] === 'oui') logement[2] = step('log.residence-secondaire', ['tenure', 'answers'], 'Déclarer la résidence secondaire', 'Déclarer le bien de Nyon comme résidence secondaire', 'Le bien conservé reste imposé à Nyon ; son usage déclaré change la valeur locative et l’assurance.', S('vd', 'vd.ch', 'https://www.vd.ch', 'ACI — Résidences secondaires', null), { confirm: 'ACI' });
+    if (A['q.residence-secondaire'] === 'non') logement.splice(2, 1);
+    if (A['q.bail-signe'] === 'oui') logement[2] = step('log.date-arrivee', ['tenure', 'answers'], 'Date d’arrivée effective', 'Annoncer votre date d’arrivée effective', 'Le délai d’annonce court depuis le jour où vous emménagez réellement, pas depuis la signature du bail.', S('com', destDomain, arriveeUrl, destName + ' — Arrivée dans la commune', false));
+    if (A['q.bail-signe'] === 'non') logement.splice(2, 1);
+
+    const otd = S('conf', 'opentransportdata.swiss', 'https://opentransportdata.swiss', 'Plateforme open data mobilité (horaires publiés en données ouvertes)', null);
+    const transport = [
+      stc ? step('tra.ligne', ['dest'], 'NStCM Nyon – St-Cergue', 'Ligne Nyon – Saint-Cergue (NStCM)', 'Le train relie directement les deux communes. Les horaires sont publiés en données ouvertes ; ce prototype ne les charge pas encore.', otd)
+          : step('tra.ligne', ['dest'], 'RER Nyon – Gland', 'RER Vaud Nyon – Gland (CFF)', 'Les deux communes sont sur la ligne du lac. Les horaires sont publiés en données ouvertes ; ce prototype ne les charge pas encore.', otd),
+      step('tra.mobilis', [], 'Zones Mobilis', 'Abonnement Mobilis : vos zones peuvent changer', 'Le nombre de zones dépend de votre trajet quotidien, pas seulement de votre domicile.', S('vd', 'mobilis-vaud.ch', 'https://www.mobilis-vaud.ch', 'Mobilis — Plan des zones', null), { confirm: 'Mobilis' }),
+      A['q.travail'] ? step('tra.trajet', ['dest', 'answers'], 'Trajet vers ' + A['q.travail'], 'Votre trajet quotidien : ' + P.dest + ' – ' + A['q.travail'], 'Le trajet fixe les zones Mobilis à payer et le temps de porte à porte ; comparez train et voiture sur ce trajet précis.', otd, { confirm: 'Mobilis' })
+        : ghost('q.travail', [], 'Où travaillez-vous ?', 'Où travaillez-vous, et combien de jours par semaine ?', 'Le trajet quotidien décide des zones Mobilis et du choix train ou voiture.', { type: 'text', placeholder: 'Genève, Lausanne, Nyon…' })
+    ];
+
+    const couts = [
+      step('cou.coefficient', ['dest'], 'Coefficient d’impôt · ' + D, 'Comparer le coefficient communal de ' + P.dest + ' avec Nyon', 'Chaque commune vaudoise fixe un coefficient. Consultez les arrêtés de l’année avant de comparer les deux communes : le coefficient seul ne donne pas votre impôt final.', coeff, { confirm: 'Arrêté d’imposition de l’année' }),
+      step('cou.taxes', ['dest'], 'Taxes communales · ' + D, 'Taxes communales : déchets, eau, épuration', 'Fixées par la commune d’arrivée ; elles diffèrent souvent de Nyon.', S('com', destDomain, stc ? 'https://www.st-cergue.ch' : 'https://www.gland.ch', destName + ' — Taxes communales', false)),
+      A['q.parascolaire'] === 'oui' ? step('cou.accueil', ['dest', 'answers'], 'Accueil parascolaire · ' + D, 'Inscrire votre enfant à l’accueil parascolaire de ' + P.dest, 'L’accueil de jour est facturé selon le revenu ; l’inscription passe par le réseau d’accueil de la commune.', S('com', destDomain, stc ? 'https://www.st-cergue.ch' : 'https://www.gland.ch', destName + ' — Garde d’enfants', false), { confirm: 'Réseau d’accueil de jour' })
+        : A['q.parascolaire'] === 'non' ? null
+        : ghost('q.parascolaire', [], 'Parascolaire ?', 'Votre enfant utilisera-t-il un accueil parascolaire ?', 'L’accueil de jour est facturé par la commune selon le revenu ; il pèse dans le budget.', { type: 'yesno' })
+    ].filter(Boolean);
+
+    return [
+      { id: 'inscription', name: 'Inscription & permis', cards: inscription },
+      { id: 'ecole', name: 'École', cards: [
+        step('eco.prevenir', [], 'Prévenir l’école · Nyon', 'Informer l’école actuelle à Nyon', 'Le dossier scolaire suit l’enfant vers le nouvel établissement.', S('com', 'nyon.ch', 'https://www.nyon.ch', 'Ville de Nyon — Établissements scolaires', false)),
+        step('eco.inscription', ['dest'], 'Inscription · ' + D, 'Inscrire votre enfant dans l’établissement de ' + P.dest, stc ? 'Saint-Cergue fait partie d’une association scolaire intercommunale ; l’inscription se fait auprès de la direction de l’établissement.' : 'L’établissement dépend de la commune de domicile ; l’inscription se fait auprès de sa direction.', S('vd', 'vd.ch', 'https://www.vd.ch', 'DGEO — Changement d’établissement', null)),
+        stc ? step('eco.transport-scolaire', ['dest'], 'Transport scolaire', 'Transport scolaire', 'Selon le lieu de l’école, un transport peut être organisé pour les élèves de Saint-Cergue.', S('com', 'st-cergue.ch', 'https://www.st-cergue.ch', 'Commune de Saint-Cergue — Éducation', false), { confirm: 'Secrétariat de l’établissement' })
+            : step('eco.parascolaire-gland', ['dest'], 'Accueil de jour · Gland', 'Accueil parascolaire à Gland', 'Une commune plus grande organise un accueil de jour ; conditions et tarifs sont communaux.', S('com', 'gland.ch', 'https://www.gland.ch', 'Ville de Gland — Accueil de jour', false), { confirm: 'Ville de Gland' }) ] },
+      { id: 'logement', name: 'Logement', cards: logement },
+      { id: 'transport', name: 'Transport', cards: transport },
+      { id: 'couts', name: 'Coûts', cards: couts }
+    ];
+  }
+
+  // ---- Diff by id ----
+  const same = (a, b) => !!a.ghost === !!b.ghost && a.title === b.title && (a.ghost || a.src.url === b.src.url);
+  function diffLane(A, B) {
+    const ids = A.cards.map(c => c.id);
+    B.cards.forEach((c, i) => { if (!ids.includes(c.id)) ids.splice(Math.min(i, ids.length), 0, c.id); });
+    return ids.map(id => {
+      const a = A.cards.find(c => c.id === id) || null, b = B.cards.find(c => c.id === id) || null;
+      return { id, a, b, kind: !a ? 'added' : !b ? 'removed' : same(a, b) ? 'same' : 'changed' };
+    });
+  }
+
+  // ---- Geometry ----
+  const ROOT = { x: 36, y: 440 }, YS = [100, 270, 440, 610, 780], X0 = 170, XSTEP = 165, LX = 820;
+  const WOB = [[0, -8, 6, -4, 4], [4, -6, 10, 2, -2], [-6, 4, -8, 6, 0], [6, -10, 2, -6, 4], [-4, 8, -6, 4, -2]];
+  const seg = (p, q) => { const mx = (p.x + q.x) / 2; return ' C ' + mx + ' ' + p.y + ', ' + mx + ' ' + q.y + ', ' + q.x + ' ' + q.y; };
+  const pathThrough = (start, pts, tailX) => { let d = 'M ' + start.x + ' ' + start.y, prev = start; pts.forEach(p => { d += seg(prev, p); prev = p; }); if (tailX) d += ' L ' + tailX + ' ' + prev.y; return d; };
+
+  function derive() {
+    const s = state;
+    const exploreOn = s.mode === 'explore';
+    const params = exploreOn ? s.explore : s.saved;
+    const A = resolveAnswers(params);
+    const lanes = build(params, A);
+    const previewOn = !exploreOn && !!s.pending;
+    let candParams = null, candLanes = null;
+    if (s.pending) { candParams = Object.assign({}, s.saved); candParams[s.pending.key] = s.pending.to; candLanes = build(candParams, resolveAnswers(candParams)); }
+    const prevLanes = (!exploreOn && s.applied) ? build(s.applied.prev, resolveAnswers(s.applied.prev)) : null;
+    const appliedKeys = prevLanes ? Object.keys(s.saved).filter(k => s.saved[k] !== s.applied.prev[k]) : [];
+    const rows = lanes.map((l, li) => {
+      const cmp = previewOn ? diffLane(l, candLanes[li]) : prevLanes ? diffLane(prevLanes[li], l).filter(r => r.kind !== 'removed').map(r => ({ id: r.id, a: r.b, b: null, kind: r.kind === 'same' ? 'same' : 'applied-' + r.kind })) : l.cards.map(c => ({ id: c.id, a: c, b: null, kind: 'same' }));
+      const firstOpen = l.cards.find(c => !c.ghost && !isDone(c, params));
+      return { lane: l, cmp, currentId: firstOpen ? firstOpen.id : null };
+    });
+    const d = { exploreOn, params, A, lanes, previewOn, candParams, candLanes, prevLanes, appliedKeys, rows };
+    d.diffKey = previewOn ? hash(s.pending.key + '>' + s.pending.to + '|' + JSON.stringify(params) + '|' + JSON.stringify(A) + '|' + JSON.stringify(diffSummary(d))) : null;
+    return d;
+  }
+  const diffSummary = d => d.rows.map(r => ({ piste: r.lane.name, changements: r.cmp.filter(c => c.kind !== 'same').map(c => ({ type: c.kind, avant: c.a ? c.a.title : null, apres: c.b ? c.b.title : null, depend_de: (c.b || c.a).deps })) })).filter(r => r.changements.length);
+  // The explanation of a proposal: generated for this exact scenario and diff, or prepared.
+  const explanation = d => { const g = d.diffKey && state.ai.explain[d.diffKey]; if (g) return { text: g.text, prov: g.prov }; const p = state.pending; return { text: p ? PREPARED_EXPLAIN(p.key, p.to) : '', prov: null }; };
+  const appliedExplanation = d => d.appliedKeys.map(k => PREPARED_EXPLAIN(k, state.saved[k])).join(' ');
+  function countAffected(d) {
+    let affected = 0, added = 0, removed = 0, unaffected = 0, ghosts = 0; const laneIds = new Set();
+    d.rows.forEach(r => r.cmp.forEach(c => {
+      if (c.kind === 'changed') { affected++; laneIds.add(r.lane.id); }
+      else if (c.kind === 'added') { added++; laneIds.add(r.lane.id); }
+      else if (c.kind === 'removed') { removed++; laneIds.add(r.lane.id); }
+      else if (c.a && c.a.ghost) ghosts++; else unaffected++;
+    }));
+    return { affected, added, removed, total: affected + added + removed, unaffected, ghosts, lanes: laneIds.size };
+  }
+  const whoLine = prov => prov ? '<div class="who live"><i></i>' + esc(provLabel(prov)) + '</div>' : '<div class="who"><i></i>Texte préparé' + (live() ? ' — Apertus (' + esc(provName()) + ') n’a pas écrit celui-ci' : ', Apertus non connecté') + '</div>';
+
+  // ---- Story ----
+  function renderStory(d) {
+    const s = state;
+    const word = key => {
+      const v = d.params[key];
+      const pend = d.previewOn && s.pending.key === key;
+      const cls = pend ? 'pending' : (d.exploreOn && s.explore[key] !== s.saved[key]) ? 'hyp' : (!d.exploreOn && d.appliedKeys.includes(key)) ? 'changed' : '';
+      const label = pend ? LABEL[key](v) + ' → ' + LABEL[key](s.pending.to) + ' ?' : LABEL[key](v);
+      return '<button type="button" class="word ' + cls + '" data-word="' + key + '">' + esc(label) + '</button>';
+    };
+    const fromLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.from)) : '';
+    const toLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.to)) : '';
+    const savedSummary = s.saved.dest + ', ' + LABEL.tenure(s.saved.tenure) + ', ' + LABEL.permit(s.saved.permit);
+    let html = '<div class="eyebrow story-label">' + (d.exploreOn ? 'Hypothèse, non enregistrée' : (s.resumed ? 'Votre histoire, reprise' : 'Votre histoire')) + '</div>';
+    html += '<p class="sentence">J’habite à <span class="fixed">Nyon</span>, je suis ' + word('tenure') + ', mon enfant a <span class="fixed">8 ans</span> et j’envisage de déménager à ' + word('dest') + '. J’ai un ' + word('permit') + '.</p>';
+    const A = d.A, lines = [];
+    if (A['q.nationalite']) lines.push(A['q.nationalite'] === 'UE/AELE' ? 'Je suis ressortissant d’un pays de l’<b>UE/AELE</b>.' : 'Je suis ressortissant d’un <b>État tiers</b>.');
+    if (A['q.travail']) lines.push('Je travaille à <b>' + esc(A['q.travail']) + '</b>.');
+    if (A['q.residence-secondaire']) lines.push(A['q.residence-secondaire'] === 'oui' ? 'Je garde le bien de Nyon en <b>résidence secondaire</b>.' : 'Je ne garde <b>pas</b> le bien de Nyon.');
+    if (A['q.bail-signe']) lines.push(A['q.bail-signe'] === 'oui' ? 'J’ai <b>déjà signé</b> un bail.' : 'Je n’ai <b>pas encore</b> de bail.');
+    if (A['q.parascolaire']) lines.push(A['q.parascolaire'] === 'oui' ? 'Mon enfant ira à l’<b>accueil parascolaire</b>.' : 'Pas d’accueil parascolaire.');
+    const doneNow = d.lanes.flatMap(l => l.cards).filter(c => !c.ghost && isDone(c, d.params));
+    if (doneNow.length) lines.push('Déjà fait : <b>' + doneNow.map(c => esc(c.short)).join('</b>, <b>') + '</b>.');
+    if (lines.length) html += '<p class="answered">' + lines.join(' ') + '</p>';
+    const dormant = s.answers.filter(a => !scopeMatches(a.scope || {}, d.params)).length + s.done.filter(x => !scopeMatches(x.scope || {}, d.params)).length;
+    if (dormant) html += '<div class="hint">' + dormant + (dormant > 1 ? ' éléments donnés dans un autre scénario sont mis de côté' : ' élément donné dans un autre scénario est mis de côté') + ' ; ils reviendront si vous y revenez.</div>';
+    html += '<div class="hint">' + (d.exploreOn ? 'Chaque mot souligné se change librement ici.' : 'Les mots soulignés sont vos réponses. Touchez-en un pour proposer un changement : l’arbre montre d’abord ce qui pousserait.') + '</div>';
+    if (d.previewOn) {
+      const c = countAffected(d), parts = [];
+      if (c.affected) parts.push(c.affected + (c.affected > 1 ? ' étapes changeraient' : ' étape changerait'));
+      if (c.added) parts.push(c.added + (c.added > 1 ? ' étapes apparaîtraient' : ' étape apparaîtrait'));
+      if (c.removed) parts.push(c.removed + (c.removed > 1 ? ' disparaîtraient' : ' disparaîtrait'));
+      html += '<div class="banner"><div class="eyebrow">Proposition, rien n’est appliqué</div><div class="small">La branche « ' + esc(toLabel) + ' » pousse en pointillé : ' + parts.join(', ') + ' dans ' + c.lanes + (c.lanes > 1 ? ' pistes' : ' piste') + '. ' + c.unaffected + ' étapes et ' + c.ghosts + ' questions en attente ne bougent pas.</div>' +
+        '<div class="row"><button type="button" class="btn ink" data-action="keep">Garder ' + esc(fromLabel) + '</button><button type="button" class="btn primary" data-action="adopt">Adopter ' + esc(toLabel) + ' partout (' + c.total + ' étapes)</button></div>' +
+        '<div class="caption">Adopter applique « ' + esc(toLabel) + ' » à toutes les branches en pointillé, pas seulement à l’étape que vous regardez.</div></div>';
+    }
+    if (d.exploreOn) {
+      html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">Hypothèse, non enregistrée</div><div class="small">Touchez un mot de l’histoire : l’arbre se redessine sans toucher votre parcours. Enregistré : ' + esc(savedSummary) + '.</div>' +
+        '<div class="row"><button type="button" class="btn" data-action="reset-explore">Repartir de ma situation</button><button type="button" class="btn primary" data-action="mode-situation">Revenir à ma situation</button></div></div>';
+    }
+    // The guide's note, with its own provenance.
+    let note, prov = null;
+    if (d.exploreOn) note = 'Mode exploration : vous regardez « ' + s.explore.dest + ', ' + LABEL.tenure(s.explore.tenure) + ', ' + LABEL.permit(s.explore.permit) + ' ». Votre parcours enregistré (' + savedSummary + ') n’est pas modifié.';
+    else if (d.previewOn) { const ex = explanation(d); note = ex.text; prov = ex.prov; }
+    else if (s.ai.note) { note = s.ai.note.text; prov = s.ai.note.prov; }
+    else if (d.appliedKeys.length) note = 'Changement appliqué : ' + d.appliedKeys.map(k => cap(LABEL[k](s.saved[k]))).join(', ') + '. Les étapes recalculées gardent leur ancienne version lisible ; les autres et les questions en attente n’ont pas bougé.';
+    else if (s.resumed) note = 'Vous reprenez votre parcours là où vous l’aviez laissé. Les questions en pointillé attendent toujours une réponse.';
+    else note = 'Cinq pistes partent de votre histoire. Rien n’est encore marqué comme fait : ouvrez une étape et dites-le si vous l’avez déjà accomplie. La validité de votre permis dépend d’une question encore ouverte.';
+    html += '<div class="spacer"></div><div class="note">' + whoLine(prov) + (s.ai.busy ? '<div class="caption">Apertus répond…</div>' : '') + '<div>' + esc(note) + '</div>' + (s.ai.error ? '<div class="err">' + esc(s.ai.error) + '</div>' : '') + (live() ? '' : '<div class="caption">Ce prototype n’appelle aucun modèle tant qu’Apertus n’est pas connecté (bouton en haut à droite).</div>') + '</div>';
+    html += '<form class="ask" data-story-form><label for="ask" class="hint">' + (live() ? 'Ajoutez à votre histoire : Apertus (' + esc(provName()) + ') la lit et propose ce qui change' : 'Ajouter à votre histoire — disponible une fois Apertus connecté') + '</label><div class="field"><input id="ask" name="text" type="text" ' + (live() ? '' : 'disabled ') + 'placeholder="Je suis française et je travaille à Genève."><button type="submit" aria-label="Envoyer" ' + (live() ? '' : 'disabled') + '><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg></button></div><div class="caption">Quand vous utilisez Apertus, votre phrase ou les réponses utiles à la comparaison sont envoyées au fournisseur via le proxy. Votre parcours est conservé dans ce navigateur ; « Effacer mon parcours » le supprime ici.</div></form>';
+    document.getElementById('story').innerHTML = html;
+  }
+
+  // ---- Tree ----
+  function renderTree(d) {
+    const s = state;
+    let out = '';
+    d.rows.forEach((row, li) => {
+      const l = row.lane, y = YS[li], n = row.cmp.length;
+      const pts = row.cmp.map((c, i) => ({ x: X0 + i * XSTEP, y: y + (WOB[li][i] || 0) }));
+      const hl = s.hover === l.id || (s.sel && s.sel.li === li);
+      const mainPts = row.cmp.map((c, i) => c.kind === 'added' ? null : pts[i]).filter(Boolean);
+      const laneAffected = row.cmp.some(c => c.kind === 'changed' || c.kind === 'added' || c.kind === 'removed');
+      const laneApplied = row.cmp.some(c => c.kind.indexOf('applied-') === 0);
+      out += '<g data-lane="' + l.id + '">';
+      out += '<path d="' + pathThrough(ROOT, mainPts, X0 + (n - 1) * XSTEP + 40) + '" fill="none" stroke="' + (hl ? '#1B1A17' : (d.exploreOn ? '#8FA8CC' : '#C9C2B2')) + '" stroke-width="' + (hl ? 3 : 2.5) + '" stroke-linecap="round"' + (d.exploreOn ? ' stroke-dasharray="10 6"' : '') + '/>';
+      if (laneAffected) {
+        const first = row.cmp.findIndex(c => c.kind !== 'same');
+        const start = first === 0 ? ROOT : pts[first - 1];
+        const route = [];
+        for (let i = first; i < n; i++) { const k = row.cmp[i].kind; if (k === 'removed') continue; route.push({ x: pts[i].x, y: k === 'same' ? pts[i].y : pts[i].y + 48 }); }
+        out += '<path class="grow" d="' + pathThrough(start, route, null) + '" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6"/>';
+      }
+      const tag = d.previewOn ? (laneAffected ? 'changerait' : 'ne bouge pas') : (d.prevLanes ? (laneApplied ? 'recalculée' : 'inchangée') : '');
+      const lastY = pts[n - 1].y;
+      out += '<text class="branch-name" x="' + LX + '" y="' + (lastY + 5) + '" text-anchor="end" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '">' + esc(l.name) + '</text>';
+      if (tag) out += '<text x="' + LX + '" y="' + (lastY + 20) + '" text-anchor="end" font-size="10" fill="' + ((tag === 'changerait' || tag === 'recalculée') ? ACCENT : '#7A766E') + '">' + tag + '</text>';
+      row.cmp.forEach((c, i) => {
+        const p = pts[i], k = c.kind;
+        if (k !== 'added') {
+          const card = c.a;
+          const changed = k === 'applied-changed' || k === 'applied-added';
+          const done = !card.ghost && isDone(card, d.params), current = !card.ghost && row.currentId === card.id;
+          const selected = s.sel && s.sel.li === li && s.sel.id === c.id && !s.sel.alt;
+          const fill = card.ghost ? '#FFFFFF' : (changed ? ACCENT : (done ? '#2E6A4B' : '#FFFFFF'));
+          const stroke = card.ghost ? '#8A867C' : (changed ? '#FFFFFF' : (done ? '#2E6A4B' : (current ? ACCENT : '#8A867C')));
+          const removed = k === 'removed';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|0" tabindex="0" role="button" aria-label="' + esc(card.ghost ? 'Question : ' + card.title : card.title) + '"' + (removed ? ' opacity="0.55"' : '') + '>';
+          if (selected) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="19" fill="none" stroke="#1B1A17" stroke-width="1.5" stroke-dasharray="3 3"/>';
+          if (k === 'changed' || removed) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="' + ACCENT + '" opacity="0.14"/>';
+          out += '<circle class="core" cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + (current || changed ? 3 : 2) + '"' + (card.ghost ? ' stroke-dasharray="3 3"' : '') + '/>';
+          if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+          if (card.ghost) out += '<text x="' + p.x + '" y="' + (p.y + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#8A867C">?</text>';
+          out += '<text x="' + p.x + '" y="' + (p.y - 17) + '" text-anchor="middle" font-size="12" font-weight="' + (hl || current ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : '') + '>' + esc(card.short) + '</text>';
+          const sub = k === 'changed' ? 'changerait' : removed ? 'disparaîtrait' : k === 'applied-changed' ? 'modifiée' : k === 'applied-added' ? 'ajoutée' : done ? 'faite' : current ? 'prochaine étape' : '';
+          if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="10" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + sub + '</text>';
+          out += '</g>';
+        }
+        if (k === 'changed' || k === 'added') {
+          const ay = p.y + 48, alt = c.b;
+          const selA = s.sel && s.sel.li === li && s.sel.id === c.id && s.sel.alt;
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc('Version proposée : ' + alt.title) + '">';
+          if (selA) out += '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>';
+          out += '<circle class="core" cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>';
+          if (alt.ghost) out += '<text x="' + p.x + '" y="' + (ay + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">?</text>';
+          out += '<text x="' + p.x + '" y="' + (ay + 26) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">' + esc(alt.short) + (k === 'added' ? ' (nouvelle)' : '') + '</text></g>';
+        }
+      });
+      out += '</g>';
+    });
+    out += '<circle cx="36" cy="440" r="17" fill="#1B1A17"/><circle cx="36" cy="440" r="6" fill="#FFFFFF"/><text x="36" y="478" text-anchor="middle" font-size="10" fill="#5A5751">Vous</text>';
+    document.getElementById('tree').innerHTML = out;
+  }
+
+  // ---- Detail ----
+  function sourceBlock(card) {
+    const lv = LV[card.src.lv], rv = review(card.src.reviewed);
+    return '<div class="zone' + (card.src.exact ? '' : ' soft') + '"><div class="zone-title">' + (card.src.exact ? 'Ce que la source établit' : 'Où vérifier — site officiel, page précise encore à relier') + '</div>' +
+      '<a class="source" href="' + esc(card.src.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + lv.bg + '">' + esc(lv.name) + '</span><span class="link">' + esc(card.src.title) + '</span></a>' +
+      (card.also ? [].concat(card.also).map(a => '<div class="also">Voir aussi : <a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a></div>').join('') : '') +
+      '<div class="status"><span class="rv" style="color:' + rv.color + '"><i></i>' + esc(rv.text) + '</span>' +
+      (card.confirm ? '<span class="cf">À confirmer : <b>' + esc(card.confirm) + '</b></span>' : '') + '</div></div>';
+  }
+  const depsLine = card => card.deps && card.deps.length ? '<div class="deps">Dépend de ' + card.deps.map(k => DEP_NAME[k]).join(' et de ') + '.</div>' : '<div class="deps">Ne dépend d’aucune de vos réponses : cette étape reste dans tous les scénarios.</div>';
+  const modelZone = (title, body, prov) => '<div class="zone model"><div class="zone-title">' + esc(title) + '</div>' + whoLine(prov) + body + '</div>';
+
+  function renderDetail(d) {
+    const s = state;
+    const foot = '<div class="foot"><span><i style="background:#7A766E"></i>Nyon, Saint-Cergue, Gland : pages officielles reliées ; aucune commune n’a encore relu le contenu.</span><span><i style="background:#1F4E8C"></i>Sources fédérales et cantonales : ch.ch, sem.admin.ch, vd.ch, opentransportdata.swiss.</span><span><i style="background:#B9B3A5"></i>' + (live() ? 'Apertus est connecté (' + esc(provName()) + ') ; chaque texte indique s’il vient du modèle ou d’un texte préparé.' : 'Aucun modèle n’est appelé ; les explications sont des textes préparés, marqués comme tels.') + '</span></div>';
+    let html;
+    const row = s.sel && d.rows[s.sel.li];
+    const cmp = row && row.cmp.find(c => c.id === s.sel.id);
+    if (!cmp) {
+      html = '<div class="eyebrow">Détail</div><h2>Touchez un point de l’arbre.</h2><p class="lead">Chaque point est une étape ou une question. Vous verrez où vérifier, si une commune a relu, et ce que le guide explique, avec la provenance de chaque texte.</p><p class="lead">Touchez un mot souligné dans votre histoire : les branches qui changeraient poussent en pointillé avant que vous décidiez.</p>';
+      document.getElementById('detail').innerHTML = html + foot; return;
+    }
+    const lane = row.lane;
+    const viewingAlt = !!(s.sel.alt && cmp.b);
+    const showing = viewingAlt ? cmp.b : cmp.a;
+    const other = viewingAlt ? cmp.a : (d.previewOn ? cmp.b : null);
+    const fromLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.from)) : '';
+    const toLabel = s.pending ? cap(LABEL[s.pending.key](s.pending.to)) : '';
+    if (showing.ghost) {
+      html = '<div class="eyebrow">' + esc(lane.name) + ', question en attente</div><h2>' + esc(showing.title) + '</h2>' + modelZone('Pourquoi cette question', '<div>' + esc(showing.ghostWhy) + '</div>', null);
+      if (showing.answer.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="oui">Oui</button><button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="non">Non</button></div>';
+      else if (showing.answer.type === 'choice') html += '<div class="row">' + showing.answer.options.map(o => '<button type="button" class="btn" data-answer="' + esc(showing.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
+      else html += '<form data-answer-form="' + esc(showing.id) + '" style="display:flex;flex-direction:column;gap:8px"><label for="answer" class="hint">Votre réponse</label><input id="answer" name="answer" type="text" placeholder="' + esc(showing.answer.placeholder || '') + '" autocomplete="off"><button type="submit" class="btn primary">Répondre et faire pousser la branche</button></form>';
+      const sc = scopeFor(showing, d.params), scKeys = Object.keys(sc);
+      html += '<p class="lead">' + (scKeys.length ? 'Cette réponse vaut pour le scénario « ' + scKeys.map(k => LABEL[k](sc[k])).join(', ') + ' » ; si vous changez cela, elle est mise de côté, pas perdue.' : 'Cette réponse vaut dans tous les scénarios.') + ' Elle s’enregistre dans ce navigateur.</p>';
+      document.getElementById('detail').innerHTML = html + foot; return;
+    }
+    const k = cmp.kind;
+    const changed = k === 'applied-changed' || k === 'applied-added';
+    const prevCard = (changed && d.prevLanes) ? (d.prevLanes[s.sel.li].cards.find(c => c.id === cmp.id) || null) : null;
+    const done = !viewingAlt && isDone(showing, d.params), current = !viewingAlt && row.currentId === showing.id;
+    const status = viewingAlt ? (k === 'added' ? 'nouvelle étape proposée' : 'version proposée') : (done ? 'faite' : (current ? 'prochaine étape' : 'à venir'));
+    const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? 'Apparaîtrait' : 'Proposée') + '</span>' : k === 'applied-changed' ? '<span class="pill solid">Modifiée</span>' : k === 'applied-added' ? '<span class="pill solid">Ajoutée</span>' : d.exploreOn ? '<span class="pill">Hypothèse</span>' : k === 'changed' ? '<span class="pill">Changerait</span>' : k === 'removed' ? '<span class="pill">Disparaîtrait</span>' : '';
+    html = '<div class="head"><div class="eyebrow">' + esc(lane.name) + ', ' + status + '</div>' + pill + '</div><h2>' + esc(showing.title) + '</h2>';
+    html += sourceBlock(showing);
+    html += modelZone('Explication de l’étape', '<div>' + esc(showing.why) + '</div>' + depsLine(showing) + (changed ? '<div class="before">Avant : ' + esc(prevCard ? (prevCard.ghost ? 'question en attente' : prevCard.title) : 'cette étape n’existait pas') + '</div><div class="small">' + esc(appliedExplanation(d)) + '</div>' : ''), null);
+    if (!viewingAlt && !d.previewOn) {
+      const sc = scopeFor(showing, d.params), scKeys = Object.keys(sc);
+      html += '<div class="row"><button type="button" class="btn ' + (done ? 'done' : '') + '" data-done="' + esc(showing.id) + '">' + (done ? 'Faite — la remettre à faire' : 'Je l’ai faite') + '</button></div><div class="caption">' + (scKeys.length ? 'Ce marquage vaut pour « ' + scKeys.map(kk => LABEL[kk](sc[kk])).join(', ') + ' » : changer cela le met de côté.' : 'Ce marquage vaut dans tous les scénarios.') + ' Rien n’est marqué à votre place.</div>';
+    }
+    if ((d.previewOn && k !== 'same' && k !== 'removed') || (viewingAlt && other)) {
+      const c = countAffected(d), ex = explanation(d);
+      html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? (other ? 'Version enregistrée, ' + esc(fromLabel) : 'Aujourd’hui : cette étape n’existe pas') : (other ? 'Version proposée, ' + esc(toLabel) : 'Proposition')) + '</div>';
+      if (other) {
+        if (other.ghost) html += '<div style="font-weight:600">Question en attente : ' + esc(other.title) + '</div><div class="small" style="color:var(--faint)">Aucune source encore ; en attente de votre réponse.</div>';
+        else { const lv = LV[other.src.lv], rv = review(other.src.reviewed); html += '<div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><a class="source" href="' + esc(other.src.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + lv.bg + '">' + esc(lv.name) + '</span><span class="link">' + esc(other.src.title) + '</span></a><span class="rv" style="color:' + rv.color + ';font-size:12px"><i></i>' + esc(rv.text) + '</span>' + (other.src.exact ? '' : '<span class="caption">Site officiel ; page précise encore à relier.</span>'); }
+      }
+      html += modelZone('Ce qui change', '<div class="small">' + esc(ex.text) + '</div>', ex.prov);
+      html += '<div class="row"><button type="button" class="btn ink" data-action="keep">Garder ' + esc(fromLabel) + '</button><button type="button" class="btn primary" data-action="adopt">Adopter ' + esc(toLabel) + ' partout (' + c.total + ' étapes)</button></div><div class="caption">Adopter applique « ' + esc(toLabel) + ' » à toutes les branches en pointillé, pas seulement à celle-ci.</div></div>';
+    }
+    if (k === 'removed') { const ex = explanation(d); html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">Dans « ' + esc(toLabel) + ' », cette étape n’existe plus</div>' + whoLine(ex.prov) + '<div class="small">' + esc(ex.text) + '</div></div>'; }
+    document.getElementById('detail').innerHTML = html + foot;
+  }
+
+  function renderConn() {
+    const btn = document.getElementById('conn-btn'), label = document.getElementById('conn-label'), panel = document.getElementById('conn-panel');
+    btn.className = 'conn-btn ' + (conn.status === 'ok' ? 'ok' : conn.status === 'error' ? 'error' : '');
+    label.textContent = conn.status === 'ok' ? 'Apertus via ' + provName() + (conn.prov && conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') : conn.status === 'testing' ? 'Connexion…' : conn.status === 'error' ? ((PUBLIC_PROXY_URL && !LOCAL_DEV) ? 'Apertus indisponible pour l’instant' : 'Connexion échouée') : 'Apertus non connecté';
+    if (panel.hidden) return;
+    const P = PRESETS[conn.provider] || PRESETS.other;
+    let html = '<div style="font-weight:600">Connecter Apertus</div>' +
+      (LOCAL_DEV ? '<div class="seg" role="group" aria-label="Type de connexion"><button type="button" data-conn="mode-proxy" aria-pressed="' + (conn.mode === 'proxy') + '">Par un proxy (recommandé)</button><button type="button" data-conn="mode-direct" aria-pressed="' + (conn.mode === 'direct') + '">Direct (développement local)</button></div>' : '');
+    if (conn.mode === 'proxy') {
+      html += (PUBLIC_PROXY_URL && !LOCAL_DEV ? '<div class="caption">La connexion publique est configurée. Si elle est indisponible, le parcours et les liens restent accessibles.</div>' : '<label for="c-proxy">Adresse du proxy</label><input id="c-proxy" value="' + esc(conn.proxyUrl) + '" placeholder="https://votre-codespace-8787.app.github.dev">' +
+        '<label for="c-token">Jeton de démo (facultatif ; laissez vide pour la démo publique)</label><input id="c-token" type="password" value="' + esc(conn.demoToken) + '" autocomplete="off">') +
+        '<div class="caption">Le proxy garde la clé côté serveur, tient un budget quotidien et renvoie la provenance des réponses générées.</div>';
+    } else {
+      html += '<label for="c-provider">Fournisseur</label><select id="c-provider"><option value="swisscom"' + (conn.provider === 'swisscom' ? ' selected' : '') + '>Swisscom (Swiss AI Platform)</option><option value="publicai"' + (conn.provider === 'publicai' ? ' selected' : '') + '>Public AI Inference Utility</option><option value="other"' + (conn.provider === 'other' ? ' selected' : '') + '>Autre API compatible</option></select>' +
+        '<div class="caption">' + esc(P.hint) + '</div>' +
+        '<label for="c-base">Adresse de l’API (base, se terminant avant /chat/completions)</label><input id="c-base" value="' + esc(conn.base) + '" placeholder="' + esc(P.base || 'https://…/v1') + '">' +
+        '<label for="c-model">Identifiant de modèle</label><input id="c-model" value="' + esc(conn.model) + '" placeholder="' + esc(P.model || 'apertus-…') + '">' +
+        '<label for="c-key">Clé API</label><input id="c-key" type="password" value="' + esc(conn.key) + '" autocomplete="off">' +
+        '<div class="caption">Mode local seulement : la clé reste dans cet onglet mais tout script de la page peut la lire. Pour une démo publique, utilisez le proxy et laissez ce champ vide.</div>';
+    }
+    if (conn.error) html += '<div class="err">' + esc(conn.error) + '</div>';
+    html += '<div class="row"><button type="button" class="btn" data-conn="close">Fermer</button>' + (conn.status === 'ok' ? '<button type="button" class="btn ink" data-conn="off">Déconnecter</button>' : '') + '<button type="button" class="btn primary" data-conn="go">' + (conn.status === 'ok' ? 'Reconnecter' : 'Connecter') + '</button></div>';
+    panel.innerHTML = html;
+  }
+  function readConnForm() {
+    if (conn.mode === 'proxy') { const el = document.getElementById('c-proxy'); if (el) conn.proxyUrl = el.value.trim(); const tk = document.getElementById('c-token'); if (tk) conn.demoToken = tk.value.trim(); }
+    else {
+      const prov = document.getElementById('c-provider'), b = document.getElementById('c-base'), m = document.getElementById('c-model'), key = document.getElementById('c-key');
+      if (prov) conn.provider = prov.value; if (b) conn.base = b.value.trim(); if (m) conn.model = m.value.trim(); if (key) conn.key = key.value.trim();
+    }
+    saveConn();
+  }
+
+  function render() {
+    const d = derive();
+    document.body.classList.toggle('explore', d.exploreOn);
+    document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn));
+    document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn));
+    document.getElementById('saved-note').textContent = state.savedAt ? 'Enregistré dans ce navigateur, ' + new Date(state.savedAt).toLocaleString('fr-CH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Rien n’est encore enregistré';
+    renderStory(d); renderTree(d); renderDetail(d);
+  }
+
+  // ---- Apertus tasks (only when connected; each result carries its provenance) ----
+  async function askExplain() {
+    const s = state; if (!live() || !s.pending) return;
+    const d = derive(); const id = d.diffKey; if (!id || s.ai.explain[id]) return;
+    state.ai.busy = true; state.ai.error = ''; render();
+    try {
+      const res = await chat([
+        { role: 'system', content: 'Tu es le guide d’un service public suisse. Tu expliques, en français, en deux phrases au plus, ce qui change dans le parcours d’une personne quand une de ses réponses change. Appuie-toi uniquement sur la liste fournie ; n’invente aucune règle, aucun délai, aucun montant. Termine par « À vérifier auprès de » suivi de l’autorité la plus pertinente parmi celles citées.' },
+        { role: 'user', content: 'Réponse modifiée : ' + DEP_NAME[s.pending.key] + ', de « ' + LABEL[s.pending.key](s.pending.from) + ' » à « ' + LABEL[s.pending.key](s.pending.to) + ' ». Situation : ' + JSON.stringify(d.params) + '. Changements calculés par l’application : ' + JSON.stringify(diffSummary(d)) }
+      ], 220);
+      if (res.text.trim()) state.ai.explain[id] = { text: res.text.trim(), prov: res.prov };
+    } catch (e) { state.ai.error = 'Apertus n’a pas répondu (' + (e && e.message ? e.message : 'erreur') + ') ; texte préparé affiché.'; }
+    state.ai.busy = false; render();
+  }
+  async function readStory(text) {
+    const s = state; if (!live() || !text.trim()) return;
+    const d = derive();
+    state.ai.busy = true; state.ai.error = ''; render();
+    const schema = '{"dest":"Saint-Cergue"|"Gland"|null,"tenure":"owner"|"tenant"|null,"permit":"B"|"C"|null,"answers":{"q.nationalite":"UE/AELE"|"État tiers"|null,"q.travail":string|null,"q.residence-secondaire":"oui"|"non"|null,"q.bail-signe":"oui"|"non"|null,"q.parascolaire":"oui"|"non"|null},"note":string}';
+    try {
+      const res = await chat([
+        { role: 'system', content: 'Tu lis une phrase qu’une personne ajoute à son histoire et tu renvoies UNIQUEMENT un objet JSON de la forme ' + schema + '. Mets null pour tout ce que la phrase ne dit pas explicitement. Une nationalité d’un pays de l’UE ou de l’AELE → q.nationalite "UE/AELE" ; une autre nationalité → "État tiers". "note" : une phrase en français disant ce que tu as compris. Pas de texte hors du JSON.' },
+        { role: 'user', content: 'Situation actuelle : ' + JSON.stringify(d.params) + '. Phrase : ' + text }
+      ], 300);
+      const j = JSON.parse(res.text.replace(/```json|```/g, '').trim());
+      const applied = [];
+      const okv = { dest: ['Saint-Cergue', 'Gland'], tenure: ['owner', 'tenant'], permit: ['B', 'C'] };
+      const allowed = { 'q.nationalite': ['UE/AELE', 'État tiers'], 'q.residence-secondaire': ['oui', 'non'], 'q.bail-signe': ['oui', 'non'], 'q.parascolaire': ['oui', 'non'] };
+      const open = d.lanes.flatMap(l => l.cards).filter(c => c.ghost);
+      Object.keys(j.answers || {}).forEach(id => {
+        const v = j.answers[id]; if (v === null || v === undefined || v === '') return;
+        if (allowed[id] && !allowed[id].includes(v)) return;
+        const q = open.find(c => c.id === id); if (!q) return;
+        storeAnswer(q, String(v), d.params); applied.push(q.short + ' → ' + v);
+      });
+      let pendingKey = null;
+      ['dest', 'tenure', 'permit'].forEach(key => { const v = j[key]; if (v && okv[key].includes(v) && v !== d.params[key] && !pendingKey) pendingKey = key; });
+      state.ai.note = { text: (j.note ? String(j.note) + ' ' : '') + (applied.length ? 'Réponses retenues : ' + applied.join(' ; ') + '.' : '') + (pendingKey ? ' Un changement de ' + DEP_NAME[pendingKey] + ' est proposé ci-dessus ; rien n’est appliqué sans vous.' : ''), prov: res.prov };
+      if (pendingKey) { if (d.exploreOn) { const e = Object.assign({}, s.explore); e[pendingKey] = j[pendingKey]; state.explore = e; } else state.pending = { key: pendingKey, from: d.params[pendingKey], to: j[pendingKey] }; }
+      persist();
+    } catch (e) { state.ai.error = 'Apertus n’a pas renvoyé de réponse exploitable (' + (e && e.message ? e.message : 'erreur') + ').'; }
+    state.ai.busy = false; state.sel = null; render();
+    if (state.pending) askExplain();
+  }
+
+  // ---- Interactions ----
+  function act(action) {
+    const s = state, d = derive();
+    if (action === 'keep') set({ pending: null, sel: null });
+    else if (action === 'adopt') set({ saved: d.candParams, explore: Object.assign({}, d.candParams), applied: { prev: s.saved }, pending: null, sel: null, resumed: false }, true);
+    else if (action === 'reset-explore') set({ explore: Object.assign({}, s.saved), sel: null }, true);
+    else if (action === 'mode-situation') set({ mode: 'situation', sel: null });
+    else if (action === 'mode-explore') set({ mode: 'explore', pending: null, sel: null });
+    else if (action === 'clear') { try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ mode: 'situation', saved: fresh(), explore: fresh(), pending: null, applied: null, answers: [], done: [], sel: null, savedAt: null, resumed: false, ai: { note: null, explain: {}, busy: false, error: '' } }); }
+  }
+  function toggleWord(key) {
+    const s = state, d = derive();
+    if (d.exploreOn) { const e = Object.assign({}, s.explore); e[key] = ALT[key](e[key]); set({ explore: e, sel: null }, true); return; }
+    const v = s.saved[key], pend = s.pending && s.pending.key === key;
+    set({ pending: pend ? null : { key, from: v, to: ALT[key](v) }, sel: null });
+    if (state.pending) askExplain();
+  }
+  function storeAnswer(q, value, P) {
+    const scope = scopeFor(q, P);
+    state.answers = state.answers.filter(a => !(a.id === q.id && JSON.stringify(a.scope || {}) === JSON.stringify(scope))).concat([{ id: q.id, value, scope }]);
+  }
+  function answer(id, value) {
+    const d = derive(); value = String(value).trim(); if (!value) return;
+    const q = d.lanes.flatMap(l => l.cards).find(c => c.id === id && c.ghost); if (!q) return;
+    storeAnswer(q, value, d.params);
+    set({ sel: null }, true);
+  }
+  function toggleDone(id) {
+    const d = derive();
+    const card = d.lanes.flatMap(l => l.cards).find(c => c.id === id && !c.ghost); if (!card) return;
+    const scope = scopeFor(card, d.params), key = JSON.stringify(scope);
+    const has = state.done.some(x => x.id === id && JSON.stringify(x.scope || {}) === key);
+    state.done = has ? state.done.filter(x => !(x.id === id && JSON.stringify(x.scope || {}) === key)) : state.done.concat([{ id, scope }]);
+    set({}, true);
+  }
+  const parseSel = n => { const [li, id, alt] = n.dataset.sel.split('|'); return { li: Number(li), id, alt: alt === '1' }; };
+  document.addEventListener('click', e => {
+    const cb = e.target.closest('[data-conn]');
+    if (cb) {
+      const panel = document.getElementById('conn-panel'), a = cb.dataset.conn;
+      if (a === 'close') { readConnForm(); panel.hidden = true; document.getElementById('conn-btn').setAttribute('aria-expanded', 'false'); }
+      else if (a === 'off') disconnect();
+      else if (a === 'mode-proxy' || a === 'mode-direct') { if (a === 'mode-direct' && !LOCAL_DEV) return; readConnForm(); conn.mode = a === 'mode-proxy' ? 'proxy' : 'direct'; saveConn(); renderConn(); }
+      else { readConnForm(); connect(); }
+      return;
+    }
+    const w = e.target.closest('[data-word]'); if (w) { toggleWord(w.dataset.word); return; }
+    const a = e.target.closest('[data-action]'); if (a) { act(a.dataset.action); return; }
+    const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
+    const dn = e.target.closest('[data-done]'); if (dn) { toggleDone(dn.dataset.done); return; }
+    const n = e.target.closest('[data-sel]'); if (n) set({ sel: parseSel(n) });
+  });
+  document.addEventListener('change', e => { if (e.target && e.target.id === 'c-provider') { const P = PRESETS[e.target.value]; conn.provider = e.target.value; conn.base = P.base; conn.model = P.model; saveConn(); renderConn(); } });
+  document.addEventListener('submit', e => {
+    const f = e.target.closest('[data-answer-form]'); if (f) { e.preventDefault(); answer(f.dataset.answerForm, f.elements.answer.value); return; }
+    const sf = e.target.closest('[data-story-form]'); if (sf) { e.preventDefault(); readStory(sf.elements.text.value); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const n = e.target.closest && e.target.closest('[data-sel]'); if (!n) return;
+    e.preventDefault(); set({ sel: parseSel(n) });
+  });
+  document.getElementById('tree').addEventListener('mouseover', e => { const g = e.target.closest('[data-lane]'); const id = g ? g.dataset.lane : null; if (id !== state.hover) set({ hover: id }); });
+  document.getElementById('tree').addEventListener('mouseleave', () => { if (state.hover) set({ hover: null }); });
+  document.getElementById('mode-situation').addEventListener('click', () => act('mode-situation'));
+  document.getElementById('mode-explore').addEventListener('click', () => act('mode-explore'));
+  document.getElementById('clear-btn').addEventListener('click', () => act('clear'));
+  document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; document.getElementById('conn-btn').setAttribute('aria-expanded', String(!p.hidden)); renderConn(); });
+
+  load();
+  renderConn();
+  render();
+  if (PUBLIC_PROXY_URL) connect();
+})();
+</script>
+</body>
+</html>

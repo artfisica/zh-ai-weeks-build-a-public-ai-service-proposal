@@ -1,0 +1,14 @@
+{
+  "name": "Apertus proxy",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": { "label": "Apertus proxy", "onAutoForward": "notify" }
+  },
+  "secrets": {
+    "APERTUS_API_KEY": { "description": "Swisscom (or Public AI) API key. Set in GitHub → Settings → Codespaces → Secrets." },
+    "DEMO_TOKEN": { "description": "One demo token, or two separated by a comma (one per presenter)." }
+  },
+  "postStartCommand": "nohup node proxy/server.js > /tmp/public-ai-commune-proxy.log 2>&1 < /dev/null &",
+  "postAttachCommand": "cat /tmp/public-ai-commune-proxy.log"
+}
