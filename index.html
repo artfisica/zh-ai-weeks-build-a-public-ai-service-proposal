@@ -41,7 +41,7 @@
   .lang button{height:30px;padding:0 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600}
   .lang button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
   .layout{display:grid;grid-template-columns:340px minmax(0,1fr) 400px;min-height:calc(100vh - 56px)}
-  @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}.story.is-empty{display:none}.tree{overflow-x:auto;-webkit-overflow-scrolling:touch}.tree svg{min-width:900px}.detail{border-top:1px solid var(--line)}}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}.story.is-empty{display:none}.detail{border-top:1px solid var(--line)}}
   .story{padding:28px 24px 20px 28px;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:16px}
   .eyebrow{font-size:12px;color:var(--muted)}
   body.explore .eyebrow.story-label{color:var(--accent)}
@@ -78,8 +78,9 @@
   .ask input:disabled,.ask textarea:disabled{border-style:dashed;background:transparent;color:var(--faint)}
   .ask button{min-width:40px;height:40px;padding:0 14px;border-radius:8px;border:none;background:var(--accent);color:var(--white);display:flex;align-items:center;justify-content:center;font-weight:500}
   .ask button:disabled{background:#B9B3A5;cursor:default}
-  .tree{padding:16px 12px 10px;display:flex;flex-direction:column;position:relative}
-  .tree svg{width:100%;height:auto;display:block;overflow:visible}
+  .tree{padding:16px 12px 10px;display:flex;flex-direction:column;position:relative;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tree svg{width:100%;height:auto;display:block;overflow:hidden}
+  .tree .preview{min-width:0}
   .tree text{font-family:var(--sans)}
   .tree .branch-name{font-family:var(--serif)}
   .tree [data-sel]{cursor:pointer}
@@ -488,6 +489,30 @@
   function count(d) { const c = { changed: 0, added: 0, removed: 0, same: 0 }; d.rows.forEach(r => r.cmp.forEach(x => { c[x.kind === 'same' ? 'same' : x.kind]++; })); return c; }
 
   // ---- Tree ----
+  function mapLabelLines(value, maxChars, maxLines) {
+    const words = String(value || '').trim().split(/\s+/).filter(Boolean), lines = [];
+    let line = '';
+    words.forEach(word => {
+      while (word.length > maxChars) {
+        if (line) { lines.push(line); line = ''; }
+        lines.push(word.slice(0, maxChars)); word = word.slice(maxChars);
+      }
+      if (!word) return;
+      if (line && line.length + 1 + word.length > maxChars) { lines.push(line); line = word; }
+      else line += (line ? ' ' : '') + word;
+    });
+    if (line) lines.push(line);
+    if (lines.length > maxLines) {
+      lines.length = maxLines;
+      lines[maxLines - 1] = lines[maxLines - 1].slice(0, maxChars - 1).trimEnd() + '…';
+    }
+    return lines.length ? lines : [''];
+  }
+  function mapText(value, x, y, attrs, maxChars, maxLines, lineHeight) {
+    const lines = mapLabelLines(value, maxChars, maxLines);
+    return '<text x="' + x + '" y="' + y + '" ' + attrs + ' aria-label="' + esc(value) + '">' +
+      lines.map((line, i) => '<tspan x="' + x + '" dy="' + (i ? lineHeight : 0) + '">' + esc(line) + '</tspan>').join('') + '</text>';
+  }
   function renderTree(d) {
     const host = document.getElementById('tree-host'), s = state;
     let overlay = s.loading ? '<div class="loading">' + esc(s.loading) + '</div>' : '';
@@ -504,8 +529,12 @@
     const rows = d.rows, n = rows.length;
     const qsOpen = (d.tree.questions || []).filter(q => !(q.id in (d.answers || {})));
     const GAP = 170, YS = rows.map((_, i) => 110 + i * GAP), lastRowY = YS[n - 1];
-    const H = lastRowY + 90 + (qsOpen.length ? 110 : 0), QY = lastRowY + 140;
+    const H = lastRowY + (qsOpen.length ? 225 : 120), QY = lastRowY + 160;
     const ROOT = { x: 36, y: (YS[0] + lastRowY) / 2 }, X0 = 170, XSTEP = 165;
+    const maxPoints = Math.max(1, ...rows.map(row => row.cmp.length));
+    const branchRight = X0 + (maxPoints - 1) * XSTEP + 70 + 260;
+    const questionRight = qsOpen.length ? X0 + (qsOpen.length - 1) * 190 + 16 + 160 + 24 : 0;
+    const W = Math.max(900, branchRight, questionRight);
     const seg = (p, q) => { const mx = (p.x + q.x) / 2; return ' C ' + mx + ' ' + p.y + ', ' + mx + ' ' + q.y + ', ' + q.x + ' ' + q.y; };
     const pathThrough = (start, pts, tailX) => { let dd = 'M ' + start.x + ' ' + start.y, prev = start; pts.forEach(p => { dd += seg(prev, p); prev = p; }); if (tailX) dd += ' L ' + tailX + ' ' + prev.y; return dd; };
     let out = '';
@@ -525,8 +554,10 @@
       }
       const tag = d.previewOn ? (affected ? t('changerait', 'would change') : t('ne bouge pas', 'does not move')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
       const nameX = X0 + (m - 1) * XSTEP + 70, lastY = pts[m - 1].y;
-      out += '<text class="branch-name" x="' + nameX + '" y="' + (lastY + 5) + '" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '">' + esc(row.name) + '</text>';
-      if (tag) out += '<text x="' + nameX + '" y="' + (lastY + 20) + '" font-size="10" fill="' + ((affected || applied) ? ACCENT : '#7A766E') + '">' + esc(tag) + '</text>';
+      const nameLines = mapLabelLines(row.name, 24, 3);
+      const nameY = lastY + 5 - (nameLines.length - 1) * 9;
+      out += mapText(row.name, nameX, nameY, 'class="branch-name" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '"', 24, 3, 18);
+      if (tag) out += '<text x="' + nameX + '" y="' + (nameY + (nameLines.length - 1) * 18 + 15) + '" font-size="10" fill="' + ((affected || applied) ? ACCENT : '#7A766E') + '">' + esc(tag) + '</text>';
       row.cmp.forEach((c, i) => {
         const p = pts[i], k = c.kind;
         if (k !== 'added') {
@@ -538,14 +569,15 @@
           const ring = (LV()[st.authority] || LV().other).bg;
           out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + (changed ? ACCENT : done ? '#2E6A4B' : '#FFFFFF') + '" stroke="' + (changed ? '#FFFFFF' : done ? '#2E6A4B' : ring) + '" stroke-width="' + (changed ? 3 : 2.5) + '"/>';
           if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-          out += '<text x="' + p.x + '" y="' + (p.y - 17) + '" text-anchor="middle" font-size="12" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : '') + '>' + esc(st.short.length > 26 ? st.short.slice(0, 25) + '…' : st.short) + '</text>';
+          const stepLines = mapLabelLines(st.short, 18, 2);
+          out += mapText(st.short, p.x, p.y - 17 - (stepLines.length - 1) * 14, 'text-anchor="middle" font-size="12" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : ''), 18, 2, 14);
           const sub = k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
           if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="10" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + esc(sub) + '</text>';
           out += '</g>';
         }
         if (k === 'changed' || k === 'added') {
           const ay = p.y + 48, alt = c.b, selA = s.sel && s.sel.li === li && s.sel.id === c.id && s.sel.alt;
-          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.title) + '">' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><text x="' + p.x + '" y="' + (ay + 26) + '" text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '">' + esc(alt.short.length > 26 ? alt.short.slice(0, 25) + '…' : alt.short) + (k === 'added' ? t(' (nouvelle)', ' (new)') : '') + '</text></g>';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.title) + '">' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>' + mapText(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : ''), p.x, ay + 26, 'text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '"', 18, 2, 14) + '</g>';
         }
       });
       out += '</g>';
@@ -554,10 +586,10 @@
     const qs = qsOpen;
     if (qs.length) {
       const qy = QY; out += '<text x="' + X0 + '" y="' + (qy - 26) + '" font-size="12" fill="#5A5751">' + t('Questions qui changeraient la carte :', 'Questions that would change the map:') + '</text>';
-      qs.forEach((q, i) => { const x = X0 + i * 190; out += '<g data-q="' + esc(q.id) + '" tabindex="0" role="button" style="cursor:pointer"><circle cx="' + x + '" cy="' + qy + '" r="10" fill="#FFFFFF" stroke="#8A867C" stroke-width="2" stroke-dasharray="3 3"/><text x="' + x + '" y="' + (qy + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#8A867C">?</text><text x="' + (x + 16) + '" y="' + (qy + 4) + '" font-size="12" fill="#1B1A17">' + esc(q.text.length > 26 ? q.text.slice(0, 25) + '…' : q.text) + '</text></g>'; });
+      qs.forEach((q, i) => { const x = X0 + i * 190; out += '<g data-q="' + esc(q.id) + '" tabindex="0" role="button" aria-label="' + esc(q.text) + '" style="cursor:pointer"><circle cx="' + x + '" cy="' + qy + '" r="10" fill="#FFFFFF" stroke="#8A867C" stroke-width="2" stroke-dasharray="3 3"/><text x="' + x + '" y="' + (qy + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#8A867C">?</text>' + mapText(q.text, x + 16, qy - 3, 'font-size="12" fill="#1B1A17"', 20, 2, 14) + '</g>'; });
     }
     out += '<circle cx="36" cy="' + ROOT.y + '" r="17" fill="#1B1A17"/><circle cx="36" cy="' + ROOT.y + '" r="6" fill="#FFFFFF"/><text x="36" y="' + (ROOT.y + 38) + '" text-anchor="middle" font-size="10" fill="#5A5751">' + t('Vous', 'You') + '</text>';
-    host.innerHTML = overlay + '<svg viewBox="0 0 900 ' + H + '" aria-label="' + t('Carte des pistes', 'Map of paths') + '">' + out + '</svg>';
+    host.innerHTML = overlay + '<svg class="journey-map" viewBox="0 0 ' + W + ' ' + H + '" style="min-width:' + W + 'px" aria-label="' + t('Carte des pistes', 'Map of paths') + '">' + out + '</svg>';
     lastDrawn = d.tree.key;
     const lg = document.getElementById('legend'); lg.hidden = false;
     lg.innerHTML = '<span><i class="dot" style="border-color:#9A452A"></i>' + t('Commune', 'Commune') + '</span><span><i class="dot" style="border-color:#2E6A4B"></i>' + t('Canton', 'Canton') + '</span><span><i class="dot" style="border-color:#2C3140"></i>' + t('Confédération', 'Confederation') + '</span><span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';

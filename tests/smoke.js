@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 let script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 script = script.replace('  load(); renderConn(); render();',
-  '  globalThis.__app = {state, conn, validate, sourceBlock, diffBranches, renderStory, doneKey, isDone, converse, applySuggestedStory, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree}; load(); renderConn(); render();');
+  '  globalThis.__app = {state, conn, validate, sourceBlock, diffBranches, renderStory, renderTree, mapLabelLines, doneKey, isDone, converse, applySuggestedStory, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree}; load(); renderConn(); render();');
 const els = new Map();
 function element(id) {
   if (!els.has(id)) els.set(id, {
@@ -29,7 +29,7 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(script, context);
-const { state, conn, validate, sourceBlock, diffBranches, renderStory, doneKey, isDone, converse, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree } = context.__app;
+const { state, conn, validate, sourceBlock, diffBranches, renderStory, renderTree, mapLabelLines, doneKey, isDone, converse, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree } = context.__app;
 assert.match(systemPrompt(), /"sources" MUST be an array/);
 assert.doesNotMatch(systemPrompt(), /"source" MUST be one of these catalog ids/);
 assert.match(systemPrompt(), /one to five branches/);
@@ -92,6 +92,18 @@ const storyHtml = element('story').innerHTML;
 assert.match(storyHtml, /I live in <button/);
 assert.match(storyHtml, /Nyon<\/button> &amp; my child is <button/);
 assert.match(storyHtml, /Saint-Cergue<\/button> is the destination/);
+
+// Four nodes plus a long branch name and six questions used to paint over the detail panel.
+const carSteps = Array.from({ length: 4 }, (_, i) => ({ ...a, id: 'car_' + i, short: 'Pay import duties and VAT' }));
+const carQuestions = Array.from({ length: 6 }, (_, i) => ({ id: 'question_' + i, text: 'A question with several words?' }));
+renderTree({ tree: { ...tree, questions: carQuestions }, rows: [{ id: 'car', name: 'Importing a car from France to Switzerland', cmp: carSteps.map(st => ({ id: st.id, a: st, b: null, kind: 'same' })) }], answers: {}, previewOn: false, exploreOn: false });
+const mapHtml = element('tree-host').innerHTML;
+const mapWidth = Number(mapHtml.match(/viewBox="0 0 (\d+) /)[1]);
+assert.ok(mapWidth >= 1320, `map should include the last question and branch label, got ${mapWidth}`);
+assert.match(mapHtml, new RegExp(`min-width:${mapWidth}px`));
+assert.match(mapHtml, /aria-label="Importing a car from France to Switzerland"/);
+assert.ok(mapLabelLines('Pay import duties and VAT', 18, 2).length === 2);
+assert.doesNotMatch(html, /\.tree svg\{[^}]*overflow:visible/);
 
 // Follow-up facts stay a visible proposal until the visitor adopts them.
 conn.status = 'ok'; conn.proxyUrl = 'https://example.invalid';
