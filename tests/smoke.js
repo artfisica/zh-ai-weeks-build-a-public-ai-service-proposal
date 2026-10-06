@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 let script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
 script = script.replace('  load(); renderConn(); render();',
-  '  globalThis.__app = {state, conn, validate, sourceBlock, diffBranches, renderStory, doneKey, isDone, converse, applySuggestedStory, storyWithVars, answersFor, scenarioKey, adopt}; load(); renderConn(); render();');
+  '  globalThis.__app = {state, conn, validate, sourceBlock, diffBranches, renderStory, doneKey, isDone, converse, applySuggestedStory, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree}; load(); renderConn(); render();');
 const els = new Map();
 function element(id) {
   if (!els.has(id)) els.set(id, {
@@ -29,7 +29,12 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(script, context);
-const { state, conn, validate, sourceBlock, diffBranches, renderStory, doneKey, isDone, converse, storyWithVars, answersFor, scenarioKey, adopt } = context.__app;
+const { state, conn, validate, sourceBlock, diffBranches, renderStory, doneKey, isDone, converse, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree } = context.__app;
+assert.match(systemPrompt(), /"sources" MUST be an array/);
+assert.doesNotMatch(systemPrompt(), /"source" MUST be one of these catalog ids/);
+assert.match(systemPrompt(), /one to five branches/);
+assert.doesNotMatch(systemPrompt(), /at least 3 branches/);
+assert.match(html, /id="announcer"[^>]+aria-live="polite"/);
 const story = 'I live in Nyon and will move to Saint-Cergue. I hold a B permit.';
 const raw = {
   variables: [{ id: 'commune', value: 'Saint-Cergue', span: 'Saint-Cergue', alternatives: ['Gland'] }],
@@ -40,9 +45,13 @@ const raw = {
   }] }]
 };
 const tree = validate(raw, story);
+const brokenSuffix = JSON.stringify(raw).replace(/}\s*$/, ']}');
+assert.equal(extractJSON(brokenSuffix).truncated, true);
 assert.equal(tree.branches[0].steps[0].sources.length, 1);
 assert.equal(tree.branches[0].steps[0].sources[0].id, 'stcergue-arrival');
 assert.match(sourceBlock(tree.branches[0].steps[0]), /review pending/);
+assert.match(sourceBlock(tree.branches[0].steps[0]), /Unreviewed/);
+assert.match(sourceBlock(tree.branches[0].steps[0]), /Draft · Commune/);
 assert.doesNotMatch(sourceBlock(tree.branches[0].steps[0]), /Checked 25/);
 const a = tree.branches[0].steps[0], b = { ...a, why: 'Another reason' };
 assert.equal(diffBranches([{ id: 'registration', name: 'Registration', steps: [a] }],
@@ -90,9 +99,19 @@ context.fetch = async url => url.endsWith('/chat') ? ({ ok: true, json: async ()
   choices: [{ message: { content: JSON.stringify({ kind: 'fact', story: 'I now rent in Gland.', answer: '', steps: [], not_covered: false }) } }],
   provenance: { provider: 'test', model: 'test' }
 }) }) : ({ ok: false });
-converse('I now rent in Gland.').then(() => {
+converse('I now rent in Gland.').then(async () => {
   assert.equal(state.story, 'I live in Nyon & my child is 8. Saint-Cergue is the destination.');
   assert.equal(state.suggestedStory, 'I now rent in Gland.');
   assert.match(element('story').innerHTML, /Adopt and redraw/);
+  // A malformed first map gets one shorter retry, as in the live Gland fork.
+  let calls = 0;
+  context.fetch = async url => url.endsWith('/chat') ? ({ ok: true, json: async () => ({
+    choices: [{ message: { content: ++calls === 1 ? '{"variables":[]}]' : JSON.stringify(raw) } }],
+    provenance: { provider: 'test', model: 'test' }
+  }) }) : ({ ok: false });
+  const retried = await fetchTree(story + ' retry test', [], {}, tree, { id: 'commune', from: 'Saint-Cergue', to: 'Gland' });
+  assert.equal(calls, 2);
+  assert.equal(retried.branches[0].steps[0].title, 'Register your arrival');
+  assert.equal(retried.incomplete, false);
   console.log('smoke checks passed');
 }).catch(e => { console.error(e); process.exitCode = 1; });

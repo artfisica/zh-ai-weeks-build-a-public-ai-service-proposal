@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F3F1EC; --panel:#FBFAF7; --white:#FFFFFF; --ink:#1B1A17; --muted:#5A5751; --faint:#7A766E;
+    --paper:#F3F1EC; --panel:#FBFAF7; --white:#FFFFFF; --ink:#1B1A17; --muted:#5A5751; --faint:#5A5751;
     --line:#DDD8CC; --accent:#1F4E8C; --accent-soft:#E7EEF8; --accent-mist:#EEF2F8;
     --done:#2E6A4B; --confirm:#8A5300; --serif:'Fraunces',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif;
   }
@@ -102,6 +102,7 @@
   .pill.solid{background:var(--accent);color:var(--white);border-style:solid}
   .head{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .zone{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:10px;background:var(--white);border:1px solid var(--line)}
+  .zone.draft-zone{border-style:dashed}
   .zone.model{background:var(--accent-mist);border:1px dashed #C9D5E8}
   .zone.alt{border:2px dashed var(--accent)}
   .zone.soft{border-style:dashed}
@@ -110,9 +111,12 @@
   .source{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 8px;margin:0 -8px;border-radius:8px;color:var(--ink);text-decoration:none}
   .ref{padding:4px 0;border-top:1px dashed var(--line)} .ref:first-of-type{border-top:none}
   .claim{font-size:13px;line-height:1.45;padding:4px 0 2px}
-  .checked{font-size:11px;color:var(--done)}
+  .checked{font-size:11px;color:var(--muted)}
   .source .link{font-size:13px;text-decoration:underline;text-decoration-color:#B9B3A5}
   .badge{flex-shrink:0;padding:3px 7px;border-radius:4px;color:var(--white);font-size:10px;font-weight:600;letter-spacing:.03em}
+  .badge.draft{color:var(--ink);background:var(--paper);border:1px dashed #8A867C}
+  .draft-title{font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.04em}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .status{display:flex;flex-direction:column;gap:4px;font-size:12px}
   .rv{display:inline-flex;align-items:center;gap:6px;font-weight:500}
   .rv i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0}
@@ -127,6 +131,7 @@
 </style>
 </head>
 <body>
+<div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <header>
   <div class="brand">
     <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#1F4E8C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="3"/><circle cx="21" cy="7" r="3"/><circle cx="14" cy="22" r="3"/><path d="M9 9l5 10M19 9l-5 10"/></svg>
@@ -166,6 +171,7 @@
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const hash = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
   const LV = () => ({ confederation: { name: t('Confédération', 'Confederation'), bg: '#2C3140' }, canton: { name: t('Canton', 'Canton'), bg: '#2E6A4B' }, commune: { name: t('Commune', 'Commune'), bg: '#9A452A' }, other: { name: t('Autre', 'Other'), bg: '#7A766E' } });
+  const draftBadge = level => '<span class="badge draft">' + t('Brouillon · ', 'Draft · ') + esc((LV()[level] || LV().other).name) + '</span>';
 
   // ---- The only place a link can come from. Apertus picks by id; anything else is shown as "no linked page yet". ----
   const CATALOG = [
@@ -244,7 +250,7 @@
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: at least 3 and at most 5 branches, 2 to 3 steps each; a map with fewer than 3 branches is wrong. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
+      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt() +
       '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -296,7 +302,10 @@
       if (ch === '"') { inStr = true; continue; }
       if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
       else if (ch === '}' || ch === ']') {
-        if (stack.pop() !== ch) throw new Error(t('réponse illisible (parenthèses)', 'unreadable answer (brackets)'));
+        if (stack.pop() !== ch) {
+          if (lastValid) return { text: lastValid, truncated: true };
+          throw new Error(t('réponse illisible (parenthèses)', 'unreadable answer (brackets)'));
+        }
         if (!stack.length) return { text: raw.slice(s, i + 1), truncated: false };
         keepIfValid(i + 1);
       } else if (ch === ',') keepIfValid(i);
@@ -308,27 +317,23 @@
   async function fetchTree(story, vars, answers, prev, change) {
     const key = treeKey(story, vars, answers);
     if (state.trees[key]) return state.trees[key];
-    const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: userPrompt(story, vars, answers, prev, change) }], 3000);
-    const raw = res.text.replace(/```json|```/g, '').trim();
-    const ex = extractJSON(raw);
-    let parsed;
-    try { parsed = JSON.parse(ex.text); }
-    catch (e) { throw new Error(t('réponse illisible (', 'unreadable answer (') + (e.message || 'JSON') + ')'); }
-    let tree = validate(parsed, story);
-    if (tree.branches.length < 3 && !ex.truncated) {
-      // thin map: ask once more, naming the gap
+    const prompt = userPrompt(story, vars, answers, prev, change);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const retry = attempt ? '\nYour previous response was not parseable as a complete map. Try again with at most three relevant branches and two steps per branch. Include every required field, valid JSON brackets, and no text outside the object.' : '';
+      const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + retry }], 3000);
       try {
-        const again = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: userPrompt(story, vars, answers, tree, change) + '\nYour previous map had only ' + tree.branches.length + ' branch(es), which is wrong for this situation. Return at least 3 branches from different families, keeping the existing branch and its step ids.' }], 3000);
-        const ex2 = extractJSON(again.text.replace(/```json|```/g, '').trim());
-        const t2 = validate(JSON.parse(ex2.text), story);
-        if (t2.branches.length > tree.branches.length) { tree = t2; res.prov = again.prov; ex.truncated = ex2.truncated; }
-      } catch (e) { /* keep the thin map rather than fail */ }
+        const raw = res.text.replace(/```json|```/g, '').trim();
+        const ex = extractJSON(raw);
+        const tree = validate(JSON.parse(ex.text), story);
+        tree.incomplete = ex.truncated;
+        tree.prov = res.prov; tree.key = key;
+        // An incomplete map must be fetched again when the person presses Redraw.
+        if (!ex.truncated) state.trees[key] = tree;
+        return tree;
+      } catch (e) {
+        if (attempt) throw e;
+      }
     }
-    tree.incomplete = ex.truncated;
-    tree.prov = res.prov; tree.key = key;
-    // An incomplete map must be fetched again when the person presses Redraw.
-    if (!ex.truncated) state.trees[key] = tree;
-    return tree;
   }
 
   // ---- Conversation ----
@@ -564,10 +569,10 @@
     const lv = LV()[st.authority] || LV().other;
     const refs = (st.sources || []).map(r => ({ cat: catalogById(r.id), claim: claimOf(r.id, r.claim) })).filter(r => r.cat);
     if (!refs.length) return '<div class="zone soft"><div class="zone-title">' + t('Aucune page du catalogue reliée pour cette étape', 'No catalogue page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune n’a été sélectionnée pour cette étape. À vérifier auprès de : ', 'The guide links only catalogue pages; none was selected for this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
-    let html = '<div class="zone"><div class="zone-title">' + (refs.length > 1 ? t('Pages du catalogue', 'Catalogue pages') : t('Page du catalogue', 'Catalogue page')) + '</div>';
+    let html = '<div class="zone draft-zone"><div class="zone-title"><span class="draft-title">' + t('Non relu', 'Unreviewed') + '</span> · ' + (refs.length > 1 ? t('Pages proposées du catalogue', 'Suggested catalogue pages') : t('Page proposée du catalogue', 'Suggested catalogue page')) + '</div>';
     refs.forEach(r => {
-      const l = LV()[r.cat.level] || LV().other, exact = r.cat.url.split('/').filter(Boolean).length > 2;
-      html += '<div class="ref"><a class="source" href="' + esc(r.cat.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + l.bg + '">' + esc(l.name) + '</span><span class="link">' + esc(r.cat.title) + '</span></a>';
+      const exact = r.cat.url.split('/').filter(Boolean).length > 2;
+      html += '<div class="ref"><a class="source" href="' + esc(r.cat.url) + '" target="_blank" rel="noopener">' + draftBadge(r.cat.level) + '<span class="link">' + esc(r.cat.title) + '</span></a>';
       if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending') + '</div>';
       else html += '<div class="checked">' + (exact ? t('Page choisie par le modèle ; aucune note du catalogue reliée à cette étape. Vérifiez sur la page.', 'Model-selected page; no catalogue note linked to this step. Check the page.') : t('Site d’entrée ; page précise encore à relier.', 'Entry site; exact page still to be linked.')) + '</div>';
       html += '</div>';
@@ -610,7 +615,7 @@
       html = '<div class="eyebrow">' + t('Votre plan, pour l’instant', 'Your plan so far') + '</div><h2>' + t('Ce que vous savez, ce qu’il reste à demander, où vérifier.', 'What you know, what is still to ask, where to verify.') + '</h2>' +
         '<div class="zone"><div class="zone-title">' + t('Prochaine étape sur chaque piste', 'Next step on each path') + '</div>' + plan.next.map(x => '<div class="small"><b>' + esc(x.branch) + '</b> · ' + esc(x.title) + (x.done ? ' <span class="checked">' + t('(toutes faites)', '(all done)') + '</span>' : '') + '</div>').join('') + '</div>' +
         (plan.open.length ? '<div class="zone soft"><div class="zone-title">' + t('Encore à répondre', 'Still to answer') + '</div>' + plan.open.map(q => '<div class="small">' + esc(q) + '</div>').join('') + '</div>' : '') +
-        '<div class="zone"><div class="zone-title">' + t('Pages à consulter', 'Pages to consult') + '</div>' + (plan.pages.length ? plan.pages.map(c => '<a class="source" href="' + esc(c.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + (LV()[c.level] || LV().other).bg + '">' + esc((LV()[c.level] || LV().other).name) + '</span><span class="link">' + esc(c.title) + '</span></a>').join('') : '<div class="small">' + t('Aucune page reliée pour l’instant.', 'No page linked yet.') + '</div>') + '</div>' +
+        '<div class="zone draft-zone"><div class="zone-title"><span class="draft-title">' + t('Non relu', 'Unreviewed') + '</span> · ' + t('Pages à consulter', 'Pages to consult') + '</div>' + (plan.pages.length ? plan.pages.map(c => '<a class="source" href="' + esc(c.url) + '" target="_blank" rel="noopener">' + draftBadge(c.level) + '<span class="link">' + esc(c.title) + '</span></a>').join('') : '<div class="small">' + t('Aucune page reliée pour l’instant.', 'No page linked yet.') + '</div>') + '</div>' +
         '<div class="row"><button type="button" class="btn" data-action="copy-plan">' + t('Copier le plan', 'Copy the plan') + '</button></div><p class="lead">' + t('Touchez un mot souligné pour proposer un changement, un point pour une étape, un « ? » pour une question.', 'Touch an underlined word to propose a change, a point for a step, a “?” for a question.') + '</p>';
       document.getElementById('detail').innerHTML = html + foot; return;
     }
@@ -629,6 +634,7 @@
 
   function renderConn() {
     const btn = document.getElementById('conn-btn'), label = document.getElementById('conn-label'), panel = document.getElementById('conn-panel');
+    btn.setAttribute('aria-expanded', String(!panel.hidden));
     btn.className = 'conn-btn ' + (conn.status === 'ok' ? 'ok' : conn.status === 'error' ? 'error' : '');
     label.textContent = conn.status === 'ok' ? 'Apertus via ' + conn.prov.provider + (conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') + (conn.prov.processing ? ' · ' + t('traité en ', 'processed in ') + conn.prov.processing : '') : conn.status === 'testing' ? t('Connexion…', 'Connecting…') : conn.status === 'error' ? t('Apertus indisponible pour l’instant', 'Apertus unavailable for now') : t('Apertus non connecté', 'Apertus not connected');
     if (panel.hidden) return;
@@ -641,7 +647,7 @@
     document.getElementById('mode-situation').textContent = t('Ma situation', 'My situation'); document.getElementById('mode-explore').textContent = t('Explorer', 'Explore');
     document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr')); document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
   }
-  function render() { const d = derive(); renderChrome(); document.body.classList.toggle('explore', d.exploreOn); document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn)); document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn)); renderStory(d); renderTree(d); renderDetail(d); }
+  function render() { const d = derive(); renderChrome(); document.body.classList.toggle('explore', d.exploreOn); document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn)); document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn)); renderStory(d); renderTree(d); renderDetail(d); document.getElementById('announcer').textContent = state.loading || state.error || (conn.status === 'error' ? conn.error : ''); }
   async function setLang(l) { LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render(); if (state.story && live()) { set({ loading: t('Apertus traduit la carte…', 'Apertus is translating the map…') }); try { const tree = await fetchTree(state.story, state.vars, state.answers, null, null); set({ tree, prevTree: null, pending: null, sel: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); } catch (e) { set({ loading: '' }); } } }
 
   // ---- Events ----

@@ -13,6 +13,8 @@ Live page: https://artfisica.github.io/zh-ai-weeks-build-a-public-ai-service-pro
 
 For a bounded next step with Public AI and local content owners, see [the six-week pilot proposal](PILOT.md).
 
+The [manual evaluation set](EVALUATION.md) lists ten fictional situations and the failure modes to look for. It has not yet been run against the live model. GitHub Actions checks JavaScript syntax and the local state-machine smoke test on each push; those checks do not validate civic facts or the model's choice of source.
+
 ## The idea
 
 Public services are organised by department. People's lives are not. Someone who moves, retires, renovates a roof or arrives from abroad does not have a department; they have a situation, and the situation touches the commune, the canton and the Confederation at once.
@@ -60,7 +62,11 @@ proxy/start.sh                     runs at Codespace start: starts the proxy, ma
 .devcontainer/devcontainer.json    Codespace definition; lists the secrets the proxy needs
 SPEC.md                            interaction and data model
 DEMO.md                            demo run and fallbacks
+EVALUATION.md                      ten-case manual rehearsal set (results pending)
 PILOT.md                           six-week discovery pilot proposal
+tests/check-inline.js              inline script syntax check
+tests/smoke.js                     state, source and follow-up smoke checks
+.github/workflows/check.yml        syntax and smoke checks on push and PR
 LICENSE / NOTICE                   Apache 2.0 code license and attribution note
 ```
 
