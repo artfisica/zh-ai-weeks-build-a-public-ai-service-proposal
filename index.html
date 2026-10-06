@@ -67,6 +67,10 @@
   .who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
   .who i{width:8px;height:8px;border-radius:50%;background:#B9B3A5;display:inline-block;flex-shrink:0}
   .who.live{color:var(--accent)} .who.live i{background:var(--done)}
+  .chat{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;padding-right:4px}
+  .turn{padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.45}
+  .turn.you{background:var(--white);border:1px solid var(--line);align-self:flex-end;max-width:90%}
+  .turn.guide{background:var(--accent-mist);border:1px dashed #C9D5E8;display:flex;flex-direction:column;gap:6px}
   .ask{display:flex;flex-direction:column;gap:6px}
   .ask textarea{width:100%;min-height:96px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--white);font:inherit;color:var(--ink);resize:vertical}
   .ask .field{display:flex;gap:8px}
@@ -81,6 +85,7 @@
   .tree [data-sel]{cursor:pointer}
   .empty{margin:auto;max-width:640px;display:flex;flex-direction:column;gap:16px;padding:24px}
   .empty h1{margin:0;font-family:var(--serif);font-size:34px;font-weight:500;line-height:1.15}
+  .preview{width:100%;max-width:560px;height:auto;display:block;margin:0 auto 4px}
   .empty p{margin:0;font-size:15px;color:var(--muted)}
   .empty .example{padding:12px 14px;border-radius:10px;border:1px dashed #B9B3A5;background:var(--white);text-align:left;font:inherit;font-family:var(--serif);font-size:16px;line-height:1.45;color:var(--ink)}
   .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(243,241,236,.82);font-family:var(--serif);font-size:20px;color:var(--ink);text-align:center;padding:24px;z-index:2}
@@ -89,7 +94,7 @@
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--white);border:2px solid #8A867C}
   .dot.done{background:var(--done);border-color:var(--done)} .dot.ghost{border-style:dashed} .dot.alt{border-style:dashed;border-color:var(--accent)} .dot.changed{background:var(--accent);border-color:var(--accent)}
-  @media (prefers-reduced-motion:no-preference){.tree path,.tree circle{transition:stroke .25s,fill .25s,stroke-width .25s}.tree path.grow{animation:grow .7s ease-out}@keyframes grow{from{opacity:0}to{opacity:1}}}
+  @media (prefers-reduced-motion:no-preference){.tree path,.tree circle{transition:stroke .25s,fill .25s,stroke-width .25s}.tree path.grow{animation:grow .7s ease-out}@keyframes grow{from{opacity:0}to{opacity:1}}.tree path.draw,.preview path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s cubic-bezier(.4,0,.2,1) forwards}@keyframes draw{to{stroke-dashoffset:0}}}
   .detail{padding:24px;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:14px}
   .detail h2{margin:0;font-family:var(--serif);font-size:20px;font-weight:600;line-height:1.3}
   .detail .lead{font-size:13px;color:var(--muted);margin:0}
@@ -103,6 +108,9 @@
   .zone-title{font-size:12px;color:var(--faint)}
   .zone.model .zone-title{color:var(--accent)}
   .source{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 8px;margin:0 -8px;border-radius:8px;color:var(--ink);text-decoration:none}
+  .ref{padding:4px 0;border-top:1px dashed var(--line)} .ref:first-of-type{border-top:none}
+  .claim{font-size:13px;line-height:1.45;padding:4px 0 2px}
+  .checked{font-size:11px;color:var(--done)}
   .source .link{font-size:13px;text-decoration:underline;text-decoration-color:#B9B3A5}
   .badge{flex-shrink:0;padding:3px 7px;border-radius:4px;color:var(--white);font-size:10px;font-weight:600;letter-spacing:.03em}
   .status{display:flex;flex-direction:column;gap:4px;font-size:12px}
@@ -161,27 +169,46 @@
 
   // ---- The only place a link can come from. Apertus picks by id; anything else is shown as "no linked page yet". ----
   const CATALOG = [
-    { id: 'ch-move', level: 'confederation', url: 'https://ch.ch/fr/annonce-depart-arrivee-commune-de-domicile', title: 'ch.ch — Annoncer son départ et son arrivée', covers: 'moving between communes in Switzerland: deregister, register, deadlines (general)' },
-    { id: 'ch-move-checklist', level: 'confederation', url: 'https://www.ch.ch/fr/checkliste-demenagement', title: 'ch.ch — Aide-mémoire déménagement', covers: 'moving checklist: lease notice, new lease, address changes, insurance, utilities' },
-    { id: 'vd-address', level: 'canton', url: 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', title: 'État de Vaud — Annoncer son changement d’adresse (eDéménagement)', covers: 'Vaud: online change of address, conditions by permit type, list of connected communes' },
-    { id: 'sem-b-eu', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', title: 'SEM — Permis B UE/AELE', covers: 'B permit for EU/EFTA nationals: validity 5 years, conditions' },
-    { id: 'sem-third', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', title: 'SEM — Permis de séjour, ressortissants d’États tiers', covers: 'permits for non-EU nationals: B (1 year renewable), C, L; family reunification' },
-    { id: 'nyon-cdh', level: 'commune', url: 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', title: 'Ville de Nyon — Contrôle des habitants', covers: 'Nyon residents registry: arrival, departure, address change' },
-    { id: 'stcergue-arrival', level: 'commune', url: 'https://www.st-cergue.ch/prestations-communales/113320', title: 'Commune de Saint-Cergue — Arrivée à St-Cergue', covers: 'Saint-Cergue: registering on arrival, documents, deadline' },
-    { id: 'vd-tax-communes', level: 'canton', url: 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', title: 'Statistique Vaud — Arrêtés d’imposition des communes', covers: 'communal tax coefficients of all Vaud communes, by year' },
-    { id: 'vd-vote-directive', level: 'canton', url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf', title: 'État de Vaud — Directive droit de vote communal', covers: 'who may vote at communal level in Vaud, including foreign residents (conditions)' },
-    { id: 'otd', level: 'confederation', url: 'https://opentransportdata.swiss', title: 'Plateforme open data mobilité suisse', covers: 'public transport timetables and stops as open data (not loaded by this page)' },
-    { id: 'mobilis', level: 'canton', url: 'https://www.mobilis-vaud.ch', title: 'Mobilis — Communauté tarifaire vaudoise', covers: 'Vaud public transport fare zones and passes (site root)' },
-    { id: 'vd-root', level: 'canton', url: 'https://www.vd.ch', title: 'État de Vaud (site officiel)', covers: 'any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked' },
-    { id: 'ch-root', level: 'confederation', url: 'https://www.ch.ch', title: 'ch.ch — Les autorités suisses en ligne', covers: 'any federal topic not listed above: work, family, health insurance, taxes; site root' }
+    { id: 'ch-move', level: 'confederation', url: 'https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/', title: 'ch.ch — Annoncer son départ et son arrivée', covers: 'moving between communes in Switzerland: deregister, register; check the local deadline',
+      claims: [{ id: 'c1', text: 'For a move between communes, announce departure to the old commune and arrival to the new one.', fr: 'Lors d’un déménagement entre communes, annoncez le départ à l’ancienne commune et l’arrivée à la nouvelle.' }] },
+    { id: 'ch-move-checklist', level: 'confederation', url: 'https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/', title: 'ch.ch — Aide-mémoire déménagement', covers: 'moving checklist: lease notice, new lease, address changes, insurance, utilities',
+      claims: [{ id: 'c1', text: 'A practical moving checklist includes address changes and arrangements around the lease and utilities.', fr: 'L’aide-mémoire comprend les changements d’adresse et les démarches liées au bail et aux services du logement.' }] },
+    { id: 'vd-address', level: 'canton', url: 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', title: 'État de Vaud — Annoncer son changement d’adresse (eDéménagement)', covers: 'Vaud: online change of address, conditions by permit type, list of connected communes',
+      claims: [{ id: 'c1', text: 'Vaud eDéménagement covers qualifying moves from participating communes; check whether both departure and arrival can be announced online.', fr: 'eDéménagement couvre certains départs de communes participantes ; vérifiez si le départ et l’arrivée peuvent tous deux être annoncés en ligne.' }, { id: 'c2', text: 'Online eligibility differs by nationality and permit type, and arrivals from abroad are excluded.', fr: 'L’accès à la démarche en ligne dépend notamment de la nationalité et du permis ; les arrivées de l’étranger en sont exclues.' }] },
+    { id: 'sem-b-eu', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', title: 'SEM — Permis B UE/AELE', covers: 'B permit for EU/EFTA nationals: validity 5 years, conditions',
+      claims: [{ id: 'c1', text: 'The SEM describes a five-year B permit for EU/EFTA nationals; eligibility conditions include employment or sufficient means for a non-working person.', fr: 'Le SEM décrit le permis B UE/AELE de cinq ans ; les conditions concernent notamment l’emploi ou les moyens suffisants d’une personne sans activité lucrative.' }] },
+    { id: 'sem-third', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', title: 'SEM — Permis de séjour, ressortissants d’États tiers', covers: 'permits for non-EU nationals: B (1 year renewable), C, L; family reunification',
+      claims: [{ id: 'c1', text: 'For non-EU/EFTA nationals, residence conditions depend on the permit and personal situation; consult the SEM page.', fr: 'Pour les ressortissants d’États tiers, les conditions de séjour dépendent du permis et de la situation personnelle ; consultez la page du SEM.' }] },
+    { id: 'nyon-cdh', level: 'commune', url: 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', title: 'Ville de Nyon — Contrôle des habitants', covers: 'Nyon residents registry: arrival, departure, address change',
+      claims: [{ id: 'c1', text: 'The Contrôle des habitants is the municipal point of contact for resident registration in Nyon.', fr: 'Le Contrôle des habitants est le point de contact communal pour l’enregistrement des résidents à Nyon.' }] },
+    { id: 'stcergue-arrival', level: 'commune', url: 'https://www.st-cergue.ch/prestations-communales/113320', title: 'Commune de Saint-Cergue — Arrivée à St-Cergue', covers: 'Saint-Cergue: registering on arrival, documents, deadline',
+      claims: [{ id: 'c1', text: 'Saint-Cergue asks new residents to present themselves at the counter after announcing departure from the previous commune; the documents depend on their situation.', fr: 'Saint-Cergue demande aux nouveaux résidents de se présenter au guichet après l’annonce de départ de l’ancienne commune ; les documents varient selon leur situation.' }] },
+    { id: 'vd-tax-communes', level: 'canton', url: 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', title: 'Statistique Vaud — Arrêtés d’imposition des communes', covers: 'communal tax coefficients of all Vaud communes, by year',
+      claims: [{ id: 'c1', text: 'The canton publishes information on communal finances and tax coefficients; check the relevant year and commune.', fr: 'Le canton publie des informations sur les finances et les coefficients fiscaux communaux ; vérifiez l’année et la commune concernées.' }] },
+    { id: 'vd-vote-directive', level: 'canton', url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf', title: 'État de Vaud — Directive droit de vote communal', covers: 'who may vote at communal level in Vaud, including foreign residents (conditions)',
+      claims: [{ id: 'c1', text: 'The canton sets conditions for foreign residents to vote at communal level; read the directive for the qualifying residence periods.', fr: 'Le canton fixe les conditions du droit de vote communal des résidents étrangers ; consultez la directive pour les durées de résidence requises.' }] },
+    { id: 'otd', level: 'other', url: 'https://opentransportdata.swiss', title: 'Plateforme open data mobilité suisse', covers: 'public transport timetables and stops as open data (not loaded by this page)',
+      claims: [{ id: 'c1', text: 'Swiss public transport timetable data is available through the open transport data platform; this prototype does not load it.', fr: 'Les données d’horaires des transports publics suisses sont disponibles sur la plateforme open data ; ce prototype ne les charge pas.' }] },
+    { id: 'mobilis', level: 'other', url: 'https://www.mobilis-vaud.ch', title: 'Mobilis — Communauté tarifaire vaudoise', covers: 'Vaud public transport fare zones and passes (site root)',
+      claims: [{ id: 'c1', text: 'Mobilis provides fare information for public transport in Vaud; check current zones and prices there.', fr: 'Mobilis fournit les informations tarifaires des transports publics vaudois ; vérifiez les zones et les prix en vigueur.' }] },
+    { id: 'jestime', level: 'other', url: 'https://jestime.ch', title: 'jestime.ch — Estimation anonyme des prestations sociales (HES-SO)', covers: 'anonymous estimate of means-tested social benefits and where to claim them; Vaud now, Geneva from 2027; not an official page',
+      claims: [{ id: 'c1', text: 'An independent tool for exploring potential social benefits in Vaud; this is an estimate, not an eligibility decision.', fr: 'Un outil indépendant pour estimer les prestations sociales possibles dans le canton de Vaud ; il ne décide pas de l’éligibilité.' }] },
+    { id: 'vd-root', level: 'canton', url: 'https://www.vd.ch', title: 'État de Vaud (site officiel)', covers: 'any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked', claims: [] },
+    { id: 'ch-root', level: 'confederation', url: 'https://www.ch.ch', title: 'ch.ch — Les autorités suisses en ligne', covers: 'any federal topic not listed above: work, family, health insurance, taxes; site root', claims: [] }
   ];
   const catalogById = id => CATALOG.find(c => c.id === id) || null;
-  const catalogForPrompt = () => CATALOG.map(c => c.id + ' [' + c.level + '] ' + c.covers).join('\n');
+  const catalogForPrompt = () => CATALOG.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.map(k => k.id + ': ' + k.text).join(' ; ') : '')).join('\n');
+  const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid) || null : null; };
 
   // ---- State ----
-  const state = { mode: 'situation', story: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, tree: null, trees: {}, pending: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false };
-  function load() { try { const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (d && d.story) { state.story = d.story; state.vars = d.vars || []; state.answers = d.answers || {}; state.qtexts = d.qtexts || {}; state.trees = d.trees || {}; state.tree = d.tree || null; state.done = d.done || []; } } catch (e) {} }
-  function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, trees: state.trees, tree: state.tree, done: state.done })); } catch (e) {} }
+  const scenarioKey = vars => hash(JSON.stringify((vars || []).map(v => [v.id, v.value])));
+  const state = { mode: 'situation', story: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
+  const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
+  const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
+  function storyWithVars(story, vars, original) { let result = story; (vars || []).forEach(v => { const was = (original || []).find(x => x.id === v.id); if (!was || was.value === v.value) return; const oldText = was.span || was.value, at = result.toLowerCase().indexOf(oldText.toLowerCase()); if (at >= 0) result = result.slice(0, at) + v.value + result.slice(at + oldText.length); }); return result; }
+  function normalizeTree(tree) { if (tree && Array.isArray(tree.branches)) tree.branches.forEach(b => (b.steps || []).forEach(s => { if (!Array.isArray(s.sources)) s.sources = s.source ? [{ id: s.source, claim: null }] : []; })); return tree; }
+  function load() { try { const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (d && d.story) { state.story = d.story; state.vars = d.vars || []; state.answers = d.answers || {}; state.qtexts = d.qtexts || {}; state.answerSets = d.answerSets || {}; state.turns = d.turns || []; state.trees = d.trees || {}; Object.keys(state.trees).forEach(k => normalizeTree(state.trees[k])); state.tree = normalizeTree(d.tree || null); state.done = (d.done || []).map(x => String(x).includes('|') ? x : doneKey(x)); } } catch (e) {} }
+  function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, answerSets: state.answerSets, trees: state.trees, tree: state.tree, done: state.done, turns: state.turns })); } catch (e) {} }
   const set = (patch, save) => { Object.assign(state, patch); if (save) persist(); render(); };
 
   // ---- Connection (proxy only on the public site) ----
@@ -205,27 +232,27 @@
       if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing ? ' : ' + h.missing.join(', ') : ''));
       if (h.maxTokens === undefined) throw new Error(t('le proxy tourne avec un ancien serveur. Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', 'the proxy is running an old server. In the Codespace: git pull; pkill node; bash proxy/start.sh'));
       if (h.maxTokens && h.maxTokens < 2500) throw new Error(t('le proxy limite les réponses à ', 'the proxy caps answers at ') + h.maxTokens + t(' tokens ; une carte en demande 3000. Dans le Codespace : git pull, puis bash proxy/start.sh', ' tokens; a map needs 3000. In the Codespace: git pull, then bash proxy/start.sh'));
-      conn.prov = { provider: h.provider || 'proxy', model: h.model || '' }; conn.status = 'ok';
+      conn.prov = { provider: h.provider || 'proxy', model: h.model || '', processing: h.processing || '' }; conn.status = 'ok';
     } catch (e) { conn.status = 'error'; conn.error = (e && e.message) || 'failed'; }
     renderConn(); render();
   }
 
   // ---- Asking Apertus for the map ----
-  const SCHEMA = '{"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence or empty","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":["only for choice"]}],"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one or two sentences","depends_on":["variable or question ids"],"source":"catalog id or null","authority":"confederation|canton|commune","confirm_with":"office name or null"}]}],"note":"one sentence to the person"}';
+  const SCHEMA = '{"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence or empty","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":["only for choice"]}],"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one or two sentences","depends_on":["variable or question ids"],"sources":[{"id":"catalog id","claim":"claim id that supports this step, or null"}],"authority":"confederation|canton|commune","confirm_with":"office name or null"}]}],"note":"one sentence to the person"}';
   function systemPrompt() {
     return (LANG === 'en'
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
       '\nRules: at least 3 and at most 5 branches, 2 to 3 steps each; a map with fewer than 3 branches is wrong. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. "source" MUST be one of these catalog ids, chosen because its description covers the step, or null when none fits:\n' + catalogForPrompt() +
-      '\nNever invent a URL. Do not state deadlines, amounts or validity periods unless the chosen catalog entry covers them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
+      '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
     let u = 'Situation: ' + story;
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
-    if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, depends_on: s.depends_on })) })) });
+    if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, depends_on: s.depends_on, sources: s.sources })) })) });
     return u;
   }
   function validate(j, story) {
@@ -240,10 +267,10 @@
     const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => ({
       id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
-      source: catalogById(s.source) ? s.source : null,
-      authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : (catalogById(s.source) ? catalogById(s.source).level : 'other'),
+      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id)).map(r => ({ id: r.id, claim: claimOf(r.id, r.claim) ? r.claim : null })).slice(0, 3),
+      authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : 'other',
       confirm_with: s.confirm_with ? String(s.confirm_with) : null
-    })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
+    })).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
     if (!branches.length) throw new Error(t('aucune piste exploitable dans la réponse', 'no usable branch in the answer'));
     return { variables: vars.filter(grounded), questions: questions.slice(0, 6), branches, note: String(j.note || '') };
   }
@@ -304,11 +331,49 @@
     return tree;
   }
 
+  // ---- Conversation ----
+  function mapForPrompt(tree) {
+    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = claimOf(r.id, r.claim); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in state.answers)).map(q => q.text) });
+  }
+  function followSystem() {
+    return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
+      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"fact|question|both","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","steps":["ids of map steps the answer refers to"],"not_covered":true|false}' +
+      '\nRules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
+  }
+  async function converse(text) {
+    text = text.trim(); if (!text) return;
+    if (!state.tree) { startStory(text); return; }
+    if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
+    const turns = state.turns.concat([{ role: 'you', text }]);
+    set({ turns, loading: t('Apertus lit votre message…', 'Apertus is reading your message…'), error: '' }, true);
+    try {
+      const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + state.story + '\nMap: ' + mapForPrompt(state.tree) + '\nFollow-up: ' + text }], 700);
+      const ex = extractJSON(res.text.replace(/```json|```/g, '').trim()); const j = JSON.parse(ex.text);
+      const answer = String(j.answer || '').trim(), newStory = String(j.story || state.story).trim();
+      const ids = (Array.isArray(j.steps) ? j.steps : []).map(String);
+      let sel = null; const found = []; state.tree.branches.forEach((b, li) => b.steps.forEach(s => { if (ids.includes(s.id)) found.push({ li, id: s.id }); }));
+      if (found.length) sel = { li: found[0].li, id: found[0].id, alt: false };
+      const guide = answer ? [{ role: 'guide', text: answer, steps: found, prov: res.prov, notCovered: !!j.not_covered }] : [];
+      const changed = newStory && newStory !== state.story && (j.kind === 'fact' || j.kind === 'both');
+      set({ turns: turns.concat(guide), sel: sel || state.sel, suggestedStory: changed ? newStory : '', loading: '' }, true);
+    } catch (e) { set({ loading: '', error: (e && e.message) || 'error' }); }
+  }
+
+  async function applySuggestedStory(text) {
+    text = text.trim(); if (!text || text === state.story) { set({ suggestedStory: '' }); return; }
+    const previous = state.tree;
+    set({ loading: t('Apertus redessine votre carte…', 'Apertus is redrawing your map…'), error: '' });
+    try {
+      const tree = await fetchTree(text, [], {}, previous, null);
+      set({ story: text, vars: tree.variables, answers: {}, qtexts: {}, answerSets: {}, tree, prevTree: previous, pending: null, suggestedStory: '', sel: null, done: [], loading: '', note: { text: tree.note, prov: tree.prov } }, true);
+    } catch (e) { set({ loading: '', error: (e && e.message) || 'error' }); }
+  }
+
   // ---- Flows ----
   async function startStory(text) {
     text = text.trim(); if (!text) return;
     if (!live()) { set({ error: t('Apertus n’est pas connecté : la carte ne peut pas être dessinée.', 'Apertus is not connected: the map cannot be drawn.') }); return; }
-    set({ loading: t('Apertus lit votre situation et dessine les pistes… (10 à 30 secondes)', 'Apertus is reading your situation and drawing the paths… (10 to 30 seconds)'), error: '', story: text, vars: [], answers: {}, tree: null, pending: null, prevTree: null, sel: null, done: [], note: null, mode: 'situation', exploreVars: null });
+    set({ loading: t('Apertus lit votre situation et dessine les pistes… (10 à 30 secondes)', 'Apertus is reading your situation and drawing the paths… (10 to 30 seconds)'), error: '', story: text, vars: [], answers: {}, qtexts: {}, answerSets: {}, tree: null, pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, mode: 'situation', exploreVars: null, turns: [], editing: false });
     try {
       const tree = await fetchTree(text, [], {}, null, null);
       set({ tree, vars: tree.variables, loading: '', note: { text: tree.note, prov: tree.prov } }, true);
@@ -321,28 +386,29 @@
     if (state.mode === 'explore') {
       const vars = state.exploreVars.map(x => x.id === varId ? Object.assign({}, x, { value: to }) : x);
       set({ loading: t('Apertus redessine l’hypothèse…', 'Apertus is redrawing the hypothesis…'), error: '', sel: null });
-      try { const tree = await fetchTree(state.story, vars, state.answers, state.tree, { id: varId, from: v.value, to }); set({ exploreVars: vars, exploreTree: tree, loading: '' }); }
+      try { const tree = await fetchTree(state.story, vars, answersFor(vars), state.tree, { id: varId, from: v.value, to }); set({ exploreVars: vars, exploreTree: tree, loading: '' }); }
       catch (e) { set({ loading: '', error: e.message || 'error' }); }
       return;
     }
     const vars = state.vars.map(x => x.id === varId ? Object.assign({}, x, { value: to }) : x);
     set({ loading: t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'), error: '', sel: null, touched: true });
-    try { const cand = await fetchTree(state.story, vars, state.answers, state.tree, { id: varId, from: v.value, to }); set({ pending: { id: varId, from: v.value, to, vars, tree: cand }, loading: '' }, true); }
+    try { const cand = await fetchTree(state.story, vars, answersFor(vars), state.tree, { id: varId, from: v.value, to }); set({ pending: { id: varId, from: v.value, to, vars, tree: cand }, loading: '' }, true); }
     catch (e) { set({ loading: '', error: e.message || 'error' }); }
   }
-  function adopt() { const p = state.pending; if (!p) return; set({ prevTree: state.tree, tree: p.tree, vars: p.vars, pending: null, sel: null, note: { text: p.tree.note, prov: p.tree.prov } }, true); }
+  function adopt() { const p = state.pending; if (!p) return; const next = state.answerSets[scenarioKey(p.vars)] || { answers: {}, qtexts: {} }; const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers: state.answers, qtexts: state.qtexts } }); const story = storyWithVars(state.story, p.vars, state.vars); const vars = p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v); set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets, pending: null, sel: null, note: { text: p.tree.note, prov: p.tree.prov } }, true); }
   function keep() { set({ pending: null, sel: null }); }
   async function answer(qid, value) {
+    if (state.mode === 'explore') { set({ error: t('Revenez à votre situation pour répondre ; l’hypothèse reste sans effet sur votre carte enregistrée.', 'Return to your situation to answer; the hypothesis does not change your saved map.') }); return; }
     value = String(value).trim(); if (!value) return;
     const answers = Object.assign({}, state.answers); answers[qid] = value;
     const qq = state.tree && state.tree.questions.find(x => x.id === qid); if (qq) state.qtexts[qid] = qq.text;
     set({ loading: t('Apertus fait pousser la branche…', 'Apertus is growing the branch…'), error: '', sel: null });
-    try { const tree = await fetchTree(state.story, state.vars, answers, state.tree, null); set({ prevTree: state.tree, tree, answers, loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
+    try { const tree = await fetchTree(state.story, state.vars, answers, state.tree, null); set({ prevTree: state.tree, tree, answers, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers, qtexts: state.qtexts } }), loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
     catch (e) { set({ loading: '', error: e.message || 'error' }); }
   }
 
   // ---- Diff by id ----
-  const same = (a, b) => a.title === b.title && a.source === b.source;
+  const same = (a, b) => a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && JSON.stringify(a.sources || []) === JSON.stringify(b.sources || []);
   function diffBranches(A, B) {
     const ids = A.map(b => b.id); B.forEach((b, i) => { if (!ids.includes(b.id)) ids.splice(Math.min(i, ids.length), 0, b.id); });
     return ids.map(id => {
@@ -361,9 +427,11 @@
     if (previewOn) rows = diffBranches(tree.branches, s.pending.tree.branches);
     else if (!exploreOn && s.prevTree) rows = diffBranches(s.prevTree.branches, tree.branches).filter(r => !r.removed).map(r => ({ id: r.id, name: r.name, cmp: r.cmp.filter(c => c.kind !== 'removed').map(c => ({ id: c.id, a: c.b, b: null, kind: c.kind === 'same' ? 'same' : 'applied-' + c.kind })) }));
     else rows = tree.branches.map(b => ({ id: b.id, name: b.name, cmp: b.steps.map(st => ({ id: st.id, a: st, b: null, kind: 'same' })) }));
-    return { exploreOn, tree, rows, previewOn };
+    return { exploreOn, tree, rows, previewOn, answers: exploreOn ? answersFor(s.exploreVars || s.vars) : s.answers, qtexts: exploreOn ? qtextsFor(s.exploreVars || s.vars) : s.qtexts };
   }
-  const isDone = id => state.done.includes(id);
+  const doneKey = (id, vars = currentVars(), answers = answersFor(vars)) => id + '|' + hash(JSON.stringify((vars || []).map(v => [v.id, v.value])) + JSON.stringify(answers || {}));
+  const isDone = id => state.done.includes(doneKey(id));
+  let lastDrawn = null;
 
   // ---- Story panel ----
   function renderStory(d) {
@@ -376,19 +444,24 @@
     document.getElementById('story').className = 'story';
     html += '<div class="eyebrow story-label">' + (d.exploreOn ? t('Hypothèse, non enregistrée', 'Hypothesis, not saved') : t('Votre situation', 'Your situation')) + '</div>';
     // the sentence as written, with the variables Apertus found underlined where they appear
-    let sentence = esc(s.story), placed = [];
+    const occupied = [];
+    const placements = [];
     vars.forEach(v => {
       const cls = (d.previewOn && s.pending.id === v.id) ? 'pending' : (d.exploreOn && s.vars.find(o => o.id === v.id && o.value !== v.value)) ? 'hyp' : (!d.exploreOn && s.prevTree && s.trees && vars !== s.vars) ? '' : '';
       const label = (d.previewOn && s.pending.id === v.id) ? esc(v.value) + ' → ' + esc(s.pending.to) + ' ?' : esc(v.value);
       const btn = '<button type="button" class="word ' + cls + '" data-var="' + esc(v.id) + '" title="' + esc(v.label) + '">' + label + '</button>';
-      const span = esc(v.span || v.value);
-      const idx = span ? sentence.toLowerCase().indexOf(span.toLowerCase()) : -1;
-      if (idx >= 0 && !placed.some(p => idx < p[1] && idx + span.length > p[0])) { sentence = sentence.slice(0, idx) + btn + sentence.slice(idx + span.length); placed.push([idx, idx + btn.length]); v._placed = true; } else v._placed = false;
+      const span = v.span || v.value;
+      const idx = span ? s.story.toLowerCase().indexOf(span.toLowerCase()) : -1;
+      if (idx >= 0 && !occupied.some(p => idx < p[1] && idx + span.length > p[0])) { occupied.push([idx, idx + span.length]); placements.push({ start: idx, end: idx + span.length, html: btn }); v._placed = true; } else v._placed = false;
     });
+    placements.sort((a, b) => a.start - b.start);
+    let sentence = '', cursor = 0;
+    placements.forEach(p => { sentence += esc(s.story.slice(cursor, p.start)) + p.html; cursor = p.end; });
+    sentence += esc(s.story.slice(cursor));
     html += '<p class="sentence">' + sentence + '</p>';
     const loose = vars.filter(v => !v._placed);
     if (loose.length) html += '<div class="chips">' + loose.map(v => '<button type="button" class="word chip" data-var="' + esc(v.id) + '">' + esc(v.label) + ' : ' + esc(v.value) + '</button>').join('') + '</div>';
-    const qa = Object.keys(s.answers).map(q => { const qq = d.tree && d.tree.questions.find(x => x.id === q); return '<b>' + esc(qq ? qq.text : (s.qtexts[q] || q)) + '</b> ' + esc(s.answers[q]); });
+    const qa = Object.keys(d.answers || {}).map(q => { const qq = d.tree && d.tree.questions.find(x => x.id === q); return '<b>' + esc(qq ? qq.text : (d.qtexts[q] || q)) + '</b> ' + esc(d.answers[q]); });
     if (qa.length) html += '<p class="answered">' + qa.join(' · ') + '</p>';
     html += '<div class="hint">' + (d.exploreOn ? t('Ici, changer un mot souligné redessine sans enregistrer.', 'Here, changing an underlined word redraws without saving.') : t('Les mots soulignés sont ce qu’Apertus a compris comme vos réponses. Touchez-en un pour proposer une autre valeur.', 'The underlined words are what Apertus understood as your answers. Touch one to propose another value.')) + '</div>';
     if (d.previewOn) {
@@ -400,7 +473,11 @@
     html += '<div class="spacer"></div>' + (note ? '<div class="note"><div class="who live"><i></i>' + esc(provLabel(note.prov)) + '</div><div>' + esc(note.text) + '</div></div>' : '');
     if (d.tree && d.tree.incomplete) html += '<div class="err">' + t('Réponse coupée : la carte est incomplète. Cliquez sur Redessiner pour réessayer.', 'Answer cut off: the map is incomplete. Click Redraw to try again.') + '</div>';
     if (s.error) html += '<div class="err">' + esc(s.error) + '</div>';
-    html += '<form class="ask" data-story-form><label for="ask" class="hint">' + t('Corriger ou compléter votre situation (redessine la carte)', 'Correct or complete your situation (redraws the map)') + '</label><div class="field"><input id="ask" name="text" type="text" value="' + esc(s.story) + '"' + (live() ? '' : ' disabled') + '><button type="submit"' + (live() ? '' : ' disabled') + '>' + t('Redessiner', 'Redraw') + '</button></div></form>';
+    const turns = s.turns.slice(-6);
+    if (turns.length) html += '<div class="chat">' + turns.map(u => u.role === 'you' ? '<div class="turn you">' + esc(u.text) + '</div>' : '<div class="turn guide"><div class="who live"><i></i>' + esc(provLabel(u.prov)) + (u.notCovered ? ' · ' + t('non couvert', 'not covered') : '') + '</div><div>' + esc(u.text) + '</div><div class="small">' + t('Réponse proposée par le modèle : vérifiez le point et sa page avant d’agir.', 'Model suggestion: check the step and its page before acting.') + '</div>' + ((u.steps || []).length ? '<div class="chips">' + u.steps.map(x => { const b = d.tree && d.tree.branches[x.li]; const st = b && b.steps.find(y => y.id === x.id); return st ? '<button type="button" class="chip" data-sel="' + x.li + '|' + esc(x.id) + '|0">' + esc(st.short) + '</button>' : ''; }).join('') + '</div>' : '') + '</div>').join('') + '</div>';
+    if (s.suggestedStory) html += '<form class="ask" data-suggest-form><label for="suggest" class="hint">' + t('Apertus propose cette nouvelle phrase. Relisez-la ou corrigez-la avant de redessiner.', 'Apertus suggests this new sentence. Review or edit it before redrawing.') + '</label><div class="field"><input id="suggest" name="text" type="text" value="' + esc(s.suggestedStory) + '"><button type="submit">' + t('Adopter et redessiner', 'Adopt and redraw') + '</button><button type="button" data-action="dismiss-suggestion">' + t('Ignorer', 'Dismiss') + '</button></div></form>';
+    html += '<form class="ask" data-converse-form><label for="ask" class="hint">' + t('Ajoutez un fait ou posez une question sur la carte', 'Add a fact or ask about the map') + '</label><div class="field"><input id="ask" name="text" type="text" autocomplete="off" placeholder="' + t('Je travaille aussi à Genève… / Que dois-je apporter ?', 'I also work in Geneva… / What do I bring?') + '"' + (live() ? '' : ' disabled') + '><button type="submit"' + (live() ? '' : ' disabled') + ' aria-label="' + t('Envoyer', 'Send') + '">→</button></div></form>';
+    html += s.editing ? '<form class="ask" data-story-form><label for="edit" class="hint">' + t('Réécrire la phrase (redessine la carte)', 'Rewrite the sentence (redraws the map)') + '</label><div class="field"><input id="edit" name="text" type="text" value="' + esc(s.story) + '"><button type="submit">' + t('Redessiner', 'Redraw') + '</button></div></form>' : '<button type="button" class="link-btn" data-action="edit-story" style="align-self:flex-start">' + t('Réécrire la phrase', 'Rewrite the sentence') + '</button>';
     document.getElementById('story').innerHTML = html;
   }
   function count(d) { const c = { changed: 0, added: 0, removed: 0, same: 0 }; d.rows.forEach(r => r.cmp.forEach(x => { c[x.kind === 'same' ? 'same' : x.kind]++; })); return c; }
@@ -410,7 +487,8 @@
     const host = document.getElementById('tree-host'), s = state;
     let overlay = s.loading ? '<div class="loading">' + esc(s.loading) + '</div>' : '';
     if (!d.tree) {
-      host.innerHTML = overlay + '<div class="empty"><h1>' + t('Racontez votre situation. La carte se dessine.', 'Tell your situation. The map draws itself.') + '</h1><p>' + t('Une ou deux phrases suffisent : où vous vivez, ce qui change, qui vit avec vous, votre permis si vous en avez un. Apertus ouvre les pistes ; chaque étape indique la page officielle où vérifier, ou dit qu’il n’y en a pas encore.', 'One or two sentences are enough: where you live, what is changing, who lives with you, your permit if you have one. Apertus opens the paths; each step names the official page to check, or says there is none yet.') + '</p>' +
+      const preview = '<svg class="preview" viewBox="0 0 640 200" aria-hidden="true"><path d="M 30 100 C 110 100, 110 40, 190 40 L 330 40 C 400 40, 420 40, 520 40" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1"/><path d="M 30 100 L 190 100 L 330 100 L 520 100" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1" style="animation-delay:.15s"/><path d="M 30 100 C 110 100, 110 160, 190 160 L 330 160 L 520 160" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1" style="animation-delay:.3s"/><path d="M 190 100 C 240 100, 240 135, 330 135 L 520 135" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="6 6" pathLength="1" style="animation-delay:.9s"/><circle cx="30" cy="100" r="11" fill="#1B1A17"/><circle cx="30" cy="100" r="4" fill="#fff"/>' + [[190,40,'#9A452A'],[330,40,'#2E6A4B'],[520,40,'#2C3140'],[190,100,'#9A452A'],[330,100,'#9A452A'],[520,100,'#2E6A4B'],[190,160,'#2E6A4B'],[330,160,'#2C3140']].map(c => '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="#fff" stroke="' + c[2] + '" stroke-width="2.5"/>').join('') + '<circle cx="330" cy="135" r="8" fill="#fff" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><circle cx="520" cy="135" r="8" fill="#fff" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><text x="560" y="44" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('Permis', 'Permit') + '</text><text x="560" y="104" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('École', 'School') + '</text><text x="560" y="139" font-size="12" fill="' + ACCENT + '" font-family="Fraunces,serif">' + t('et si… ?', 'what if…?') + '</text><text x="560" y="164" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('Logement', 'Housing') + '</text></svg>';
+      host.innerHTML = overlay + '<div class="empty">' + preview + '<h1>' + t('Qu’est-ce qui change dans votre vie ?', 'What is changing in your life?') + '</h1><p>' + t('Une ou deux phrases suffisent : où vous vivez, ce qui change, qui vit avec vous, votre permis si vous en avez un. Apertus ouvre les pistes ; chaque étape propose une page du catalogue où vérifier, ou signale qu’aucune page n’est reliée.', 'One or two sentences are enough: where you live, what is changing, who lives with you, your permit if you have one. Apertus opens the paths; each step suggests a catalogue page to check, or says none is linked.') + '</p>' +
         '<form class="ask" data-start-form><textarea name="text" placeholder="' + t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.') + '"' + (live() ? '' : ' disabled') + '></textarea><div class="field"><span class="spacer"></span><button type="submit"' + (live() ? '' : ' disabled') + '>' + t('Dessiner ma carte', 'Draw my map') + '</button></div></form>' +
         '<div class="hint">' + t('Ou partez d’un exemple :', 'Or start from an example:') + '</div>' +
         '<button type="button" class="example" data-example="' + esc(t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.')) + '">' + t('Une famille de Nyon pense à Saint-Cergue', 'A Nyon family thinks about Saint-Cergue') + '</button>' +
@@ -419,7 +497,7 @@
       document.getElementById('legend').hidden = true; return;
     }
     const rows = d.rows, n = rows.length;
-    const qsOpen = (d.tree.questions || []).filter(q => !(q.id in s.answers));
+    const qsOpen = (d.tree.questions || []).filter(q => !(q.id in (d.answers || {})));
     const GAP = 170, YS = rows.map((_, i) => 110 + i * GAP), lastRowY = YS[n - 1];
     const H = lastRowY + 90 + (qsOpen.length ? 110 : 0), QY = lastRowY + 140;
     const ROOT = { x: 36, y: (YS[0] + lastRowY) / 2 }, X0 = 170, XSTEP = 165;
@@ -433,7 +511,8 @@
       const mainPts = row.cmp.map((c, i) => c.kind === 'added' ? null : pts[i]).filter(Boolean);
       const affected = row.cmp.some(c => ['changed', 'added', 'removed'].includes(c.kind)), applied = row.cmp.some(c => c.kind.indexOf('applied-') === 0);
       out += '<g data-lane="' + esc(row.id) + '">';
-      if (mainPts.length) out += '<path d="' + pathThrough(ROOT, mainPts, X0 + (m - 1) * XSTEP + 40) + '" fill="none" stroke="' + (hl ? '#1B1A17' : (d.exploreOn ? '#8FA8CC' : '#C9C2B2')) + '" stroke-width="' + (hl ? 3 : 2.5) + '" stroke-linecap="round"' + (d.exploreOn ? ' stroke-dasharray="10 6"' : '') + '/>';
+      const fresh = d.tree.key !== lastDrawn;
+      if (mainPts.length) out += '<path' + (fresh ? ' class="draw" pathLength="1" style="animation-delay:' + (li * 0.12) + 's"' : '') + ' d="' + pathThrough(ROOT, mainPts, X0 + (m - 1) * XSTEP + 40) + '" fill="none" stroke="' + (hl ? '#1B1A17' : (d.exploreOn ? '#8FA8CC' : '#C9C2B2')) + '" stroke-width="' + (hl ? 3 : 2.5) + '" stroke-linecap="round"' + (d.exploreOn ? ' stroke-dasharray="10 6"' : '') + '/>';
       if (affected) {
         const first = row.cmp.findIndex(c => c.kind !== 'same'); const start = first <= 0 ? ROOT : pts[first - 1]; const route = [];
         for (let i = Math.max(0, first); i < m; i++) { const k = row.cmp[i].kind; if (k === 'removed') continue; route.push({ x: pts[i].x, y: k === 'same' ? pts[i].y : pts[i].y + 48 }); }
@@ -451,7 +530,8 @@
           out += '<g data-sel="' + li + '|' + esc(c.id) + '|0" tabindex="0" role="button" aria-label="' + esc(st.title) + '"' + (removed ? ' opacity="0.55"' : '') + '>';
           if (selected) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="19" fill="none" stroke="#1B1A17" stroke-width="1.5" stroke-dasharray="3 3"/>';
           if (k === 'changed' || removed) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="' + ACCENT + '" opacity="0.14"/>';
-          out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + (changed ? ACCENT : done ? '#2E6A4B' : '#FFFFFF') + '" stroke="' + (changed ? '#FFFFFF' : done ? '#2E6A4B' : '#8A867C') + '" stroke-width="' + (changed ? 3 : 2) + '"/>';
+          const ring = (LV()[st.authority] || LV().other).bg;
+          out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + (changed ? ACCENT : done ? '#2E6A4B' : '#FFFFFF') + '" stroke="' + (changed ? '#FFFFFF' : done ? '#2E6A4B' : ring) + '" stroke-width="' + (changed ? 3 : 2.5) + '"/>';
           if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
           out += '<text x="' + p.x + '" y="' + (p.y - 17) + '" text-anchor="middle" font-size="12" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : '') + '>' + esc(st.short.length > 26 ? st.short.slice(0, 25) + '…' : st.short) + '</text>';
           const sub = k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
@@ -473,24 +553,47 @@
     }
     out += '<circle cx="36" cy="' + ROOT.y + '" r="17" fill="#1B1A17"/><circle cx="36" cy="' + ROOT.y + '" r="6" fill="#FFFFFF"/><text x="36" y="' + (ROOT.y + 38) + '" text-anchor="middle" font-size="10" fill="#5A5751">' + t('Vous', 'You') + '</text>';
     host.innerHTML = overlay + '<svg viewBox="0 0 900 ' + H + '" aria-label="' + t('Carte des pistes', 'Map of paths') + '">' + out + '</svg>';
-    const lg = document.getElementById('legend'); lg.hidden = !(d.previewOn || s.prevTree || d.exploreOn);
-    lg.innerHTML = '<span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot"></i>' + t('Étape', 'Step') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';
+    lastDrawn = d.tree.key;
+    const lg = document.getElementById('legend'); lg.hidden = false;
+    lg.innerHTML = '<span><i class="dot" style="border-color:#9A452A"></i>' + t('Commune', 'Commune') + '</span><span><i class="dot" style="border-color:#2E6A4B"></i>' + t('Canton', 'Canton') + '</span><span><i class="dot" style="border-color:#2C3140"></i>' + t('Confédération', 'Confederation') + '</span><span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';
   }
 
   // ---- Detail ----
+  function fmtDate(d) { if (!d) return ''; const [y, m, dd] = d.split('-'); return LANG === 'en' ? Number(dd) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m) - 1] + ' ' + y : Number(dd) + ' ' + ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'][Number(m) - 1] + ' ' + y; }
   function sourceBlock(st) {
-    const cat = catalogById(st.source), lv = LV()[st.authority] || LV().other;
-    if (!cat) return '<div class="zone soft"><div class="zone-title">' + t('Aucune page officielle reliée pour cette étape', 'No official page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune ne couvre cette étape. À vérifier auprès de : ', 'The guide only links pages from its catalogue; none covers this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
-    const exact = cat.url.split('/').filter(Boolean).length > 2;
-    return '<div class="zone' + (exact ? '' : ' soft') + '"><div class="zone-title">' + (exact ? t('Ce que la source établit', 'What the source establishes') : t('Où vérifier — site officiel, page précise à relier', 'Where to check — official site, exact page still to be linked')) + '</div><a class="source" href="' + esc(cat.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + (LV()[cat.level] || lv).bg + '">' + esc((LV()[cat.level] || lv).name) + '</span><span class="link">' + esc(cat.title) + '</span></a><div class="status"><span class="rv" style="color:' + (cat.level === 'commune' ? '#7A766E' : ACCENT) + '"><i></i>' + (cat.level === 'commune' ? t('Page officielle reliée ; relecture communale en attente', 'Official page linked; commune review pending') : t('Source officielle (fédérale ou cantonale)', 'Official source (federal or cantonal)')) + '</span>' + (st.confirm_with ? '<span class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(st.confirm_with) + '</b></span>' : '') + '</div></div>';
+    const lv = LV()[st.authority] || LV().other;
+    const refs = (st.sources || []).map(r => ({ cat: catalogById(r.id), claim: claimOf(r.id, r.claim) })).filter(r => r.cat);
+    if (!refs.length) return '<div class="zone soft"><div class="zone-title">' + t('Aucune page du catalogue reliée pour cette étape', 'No catalogue page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune n’a été sélectionnée pour cette étape. À vérifier auprès de : ', 'The guide links only catalogue pages; none was selected for this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
+    let html = '<div class="zone"><div class="zone-title">' + (refs.length > 1 ? t('Pages du catalogue', 'Catalogue pages') : t('Page du catalogue', 'Catalogue page')) + '</div>';
+    refs.forEach(r => {
+      const l = LV()[r.cat.level] || LV().other, exact = r.cat.url.split('/').filter(Boolean).length > 2;
+      html += '<div class="ref"><a class="source" href="' + esc(r.cat.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + l.bg + '">' + esc(l.name) + '</span><span class="link">' + esc(r.cat.title) + '</span></a>';
+      if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending') + '</div>';
+      else html += '<div class="checked">' + (exact ? t('Page choisie par le modèle ; aucune note du catalogue reliée à cette étape. Vérifiez sur la page.', 'Model-selected page; no catalogue note linked to this step. Check the page.') : t('Site d’entrée ; page précise encore à relier.', 'Entry site; exact page still to be linked.')) + '</div>';
+      html += '</div>';
+    });
+    if (st.confirm_with) html += '<div class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(st.confirm_with) + '</b></div>';
+    return html + '</div>';
+  }
+
+  function buildPlan(d) {
+    const next = d.tree.branches.map(b => { const nx = b.steps.find(s => !isDone(s.id)); return { branch: b.name, title: nx ? nx.title : b.steps[b.steps.length - 1].title, done: !nx }; });
+    const open = (d.tree.questions || []).filter(q => !(q.id in (d.answers || {}))).map(q => q.text);
+    const seen = {}, pages = []; d.tree.branches.forEach(b => b.steps.forEach(s => (s.sources || []).forEach(r => { const c = catalogById(r.id); if (c && !seen[c.id]) { seen[c.id] = 1; pages.push(c); } })));
+    return { next, open, pages };
+  }
+  function planText(d) {
+    const p = buildPlan(d);
+    return [t('Ma situation : ', 'My situation: ') + (d.exploreOn ? storyWithVars(state.story, state.exploreVars, state.vars) : state.story), '', t('Prochaines étapes proposées', 'Suggested next steps')].concat(p.next.map(x => '- ' + x.branch + ': ' + x.title)).concat(p.open.length ? ['', t('Encore à répondre', 'Still to answer')].concat(p.open.map(q => '- ' + q)) : []).concat(['', t('Pages à consulter', 'Pages to consult')]).concat(p.pages.map(c => '- ' + c.title + ' — ' + c.url)).concat(['', t('Carte dessinée par Apertus ; aucune commune n’a relu. Vérifiez sur les pages avant d’agir.', 'Map drawn by Apertus; no commune has reviewed it. Verify on the pages before acting.')]).join('\n');
   }
   function renderDetail(d) {
-    const s = state, foot = '<div class="foot"><span><i style="background:#1F4E8C"></i>' + t('Les liens viennent d’un catalogue de pages officielles (ch.ch, sem.admin.ch, vd.ch, nyon.ch, st-cergue.ch). Apertus choisit dans ce catalogue, il n’invente aucun lien.', 'Links come from a catalogue of official pages (ch.ch, sem.admin.ch, vd.ch, nyon.ch, st-cergue.ch). Apertus chooses from it; it invents no link.') + '</span><span><i style="background:#7A766E"></i>' + t('Aucune commune n’a encore relu le contenu.', 'No commune has reviewed the content yet.') + '</span><span><i style="background:#2E6A4B"></i>' + t('Les étapes et leurs explications sont écrites par Apertus ; vérifiez sur la page reliée avant d’agir.', 'Steps and explanations are written by Apertus; verify on the linked page before acting.') + '</span></div>';
+    const s = state, foot = '<div class="foot"><span><i style="background:#1F4E8C"></i>' + t('Les liens viennent d’un catalogue limité de pages publiques et de l’outil indépendant jestime.ch. Apertus choisit un identifiant ; il ne peut pas inventer d’URL.', 'Links come from a limited catalogue of public pages and the independent jestime.ch tool. Apertus chooses an id; it cannot invent a URL.') + '</span><span><i style="background:#7A766E"></i>' + t('Les notes du catalogue et les correspondances entre étapes et pages attendent une relecture ; aucune commune n’a encore relu le contenu.', 'Catalogue notes and matches between steps and pages await review; no commune has reviewed the content yet.') + '</span><span><i style="background:#2E6A4B"></i>' + t('Les étapes et leurs explications sont écrites par Apertus ; vérifiez sur la page reliée avant d’agir.', 'Steps and explanations are written by Apertus; verify on the linked page before acting.') + '</span></div>';
     let html = '';
-    if (!d.tree) { html = '<div class="eyebrow">' + t('Comment ça marche', 'How it works') + '</div><h2>' + t('Vous racontez. Apertus dessine. Vous changez un mot.', 'You tell. Apertus draws. You change a word.') + '</h2><p class="lead">' + t('La carte montre des pistes parallèles. Chaque point est une étape avec sa page officielle. Touchez un mot souligné de votre phrase pour voir, en pointillé, ce qui changerait avant de décider.', 'The map shows parallel paths. Each point is a step with its official page. Touch an underlined word in your sentence to see, dashed, what would change before you decide.') + '</p>'; document.getElementById('detail').innerHTML = html + foot; return; }
+    if (!d.tree) { html = '<div class="eyebrow">' + t('Comment ça marche', 'How it works') + '</div><h2>' + t('Vous racontez. Apertus dessine. Vous changez un mot.', 'You tell. Apertus draws. You change a word.') + '</h2><p class="lead">' + t('La carte montre des pistes parallèles. Chaque point est une étape avec une page suggérée du catalogue, ou une lacune explicite. Touchez un mot souligné pour voir, en pointillé, ce qui changerait avant de décider.', 'The map shows parallel paths. Each point is a step with a suggested catalogue page, or an explicit gap. Touch an underlined word to see, dashed, what would change before deciding.') + '</p>'; document.getElementById('detail').innerHTML = html + foot; return; }
     if (s.sel && s.sel.q) {
       const q = d.tree.questions.find(x => x.id === s.sel.q);
       if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div></div>';
+        if (d.exploreOn) { document.getElementById('detail').innerHTML = html + '<div class="small">' + t('Dans Explorer, cette question reste une hypothèse. Revenez à votre situation pour y répondre.', 'In Explore, this question stays hypothetical. Return to your situation to answer it.') + '</div>' + foot; return; }
         if (q.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
         else if (q.type === 'choice') html += '<div class="row">' + q.options.map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
         else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
@@ -503,7 +606,12 @@
     }
     const row = s.sel && d.rows[s.sel.li], cmp = row && row.cmp.find(c => c.id === s.sel.id);
     if (!cmp) {
-      html = '<div class="eyebrow">' + t('Commencer ici', 'Start here') + '</div><h2>' + t('Touchez un mot souligné, ou un point.', 'Touch an underlined word, or a point.') + '</h2><p class="lead">' + t('Un mot souligné : Apertus propose une autre valeur et dessine, en pointillé, ce qui changerait. Un point : l’étape, sa page officielle, et qui peut la confirmer. Un « ? » sous l’arbre : une question dont la réponse ferait pousser une branche.', 'An underlined word: Apertus proposes another value and draws, dashed, what would change. A point: the step, its official page, and who can confirm it. A “?” under the tree: a question whose answer would grow a branch.') + '</p>';
+      const plan = buildPlan(d);
+      html = '<div class="eyebrow">' + t('Votre plan, pour l’instant', 'Your plan so far') + '</div><h2>' + t('Ce que vous savez, ce qu’il reste à demander, où vérifier.', 'What you know, what is still to ask, where to verify.') + '</h2>' +
+        '<div class="zone"><div class="zone-title">' + t('Prochaine étape sur chaque piste', 'Next step on each path') + '</div>' + plan.next.map(x => '<div class="small"><b>' + esc(x.branch) + '</b> · ' + esc(x.title) + (x.done ? ' <span class="checked">' + t('(toutes faites)', '(all done)') + '</span>' : '') + '</div>').join('') + '</div>' +
+        (plan.open.length ? '<div class="zone soft"><div class="zone-title">' + t('Encore à répondre', 'Still to answer') + '</div>' + plan.open.map(q => '<div class="small">' + esc(q) + '</div>').join('') + '</div>' : '') +
+        '<div class="zone"><div class="zone-title">' + t('Pages à consulter', 'Pages to consult') + '</div>' + (plan.pages.length ? plan.pages.map(c => '<a class="source" href="' + esc(c.url) + '" target="_blank" rel="noopener"><span class="badge" style="background:' + (LV()[c.level] || LV().other).bg + '">' + esc((LV()[c.level] || LV().other).name) + '</span><span class="link">' + esc(c.title) + '</span></a>').join('') : '<div class="small">' + t('Aucune page reliée pour l’instant.', 'No page linked yet.') + '</div>') + '</div>' +
+        '<div class="row"><button type="button" class="btn" data-action="copy-plan">' + t('Copier le plan', 'Copy the plan') + '</button></div><p class="lead">' + t('Touchez un mot souligné pour proposer un changement, un point pour une étape, un « ? » pour une question.', 'Touch an underlined word to propose a change, a point for a step, a “?” for a question.') + '</p>';
       document.getElementById('detail').innerHTML = html + foot; return;
     }
     const k = cmp.kind, viewingAlt = !!(s.sel.alt && cmp.b), st = viewingAlt ? cmp.b : cmp.a, other = viewingAlt ? cmp.a : (d.previewOn ? cmp.b : null);
@@ -511,7 +619,7 @@
     const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? t('Apparaîtrait', 'Would appear') : t('Proposée', 'Proposed')) + '</span>' : k === 'applied-changed' ? '<span class="pill solid">' + t('Modifiée', 'Modified') + '</span>' : k === 'applied-added' ? '<span class="pill solid">' + t('Ajoutée', 'Added') + '</span>' : k === 'changed' ? '<span class="pill">' + t('Changerait', 'Would change') + '</span>' : k === 'removed' ? '<span class="pill">' + t('Disparaîtrait', 'Would disappear') + '</span>' : '';
     html = '<div class="head"><div class="eyebrow">' + esc(row.name) + '</div>' + pill + '</div><h2>' + esc(st.title) + '</h2>' + sourceBlock(st);
     html += '<div class="zone model"><div class="zone-title">' + t('Ce qu’Apertus explique', 'What Apertus explains') + '</div><div class="who live"><i></i>' + esc(provLabel(prov)) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.join(', ')) + '</div>' : '') + '</div>';
-    if (!viewingAlt && !d.previewOn && k !== 'removed') { const dn = isDone(st.id); html += '<div class="row"><button type="button" class="btn ' + (dn ? 'done' : '') + '" data-done="' + esc(st.id) + '">' + (dn ? t('Faite — la remettre à faire', 'Done — mark as not done') : t('Je l’ai faite', 'I have done this')) + '</button></div>'; }
+    if (!viewingAlt && !d.previewOn && !d.exploreOn && k !== 'removed') { const dn = isDone(st.id); html += '<div class="row"><button type="button" class="btn ' + (dn ? 'done' : '') + '" data-done="' + esc(st.id) + '">' + (dn ? t('Faite — la remettre à faire', 'Done — mark as not done') : t('Je l’ai faite', 'I have done this')) + '</button></div>'; }
     if (other) {
       html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? t('Version enregistrée', 'Saved version') : t('Version proposée', 'Proposed version')) + '</div><div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><div class="small">' + esc(other.why) + '</div>' + sourceBlock(other) + '</div>';
     } else if (viewingAlt) html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + t('Aujourd’hui : cette étape n’existe pas', 'Today: this step does not exist') + '</div></div>';
@@ -522,7 +630,7 @@
   function renderConn() {
     const btn = document.getElementById('conn-btn'), label = document.getElementById('conn-label'), panel = document.getElementById('conn-panel');
     btn.className = 'conn-btn ' + (conn.status === 'ok' ? 'ok' : conn.status === 'error' ? 'error' : '');
-    label.textContent = conn.status === 'ok' ? 'Apertus via ' + conn.prov.provider + (conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') : conn.status === 'testing' ? t('Connexion…', 'Connecting…') : conn.status === 'error' ? t('Apertus indisponible pour l’instant', 'Apertus unavailable for now') : t('Apertus non connecté', 'Apertus not connected');
+    label.textContent = conn.status === 'ok' ? 'Apertus via ' + conn.prov.provider + (conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') + (conn.prov.processing ? ' · ' + t('traité en ', 'processed in ') + conn.prov.processing : '') : conn.status === 'testing' ? t('Connexion…', 'Connecting…') : conn.status === 'error' ? t('Apertus indisponible pour l’instant', 'Apertus unavailable for now') : t('Apertus non connecté', 'Apertus not connected');
     if (panel.hidden) return;
     panel.innerHTML = '<div style="font-weight:600">' + t('Connecter Apertus', 'Connect Apertus') + '</div><label for="c-proxy">' + t('Adresse du proxy', 'Proxy address') + '</label><input id="c-proxy" value="' + esc(conn.proxyUrl) + '" placeholder="https://…-8787.app.github.dev"><div class="caption">' + t('Le proxy garde la clé côté serveur et tient un budget quotidien.', 'The proxy keeps the key server-side and holds a daily budget.') + '</div>' + (conn.error ? '<div class="err">' + esc(conn.error) + '</div>' : '') + '<div class="row"><button type="button" class="btn" data-conn="close">' + t('Fermer', 'Close') + '</button><button type="button" class="btn primary" data-conn="go">' + t('Connecter', 'Connect') + '</button></div>';
   }
@@ -543,15 +651,17 @@
     const narrow = () => window.innerWidth < 1100 && document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null }); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'edit-story') { set({ editing: !state.editing }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
-    const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done; state.done = isDone(id) ? state.done.filter(x => x !== id) : state.done.concat([id]); set({}, true); return; }
+    const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }
     const q = e.target.closest('[data-q]'); if (q) { set({ sel: { q: q.dataset.q } }); narrow(); return; }
     const n = e.target.closest('[data-sel]'); if (n) { const [li, id, alt] = n.dataset.sel.split('|'); set({ sel: { li: Number(li), id, alt: alt === '1' } }); narrow(); }
   });
   document.addEventListener('submit', e => {
     const sf = e.target.closest('[data-start-form]'); if (sf) { e.preventDefault(); startStory(sf.elements.text.value); return; }
-    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); if (st.elements.text.value.trim() !== state.story || (state.tree && state.tree.incomplete)) startStory(st.elements.text.value); return; }
+    const cf = e.target.closest('[data-converse-form]'); if (cf) { e.preventDefault(); const v = cf.elements.text.value; cf.elements.text.value = ''; converse(v); return; }
+    const sg = e.target.closest('[data-suggest-form]'); if (sg) { e.preventDefault(); applySuggestedStory(sg.elements.text.value); return; }
+    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); state.editing = false; if (st.elements.text.value.trim() !== state.story || (state.tree && state.tree.incomplete)) startStory(st.elements.text.value); else render(); return; }
     const pf = e.target.closest('[data-propose-form]'); if (pf) { e.preventDefault(); propose(pf.dataset.proposeForm, pf.elements.value.value); return; }
     const af = e.target.closest('[data-answer-form]'); if (af) { e.preventDefault(); answer(af.dataset.answerForm, af.elements.answer.value); }
   });
@@ -559,7 +669,7 @@
   document.getElementById('tree-host').addEventListener('mouseover', e => { const g = e.target.closest('[data-lane]'); const id = g ? g.dataset.lane : null; if (id !== state.hover) set({ hover: id }); });
   document.getElementById('mode-situation').addEventListener('click', () => set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null }));
   document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree) return; set({ mode: 'explore', pending: null, sel: null, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree }); });
-  document.getElementById('clear-btn').addEventListener('click', () => { try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ story: '', vars: [], answers: {}, tree: null, pending: null, prevTree: null, sel: null, done: [], note: null, error: '', mode: 'situation', exploreVars: null, exploreTree: null }); });
+  document.getElementById('clear-btn').addEventListener('click', () => { try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ story: '', vars: [], answers: {}, qtexts: {}, answerSets: {}, tree: null, pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, error: '', mode: 'situation', exploreVars: null, exploreTree: null, turns: [], editing: false }); });
   document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
   document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; renderConn(); });

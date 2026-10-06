@@ -26,12 +26,13 @@ const crypto = require('crypto');
 const cfgPath = path.join(__dirname, 'proxy.config.json');
 const cfg = Object.assign({
   provider: 'swisscom', upstreamBase: '', upstreamModel: '', allowedOrigins: [],
-  dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 400, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
+  dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 3500, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
 }, fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {});
 // Codespaces secrets override the committed config, so a fresh Codespace needs no file edits.
 if (process.env.UPSTREAM_BASE) cfg.upstreamBase = process.env.UPSTREAM_BASE;
 if (process.env.UPSTREAM_MODEL) cfg.upstreamModel = process.env.UPSTREAM_MODEL;
 if (process.env.UPSTREAM_PROVIDER) cfg.provider = process.env.UPSTREAM_PROVIDER;
+if (process.env.UPSTREAM_PROCESSING) cfg.processing = process.env.UPSTREAM_PROCESSING;
 if (process.env.AUTH_HEADER) cfg.authHeader = process.env.AUTH_HEADER;
 if (process.env.AUTH_PREFIX !== undefined) cfg.authPrefix = process.env.AUTH_PREFIX;
 const KEY = process.env.APERTUS_API_KEY || '';
@@ -81,12 +82,12 @@ const server = http.createServer(async (req, res) => {
   const send = (status, obj) => { res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, cors)); res.end(JSON.stringify(obj)); };
   const url = new URL(req.url, 'http://x');
 
-  if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
+  if (req.method === 'OPTIONS') { if (!originOk) return send(403, { error: 'origin not allowed' }); res.writeHead(204, cors); return res.end(); }
   if (origin && !originOk) return send(403, { error: 'origin not allowed' });
 
   const rd = readiness();
   if (url.pathname === '/health' && req.method === 'GET') {
-    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, maxTokens: cfg.maxTokens, tokenRequired: TOKENS.length > 0, budget: peek() });
+    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, maxTokens: cfg.maxTokens, processing: cfg.processing || '', tokenRequired: TOKENS.length > 0, budget: peek() });
   }
 
   if (url.pathname === '/chat' && req.method === 'POST') {
