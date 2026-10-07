@@ -26,12 +26,9 @@ echo "== Apertus proxy start =="
 git pull --ff-only --quiet 2>/dev/null && echo "repository: up to date" || echo "repository: pull skipped"
 
 # 2. server
-if pgrep -f "node proxy/server.js" >/dev/null 2>&1; then
-  echo "server: already running"
-else
-  nohup node proxy/server.js > "$LOG" 2>&1 < /dev/null &
-  echo "server: started"
-fi
+# always restart, so a pulled server.js or proxy.config.json is what actually runs
+if pgrep -f "node proxy/server.js" >/dev/null 2>&1; then pkill -f "node proxy/server.js"; sleep 1; echo "server: restarted"; else echo "server: started"; fi
+nohup node proxy/server.js > "$LOG" 2>&1 < /dev/null &
 
 # 3. health
 READY=""

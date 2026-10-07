@@ -15,7 +15,7 @@ flowchart LR
   subgraph A["2 · Shared application (open, one deployment per operator)"]
     PROXY["Proxy: key, budget, provenance<br/>(exists; Codespace → always-on Swiss host)"]
     RULES["Rule layer: reviewed conditions select<br/>steps and questions deterministically"]
-    RETR["Retriever: passages for commune,<br/>canton, date, open questions"]
+    RETR["Retriever — v1: jurisdiction filter (packs for the<br/>places named); v2: passages from dated snapshots"]
     EVAL["Evaluation harness: situation set,<br/>two-model comparison, regressions"]
     PROXY --> RULES
     PROXY --> RETR
@@ -69,6 +69,10 @@ flowchart LR
 | Codespace started by hand | Always-on proxy on a Swiss host; budget and provenance unchanged | A stranger can arrive at any hour |
 | Copy-the-plan button | A printable plan with the facts confirmed, the path, alternatives considered, open questions and assumptions, documents, offices, exact sources with dates, review status, plan version, and space for a professional's notes | The plan works in an office or a notary's room; corrections flow back as proposed pack changes |
 | jestime.ch as one catalogue entry | The money branch ends at jestime.ch for the estimate; their result page could point back to a map | Complementary, not duplicated; the calculation stays with the reviewed tool |
+
+## How the catalogue grows without growing the prompt
+
+The retriever's first version is a jurisdiction filter in the browser: each pack entry is tagged federal, canton or commune; the sentence and answers are matched against a gazetteer of Swiss communes; only the federal entries plus the packs of the places named are sent, capped at thirty entries, and the model may cite only ids from that subset. The full specification, including the entry schema, place detection, selection rules, pack files, CI checks and the growth order (Vaud, Geneva, Ticino), is in [CATALOGUE-AND-RETRIEVAL.md](CATALOGUE-AND-RETRIEVAL.md).
 
 ## Three kinds of knowledge, kept apart
 
