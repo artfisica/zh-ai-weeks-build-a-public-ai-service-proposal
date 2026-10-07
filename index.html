@@ -209,7 +209,7 @@
 
   // ---- State ----
   const scenarioKey = vars => hash(JSON.stringify((vars || []).map(v => [v.id, v.value])));
-  const state = { mode: 'situation', story: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
+  const state = { mode: 'situation', story: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
   function storyWithVars(story, vars, original) { let result = story; (vars || []).forEach(v => { const was = (original || []).find(x => x.id === v.id); if (!was || was.value === v.value) return; const oldText = was.span || was.value, at = result.toLowerCase().indexOf(oldText.toLowerCase()); if (at >= 0) result = result.slice(0, at) + v.value + result.slice(at + oldText.length); }); return result; }
@@ -344,7 +344,7 @@
   function followSystem() {
     return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
       '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"fact|question|both","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","steps":["ids of map steps the answer refers to"],"not_covered":true|false}' +
-      '\nRules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
+      '\nRules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states anything about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
   }
   async function converse(text) {
     text = text.trim(); if (!text) return;
@@ -353,14 +353,26 @@
     const turns = state.turns.concat([{ role: 'you', text }]);
     set({ turns, loading: t('Apertus lit votre message…', 'Apertus is reading your message…'), error: '' }, true);
     try {
-      const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + state.story + '\nMap: ' + mapForPrompt(state.tree) + '\nFollow-up: ' + text }], 700);
+      const viewTree = (state.mode === 'explore' && state.exploreTree) ? state.exploreTree : state.tree;
+      const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + ((state.mode === 'explore' && state.exploreStory) ? state.exploreStory : state.story) + '\nMap: ' + mapForPrompt(viewTree) + '\nFollow-up: ' + text }], 700);
       const ex = extractJSON(res.text.replace(/```json|```/g, '').trim()); const j = JSON.parse(ex.text);
-      const answer = String(j.answer || '').trim(), newStory = String(j.story || state.story).trim();
+      let answer = String(j.answer || '').trim(); let newStory = String(j.story || state.story).trim();
+      const baseStory = (state.mode === 'explore' && state.exploreStory) ? state.exploreStory : state.story;
+      state.tree.branches.forEach(b => b.steps.forEach(s => { if (answer.includes(s.id)) answer = answer.split(s.id).join('“' + s.short + '”'); }));
+      const looksLikeFact = /^(i |i'm |i’m |i am |i hold|i have|i live|i own|i rent|i work|we |my |je |j'|j’|nous |mon |ma |mes )/i.test(text) && !/\?\s*$/.test(text);
+      if (looksLikeFact && (newStory === state.story || newStory === baseStory)) { j.kind = j.kind === 'question' ? 'both' : (j.kind || 'fact'); newStory = baseStory.replace(/\s*$/, '') + ' ' + text.replace(/\.?\s*$/, '.'); }
       const ids = (Array.isArray(j.steps) ? j.steps : []).map(String);
-      let sel = null; const found = []; state.tree.branches.forEach((b, li) => b.steps.forEach(s => { if (ids.includes(s.id)) found.push({ li, id: s.id }); }));
+      let sel = null; const found = []; viewTree.branches.forEach((b, li) => b.steps.forEach(s => { if (ids.includes(s.id)) found.push({ li, id: s.id }); }));
       if (found.length) sel = { li: found[0].li, id: found[0].id, alt: false };
       const guide = answer ? [{ role: 'guide', text: answer, steps: found, prov: res.prov, notCovered: !!j.not_covered }] : [];
-      const changed = newStory && newStory !== state.story && (j.kind === 'fact' || j.kind === 'both');
+      const changed = newStory && newStory !== baseStory && (j.kind === 'fact' || j.kind === 'both');
+      if (changed && state.mode === 'explore') {
+        // Explore: nothing is saved, so a fact redraws the hypothesis straight away
+        set({ turns: turns.concat(guide), sel: null, loading: t('Apertus redessine l’hypothèse avec ce que vous ajoutez…', 'Apertus is redrawing the hypothesis with what you added…') });
+        const tree = await fetchTree(newStory, state.exploreVars || [], {}, state.exploreTree || state.tree, null);
+        set({ exploreStory: newStory, exploreTree: tree, exploreVars: tree.variables.length ? tree.variables : (state.exploreVars || []), loading: '' });
+        return;
+      }
       set({ turns: turns.concat(guide), sel: sel || state.sel, suggestedStory: changed ? newStory : '', loading: '' }, true);
     } catch (e) { set({ loading: '', error: (e && e.message) || 'error' }); }
   }
@@ -452,18 +464,19 @@
     // the sentence as written, with the variables Apertus found underlined where they appear
     const occupied = [];
     const placements = [];
+    const storyText = d.exploreOn && s.exploreStory ? s.exploreStory : s.story;
     vars.forEach(v => {
       const cls = (d.previewOn && s.pending.id === v.id) ? 'pending' : (d.exploreOn && s.vars.find(o => o.id === v.id && o.value !== v.value)) ? 'hyp' : (!d.exploreOn && s.prevTree && s.trees && vars !== s.vars) ? '' : '';
       const label = (d.previewOn && s.pending.id === v.id) ? esc(v.value) + ' → ' + esc(s.pending.to) + ' ?' : esc(v.value);
       const btn = '<button type="button" class="word ' + cls + '" data-var="' + esc(v.id) + '" title="' + esc(v.label) + '">' + label + '</button>';
       const span = v.span || v.value;
-      const idx = span ? s.story.toLowerCase().indexOf(span.toLowerCase()) : -1;
+      const idx = span ? storyText.toLowerCase().indexOf(span.toLowerCase()) : -1;
       if (idx >= 0 && !occupied.some(p => idx < p[1] && idx + span.length > p[0])) { occupied.push([idx, idx + span.length]); placements.push({ start: idx, end: idx + span.length, html: btn }); v._placed = true; } else v._placed = false;
     });
     placements.sort((a, b) => a.start - b.start);
     let sentence = '', cursor = 0;
-    placements.forEach(p => { sentence += esc(s.story.slice(cursor, p.start)) + p.html; cursor = p.end; });
-    sentence += esc(s.story.slice(cursor));
+    placements.forEach(p => { sentence += esc(storyText.slice(cursor, p.start)) + p.html; cursor = p.end; });
+    sentence += esc(storyText.slice(cursor));
     html += '<p class="sentence">' + sentence + '</p>';
     const loose = vars.filter(v => !v._placed);
     if (loose.length) html += '<div class="chips">' + loose.map(v => '<button type="button" class="word chip" data-var="' + esc(v.id) + '">' + esc(v.label) + ' : ' + esc(v.value) + '</button>').join('') + '</div>';
@@ -689,7 +702,7 @@
     const narrow = () => window.innerWidth < 1100 && document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'edit-story') { set({ editing: !state.editing }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null }); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'edit-story') { set({ editing: !state.editing }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null, exploreStory: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }
     const q = e.target.closest('[data-q]'); if (q) { set({ sel: { q: q.dataset.q } }); narrow(); return; }
@@ -705,8 +718,8 @@
   });
   document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const n = e.target.closest && (e.target.closest('[data-sel]') || e.target.closest('[data-q]')); if (!n) return; e.preventDefault(); n.click(); });
   document.getElementById('tree-host').addEventListener('mouseover', e => { const g = e.target.closest('[data-lane]'); const id = g ? g.dataset.lane : null; if (id !== state.hover) set({ hover: id }); });
-  document.getElementById('mode-situation').addEventListener('click', () => set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null }));
-  document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree) return; set({ mode: 'explore', pending: null, sel: null, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree }); });
+  document.getElementById('mode-situation').addEventListener('click', () => set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null, exploreStory: null }));
+  document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree) return; set({ mode: 'explore', pending: null, sel: null, exploreStory: null, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree }); });
   document.getElementById('clear-btn').addEventListener('click', () => { try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ story: '', vars: [], answers: {}, qtexts: {}, answerSets: {}, tree: null, pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, error: '', mode: 'situation', exploreVars: null, exploreTree: null, turns: [], editing: false }); });
   document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
