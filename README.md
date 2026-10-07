@@ -15,6 +15,8 @@ Architecture: [one-slide overview](docs/architecture-one-slide.svg) · [detailed
 
 For a bounded next step with Public AI and local content owners, see [the six-week pilot proposal](PILOT.md).
 
+The [8 October review](docs/REVIEW-2026-10-08.md) records the concrete failures found and repaired, the live-model checks, and the remaining pilot work.
+
 The [manual evaluation set](EVALUATION.md) lists ten fictional situations and the failure modes to look for. The full set has not yet been run against the live model. GitHub Actions checks JavaScript syntax and the local state-machine smoke test on each push; those checks do not validate civic facts or the model's choice of source.
 
 ## The idea
@@ -31,11 +33,12 @@ Each step can point to a catalogue page, or says plainly that none is linked yet
 - Open a point: the step, its suggested catalogue pages and draft notes, the level of the linked publisher, whether a commune has reviewed it, what Apertus explains, and who to confirm with. Mark it "I have done this"; the mark is kept in the browser for this situation.
 - Touch an underlined word: Apertus's alternatives or a free value; the branches that would change grow dashed; a dashed point shows both versions side by side; then keep or adopt everywhere.
 - Answer a "?" under the map: the new branch appears, marked added or modified.
-- Explore: change words freely without touching the saved map, then come back to it.
-- Correct or complete the sentence at any time; the map is redrawn.
-- Add a fact or ask a follow-up. Apertus can propose an answer from the existing map and draft catalogue notes; the visitor must review any proposed rewrite of their situation before redrawing.
-- See the next suggested step on each path and copy a plan with linked pages.
-- FR / EN in the header; the map is redrawn in the chosen language.
+- Explore: change words and answer hypothetical questions without changing the saved map, answers or conversation. On mobile, the map becomes a vertical tree with one selectable path at a time.
+- Correct or complete the sentence at any time; a comparison is drawn before adoption. Undo restores the previous accepted situation, answers, map and completion marks.
+- Type a different path or change an answered question: the app draws a dashed proposal with Keep / Adopt. For questions, Apertus selects existing steps; the guide displays their literal draft catalogue notes or an explicit coverage gap, rather than unrestricted model-written legal prose.
+- See the next suggested step on each path. Copy a summary, or print / save a PDF containing the displayed map, every step, unanswered questions, source URLs, model/version information, a separately labelled alternative and space for an office or adviser to correct it.
+- FR / EN in the header; the current situation or hypothesis is redrawn in the chosen language.
+- Inspect a step or open My plan when needed; details do not permanently occupy a third of the screen. Fit / zoom controls and pixel-aware label wrapping keep the desktop map legible.
 
 The saved map and sentence live in that browser's local storage. To draw or discuss a map, the sentence and relevant map context are sent through the Codespaces proxy to the configured model provider. The proxy writes a request counter to its local disk and does not deliberately retain the message text; the provider's processing and retention follow its own terms. Avoid entering sensitive personal identifiers in this public prototype.
 
@@ -52,7 +55,10 @@ It is not reviewed content. No commune has read any step or signed a catalogue n
 - Pages that are a site root rather than an exact page are labelled "entry site, exact page still to be linked".
 - Every explanation shows its model provider and model name when returned by the proxy; draft catalogue notes carry their own pending-review label.
 - The prompt forbids stating deadlines, amounts or validity periods unless the chosen catalogue entry covers them.
-- Changing a value is a proposal first; nothing is applied until the person decides.
+- Changing a value or a previous answer is a proposal first; nothing is applied until the person decides. Completed actions are keyed by their declared dependencies and contents, so an unchanged Nyon departure can stay done while a Gland arrival does not inherit the Saint-Cergue mark.
+- A conservative place-scope guard withholds known mismatches such as a Nyon municipal page on a Gland arrival or a Vaud-only page on a named Geneva step. It covers a small explicit set of places; it does not prove that a page supports a step.
+- Explicit alternatives receive a continuity check: existing ids cannot relocate between paths, and actions declared unaffected cannot silently disappear. One repair is attempted; a failed comparison leaves the accepted map intact. Model-declared dependencies remain unreviewed.
+- The guide’s question replies display literal draft catalogue notes selected through existing steps, not free-form legal assertions returned by the model. Generated map actions and explanations still require human review.
 
 ## Repository
 
@@ -69,7 +75,8 @@ PILOT.md                           six-week discovery pilot proposal
 docs/architecture-one-slide.svg    readable presentation overview
 docs/architecture-detailed.svg     dated engineering and trust-boundary diagram
 tests/check-inline.js              inline script syntax check
-tests/smoke.js                     state, source and follow-up smoke checks
+tests/smoke.js                     44 state, source, path-change and failure regressions
+tests/harness.js / fixtures.js      isolated test harness and fictional cases
 .github/workflows/check.yml        syntax and smoke checks on push and PR
 LICENSE / NOTICE                   Apache 2.0 code license and attribution note
 ```
@@ -78,7 +85,7 @@ LICENSE / NOTICE                   Apache 2.0 code license and attribution note
 
 GitHub Pages is static and cannot hold a secret. The proxy runs in a GitHub Codespace, and the Swisscom key is a Codespaces secret injected as an environment variable. It never enters the repository or the page. The page finds the proxy through `proxy-url.json`, which the Codespace writes and pushes itself.
 
-The proxy pins one provider and one model, checks the page's origin for browser requests, caps each answer at 3500 tokens, holds a daily budget of 120 requests and a per-caller hourly limit, and returns the provider and model with every answer so the page can display them. The origin check is not authentication; the budget bounds use of a public demo key. Processing location appears only if the operator has independently verified and explicitly configured it with `UPSTREAM_PROCESSING`.
+The proxy pins one provider and one model, checks the page's origin for browser requests, caps each answer at 3500 tokens, holds the configured daily budget (600 requests in this package) and a per-caller hourly limit, and returns the provider and model with every answer so the page can display them. The origin check is not authentication; the budget bounds use of a public demo key. Processing location appears only if the operator has independently verified and explicitly configured it with `UPSTREAM_PROCESSING`.
 
 ## Deploy: three secrets, one Codespace
 
@@ -95,7 +102,7 @@ Set Settings → Codespaces → Default idle timeout to 240 minutes.
 
 Open the existing Codespace (Code → Codespaces → its name), run `bash proxy/start.sh` in its terminal, check `ready: yes` and `port 8787: public` (if the port could not be set automatically: Ports tab → 8787 → right-click → Port Visibility → Public), then open the page: the header must say "Apertus via Swisscom". Leave the Codespace tab open. While the Codespace is stopped, the page loads and says the map cannot be drawn; maps already drawn stay in the visitor's browser.
 
-After changing files: `git pull`, `pkill node`, `bash proxy/start.sh`. A running server keeps the files it started with.
+After changing proxy files: `git pull`, stop the old Node server, then `bash proxy/start.sh`. A running server keeps the files it started with. The 8 October update changes the page and tests only; it does not require a proxy restart.
 
 ## Run locally
 
@@ -116,5 +123,4 @@ Adding a page is one catalogue entry; the model can use it on the next map. Befo
 - Let communes own their entries: a catalogue file per commune, versioned, with a reviewer field, so "commune review pending" can become a name and a date.
 - Grow the catalogue beyond Vaud with the cantonal and communal pages the maps keep asking for; the "no linked page" panel is the backlog.
 - One live public-data integration: an NStCM journey from the Swiss Open Journey Planner next to the official link.
-- Mobile layout: one branch at a time under the sentence.
 - German and Italian: the interface strings and prompts are already switchable by language.

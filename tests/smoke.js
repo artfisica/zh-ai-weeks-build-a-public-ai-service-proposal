@@ -1,129 +1,62 @@
-// Run with: node tests/smoke.js (no dependencies, no provider key)
+// State and interaction regressions. No dependencies, no API key or network.
 'use strict';
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {harness}=require('./harness');
+const {story,map,withAnswer,clone,step}=require('./fixtures');
+let checks=0;
+const test=async(name,fn)=>{await fn();checks++;console.log('✓ '+name)};
+function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{story:text,tree:a.validate(clone(raw),text),vars:clone(raw.variables),answers:{},qtexts:{},questionDefs:{},trees:{},history:[],done:[],turns:[],loading:'',mode:'situation',pending:null,prevTree:null,note:null});a.conn.status='ok';a.conn.proxyUrl='https://fixture.invalid';a.conn.prov={provider:'fixture',model:'fixture-model'};a.render();return a;}
+(async()=>{
+ await test('Unknown URLs and claims are discarded; draft provenance stays visible',()=>{const h=harness();const raw=map();raw.branches[0].steps[0].sources.push({id:'invented',claim:'invented'});const t=h.app.validate(raw,story);assert.equal(t.branches[0].steps[0].sources.length,1);assert.match(h.app.sourceBlock(t.branches[0].steps[0]),/Unreviewed/);assert.match(h.app.sourceBlock(t.branches[0].steps[0]),/review pending/);assert.match(h.app.sourceBlock(t.branches[0].steps[0]),/Draft · Confederation/);});
+ await test('A quoted Spain span cannot justify an invented Swiss nationality or a stray letter C',()=>{const h=harness();const raw=map();raw.variables.push({id:'nationality',value:'Swiss',span:'Spain',label:'Nationality',alternatives:['Spanish']},{id:'inferred_permit',value:'C',span:'C',label:'Permit'});const t=h.app.validate(raw,'I arrive from Spain to Saint-Cergue.');assert.ok(!t.variables.some(v=>v.value==='Swiss'||v.value==='C'));assert.ok(t.questions.some(q=>q.inferred));});
+ await test('A proposed commune change is validated against the proposed sentence, not the old one',async()=>{const h=harness(),a=saved(h);const calls=h.queue([map('Gland')]);await a.propose('destination','Gland');assert.equal(a.state.story,story);assert.equal(a.state.pending.story,story.replace('Saint-Cergue','Gland'));assert.ok(a.state.pending.tree.variables.some(v=>v.value==='Gland'));assert.ok(!a.state.pending.tree.questions.some(q=>q.inferred&&q.id==='destination'));assert.match(calls[0].messages[1].content,/Situation: .*moving to Gland/);assert.match(calls[0].messages[1].content,/"why":/);assert.match(calls[0].messages[1].content,/"confirm_with":/);});
+ await test('Diff keeps exact shared steps and draws changed, added and removed steps',()=>{const h=harness(),a=saved(h);const next=a.validate(map('Gland'),story.replace('Saint-Cergue','Gland'));next.branches[0].steps.push(step('new','New step','Ask another office',null));next.branches=next.branches.filter(b=>b.id!=='transport');const diff=a.diffBranches(a.state.tree.branches,next.branches);assert.equal(diff[0].cmp.find(c=>c.id==='departure').kind,'same');assert.equal(diff[0].cmp.find(c=>c.id==='arrival').kind,'changed');assert.ok(diff[0].cmp.some(c=>c.kind==='added'));assert.ok(diff.some(r=>r.removed));});
+ await test('Keep leaves story, answers, done marks and saved map untouched; Adopt can be undone',async()=>{const h=harness(),a=saved(h);a.state.answers={nationality:'EU/EFTA'};a.state.qtexts={nationality:'What is your nationality?'};a.state.done=[a.doneKey('departure')];const before=JSON.stringify({story:a.state.story,tree:a.state.tree,vars:a.state.vars,answers:a.state.answers,done:a.state.done});h.queue([map('Gland')]);await a.propose('destination','Gland');a.keep();assert.equal(JSON.stringify({story:a.state.story,tree:a.state.tree,vars:a.state.vars,answers:a.state.answers,done:a.state.done}),before);h.queue([map('Gland')]);await a.propose('destination','Gland');a.adopt();assert.match(a.state.story,/moving to Gland/);assert.equal(a.state.history.length,1);a.undo();assert.equal(JSON.stringify({story:a.state.story,tree:a.state.tree,vars:a.state.vars,answers:a.state.answers,done:a.state.done}),before);});
+ await test('A typed known alternative directly produces a dashed preview, not just prose',async()=>{const h=harness(),a=saved(h);const calls=h.queue([map('Gland')]);await a.converse('What if we move to Gland instead?');assert.equal(calls.length,1);assert.ok(a.state.pending);assert.match(h.element('tree-host').innerHTML,/Your path, and the alternative/);assert.match(h.element('tree-host').innerHTML,/stroke-dasharray="6 6"/);assert.equal(a.state.story,story);});
+ await test('An unfamiliar typed path uses the model proposal and draws it before adoption',async()=>{const h=harness(),a=saved(h);const text=story.replace('Saint-Cergue','Lugano');h.queue([{kind:'compare',story:text,answer:'',steps:[],not_covered:false},map('Lugano')]);await a.converse('What if we choose Lugano?');assert.equal(a.state.pending.story,text);assert.equal(a.state.story,story);assert.ok(a.derive().previewOn);a.adopt();assert.equal(a.state.story,text);});
+ await test('A changed story mislabeled as a question still gets a preview',async()=>{const h=harness(),a=saved(h);const text=story.replace('Saint-Cergue','Geneva');h.queue([{kind:'question',story:text,answer:'',steps:[]},map('Geneva')]);await a.converse('How would the path differ if we chose Geneva?');assert.ok(a.state.pending);assert.equal(a.state.pending.story,text);});
+ await test('Answered-question forks remain proposals until adopted',async()=>{const h=harness(),raw=withAnswer(),a=saved(h,raw,story.replace(' I hold a B permit.',''));a.state.answers={permit_type:'C permit'};a.state.qtexts={permit_type:'Which permit do you hold?'};a.state.questionDefs={permit_type:raw.questions.find(q=>q.id==='permit_type')};a.render();assert.match(h.element('story').innerHTML,/data-answered="permit_type"/);h.queue([withAnswer('B permit')]);await a.proposeAnswer('permit_type','B permit');assert.equal(a.state.answers.permit_type,'C permit');assert.equal(a.state.pending.answers.permit_type,'B permit');a.adopt();assert.equal(a.state.answers.permit_type,'B permit');a.undo();assert.equal(a.state.answers.permit_type,'C permit');});
+ await test('A typed permit what-if routes to the answered question',async()=>{const h=harness(),a=saved(h,withAnswer(),story.replace(' I hold a B permit.',''));a.state.answers={permit_type:'C permit'};h.queue([{kind:'whatif',story:a.state.story,answer:'',target:{type:'question',id:'permit_type',value:'B permit'},steps:[]},withAnswer('B permit')]);await a.converse('What if instead of a C permit I have a B permit?');assert.equal(a.state.pending.kind,'answer');assert.equal(a.state.answers.permit_type,'C permit');assert.equal(a.state.pending.to,'B permit');});
+ await test('Literal place correction replaces Hyon without applying it silently',async()=>{const h=harness(),a=saved(h,map(),story.replace('Nyon','Hyon'));h.queue([{kind:'fact',story:a.state.story,answer:'',steps:[]},map()]);await a.converse('is Nyon, no Hyon');assert.equal(a.state.pending.story,story);assert.match(a.state.story,/Hyon/);a.adopt();assert.equal(a.state.story,story);});
+ await test('Explore follows successive changes and isolates answers and conversation from saved state',async()=>{const h=harness(),a=saved(h);a.state.answers={nationality:'EU/EFTA'};a.state.qtexts={nationality:'What is your nationality?'};a.state.turns=[{role:'you',text:'My saved question'}];a.state.questionDefs={nationality:map().questions[0]};a.render();h.element('mode-explore').listeners.click();const before=JSON.stringify({story:a.state.story,tree:a.state.tree,vars:a.state.vars,answers:a.state.answers,turns:a.state.turns});h.queue([map('Gland')]);await a.propose('destination','Gland');assert.match(a.state.exploreStory,/Gland/);assert.equal(a.state.exploreAnswers.nationality,undefined);h.queue([{kind:'question',story:a.state.exploreStory,answer:'Check with the residents office.',steps:['arrival']}]);await a.converse('Where do I confirm?');assert.equal(a.state.exploreTurns.length,2);assert.equal(JSON.stringify({story:a.state.story,tree:a.state.tree,vars:a.state.vars,answers:a.state.answers,turns:a.state.turns}),before);h.queue([map('Gland')]);await a.answer('nationality','Third country');assert.equal(a.state.exploreAnswers.nationality,'Third country');assert.equal(a.state.answers.nationality,'EU/EFTA');a.leaveExplore();assert.equal(JSON.stringify({story:a.state.story,tree:a.state.tree,vars:a.state.vars,answers:a.state.answers,turns:a.state.turns}),before);});
+ await test('A failed generation preserves the saved map and leaves an actionable error',async()=>{const h=harness(),a=saved(h);const before=a.state.tree;h.queue([new Error('HTTP 502')]);await a.stageStory(story.replace('Saint-Cergue','Geneva'));assert.equal(a.state.tree,before);assert.equal(a.state.story,story);assert.equal(a.state.loading,'');assert.match(a.state.error,/502/);});
+ await test('Start over rejects late responses and clears in-memory caches',async()=>{const h=harness(),a=saved(h);let resolve;a.state.trees.old=a.state.tree;h.context.fetch=async()=>new Promise(r=>{resolve=r});const operation=a.stageStory(story.replace('Saint-Cergue','Geneva'));await Promise.resolve();a.reset();resolve(h.reply(map('Geneva')));await operation;assert.equal(a.state.story,'');assert.equal(a.state.tree,null);assert.equal(a.state.pending,null);assert.equal(Object.keys(a.state.trees).length,0);assert.equal(a.state.loading,'');});
+ await test('Cancel rejects late results while keeping the original map',async()=>{const h=harness(),a=saved(h);let resolve;h.context.fetch=async()=>new Promise(r=>{resolve=r});const operation=a.stageStory(story.replace('Saint-Cergue','Geneva'));await Promise.resolve();h.click('[data-action]',{action:'cancel-request'});resolve(h.reply(map('Geneva')));await operation;assert.equal(a.state.pending,null);assert.equal(a.state.story,story);assert.ok(a.state.tree);assert.equal(a.state.loading,'');});
+ await test('A malformed response gets one bounded parse retry',async()=>{const h=harness(),a=saved(h);const calls=h.queue(['{"variables":[]}]',map('Geneva')]);const tree=await a.fetchTree(story.replace('Saint-Cergue','Geneva'),[],{},a.state.tree,null);assert.equal(calls.length,2);assert.equal(tree.incomplete,false);});
+ await test('Partial maps keep only completed steps, are labelled incomplete and are not cached',async()=>{const h=harness(),a=saved(h);const raw=JSON.stringify(map('Geneva'));const cut=raw.slice(0,raw.indexOf('"school_contact"')+12);const ex=a.extractJSON(cut);assert.equal(ex.truncated,true);h.queue([cut]);const tree=await a.fetchTree(story.replace('Saint-Cergue','Geneva'),[],{},a.state.tree,null);assert.equal(tree.incomplete,true);assert.ok(tree.branches[0].steps[0].title);assert.equal(Object.keys(a.state.trees).length,0);});
+ await test('A short move gets one relevance review; focused maps are not forced to contain three lanes',async()=>{const h=harness(),a=saved(h);const narrow=map();narrow.branches=narrow.branches.slice(0,1);const calls=h.queue([narrow,narrow]);await a.fetchTree('I move from Nyon to Saint-Cergue.',[],{},null,null);assert.equal(calls.length,2);assert.match(calls[1].messages[1].content,/Never invent children/);assert.doesNotMatch(calls[1].messages[1].content,/Return at least 3/);});
+ await test('A narrow focused task does not consume a coverage retry',async()=>{const h=harness(),a=saved(h);const narrow=map();narrow.branches=narrow.branches.slice(0,1);const calls=h.queue([narrow]);await a.fetchTree('I want to contact the residents office in Nyon.',[],{},null,null);assert.equal(calls.length,1);});
+ await test('Exact unchanged titles and references repair changed IDs without semantic guesses',()=>{const h=harness(),a=saved(h);const next=a.validate(map('Gland'),story.replace('Saint-Cergue','Gland'));next.branches[0].id='registration_renamed';next.branches[0].steps[0].id='renamed_departure';a.reconcileIds(next,a.state.tree);assert.equal(next.branches[0].id,'registration');assert.equal(next.branches[0].steps[0].id,'departure');});
+ await test('Duplicate IDs cannot select or mark two unrelated steps',()=>{const h=harness();const raw=map();raw.branches[1].steps[0].id='arrival';raw.branches[2].id='school';const tree=h.app.validate(raw,story);const ids=tree.branches.flatMap(b=>b.steps.map(s=>s.id));assert.equal(new Set(ids).size,ids.length);assert.equal(new Set(tree.branches.map(b=>b.id)).size,tree.branches.length);});
+ await test('Desktop labels wrap within the map; questions no longer expand its width',()=>{const h=harness(),a=saved(h);const raw=map();raw.branches[0].name='Importing a car from France to Switzerland';raw.branches[0].steps=Array.from({length:4},(_,i)=>step('car_'+i,'Pay import duties and VAT','Import action '+i,null));raw.questions=Array.from({length:6},(_,i)=>({id:'q_'+i,text:'A question with several words?',type:'text',why:'Context'}));a.state.tree=a.validate(raw,story);a.render();const html=h.element('tree-host').innerHTML;assert.match(html,/aria-label="Importing a car from France to Switzerland"/);assert.match(html,/map-viewport/);assert.match(html,/question-links/);assert.doesNotMatch(html,/min-width:1320px/);assert.ok(a.mapLabelLines('Pay import duties and VAT',18,2).length===2);assert.doesNotMatch(h.html,/\.tree svg\{[^}]*overflow:visible/);assert.doesNotMatch(h.html,/addEventListener\('mouseover'/);});
+ await test('Mobile becomes a vertical tree with one selectable path, not a scaled desktop canvas',()=>{const h=harness({viewport:390,width:360}),a=saved(h);assert.match(h.element('tree-host').innerHTML,/mobile-map/);assert.match(h.element('tree-host').innerHTML,/lane-tabs/);assert.match(h.element('tree-host').innerHTML,/viewBox="0 0 360 /);h.click('[data-lane-select]',{laneSelect:'transport'});assert.match(h.element('tree-host').innerHTML,/aria-label="Transport"/);assert.doesNotMatch(h.element('tree-host').innerHTML,/style="width:.*px;max-width:none"/);});
+ await test('Plan export includes all steps, open questions, source URLs and an explicit hypothetical appendix',async()=>{const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');a.printPlan(a.derive());const html=h.element('print-plan').innerHTML;assert.equal(h.context.printed,true);assert.match(html,/Announce your departure from Nyon/);assert.match(html,/Ask about arrival registration in Saint-Cergue/);assert.match(html,/Hypothetical path — not adopted/);assert.match(html,/What is your nationality/);assert.match(html,/Model-suggested source; match unreviewed/);assert.match(html,/https:\/\/www.ch.ch/);assert.match(html,/prepares your questions/);});
+ await test('A saved snapshot reloads with history and question options intact',async()=>{const h=harness(),raw=withAnswer(),a=saved(h,raw,story.replace(' I hold a B permit.',''));a.state.questionDefs={permit_type:raw.questions.find(q=>q.id==='permit_type')};a.state.answers={permit_type:'C permit'};h.queue([withAnswer('B permit')]);await a.proposeAnswer('permit_type','B permit');a.adopt();const loaded=harness({storage:h.storage}).app;assert.equal(loaded.state.answers.permit_type,'B permit');assert.equal(loaded.state.questionDefs.permit_type.options.length,3);assert.equal(loaded.state.history.length,1);loaded.undo();assert.equal(loaded.state.answers.permit_type,'C permit');});
+ await test('FR / EN translation in Explore cannot replace the saved map',async()=>{const h=harness(),a=saved(h);h.element('mode-explore').listeners.click();const before=a.state.tree;const fr=map();fr.branches[0].name='Inscription';h.queue([fr]);await a.setLang('fr');assert.equal(a.state.tree,before);assert.equal(a.state.exploreTree.branches[0].name,'Inscription');});
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-let script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
-script = script.replace('  load(); renderConn(); render();',
-  '  globalThis.__app = {state, conn, validate, sourceBlock, diffBranches, renderStory, renderTree, mapLabelLines, doneKey, isDone, converse, applySuggestedStory, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree}; load(); renderConn(); render();');
-const els = new Map();
-function element(id) {
-  if (!els.has(id)) els.set(id, {
-    innerHTML: '', textContent: '', hidden: true, style: {}, className: '',
-    classList: { toggle() {} }, setAttribute() {}, addEventListener() {},
-    scrollIntoView() {}, getAttribute() { return null; }
-  });
-  return els.get(id);
-}
-const storage = new Map();
-const context = {
-  document: { documentElement: {}, body: { classList: { toggle() {} } }, getElementById: element, addEventListener() {} },
-  window: { innerWidth: 1280 }, location: { protocol: 'http:', hostname: 'localhost' },
-  navigator: { language: 'en' },
-  localStorage: { getItem: k => storage.get(k) || null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
-  sessionStorage: { getItem: () => null, setItem() {} },
-  fetch: async () => ({ ok: false }), setTimeout() {}, console
-};
-vm.createContext(context);
-vm.runInContext(script, context);
-const { state, conn, validate, sourceBlock, diffBranches, renderStory, renderTree, mapLabelLines, doneKey, isDone, converse, storyWithVars, answersFor, scenarioKey, adopt, systemPrompt, extractJSON, fetchTree } = context.__app;
-assert.match(systemPrompt(), /"sources" MUST be an array/);
-assert.doesNotMatch(systemPrompt(), /"source" MUST be one of these catalog ids/);
-assert.match(systemPrompt(), /one to five branches/);
-assert.doesNotMatch(systemPrompt(), /at least 3 branches/);
-assert.match(html, /id="announcer"[^>]+aria-live="polite"/);
-const story = 'I live in Nyon and will move to Saint-Cergue. I hold a B permit.';
-const raw = {
-  variables: [{ id: 'commune', value: 'Saint-Cergue', span: 'Saint-Cergue', alternatives: ['Gland'] }],
-  questions: [], branches: [{ id: 'registration', name: 'Registration', steps: [{
-    id: 'arrive', title: 'Register your arrival', short: 'Register arrival', why: 'Commune changes',
-    depends_on: ['commune'], authority: 'commune', confirm_with: 'Residents office',
-    sources: [{ id: 'stcergue-arrival', claim: 'c1' }, { id: 'invented', claim: 'c1' }]
-  }] }]
-};
-const tree = validate(raw, story);
-const brokenSuffix = JSON.stringify(raw).replace(/}\s*$/, ']}');
-assert.equal(extractJSON(brokenSuffix).truncated, true);
-assert.equal(tree.branches[0].steps[0].sources.length, 1);
-assert.equal(tree.branches[0].steps[0].sources[0].id, 'stcergue-arrival');
-assert.match(sourceBlock(tree.branches[0].steps[0]), /review pending/);
-assert.match(sourceBlock(tree.branches[0].steps[0]), /Unreviewed/);
-assert.match(sourceBlock(tree.branches[0].steps[0]), /Draft · Commune/);
-assert.doesNotMatch(sourceBlock(tree.branches[0].steps[0]), /Checked 25/);
-const a = tree.branches[0].steps[0], b = { ...a, why: 'Another reason' };
-assert.equal(diffBranches([{ id: 'registration', name: 'Registration', steps: [a] }],
-  [{ id: 'registration', name: 'Registration', steps: [b] }])[0].cmp[0].kind, 'changed');
-state.vars = tree.variables; state.answers = {}; state.done = [doneKey('arrive')];
-assert.equal(isDone('arrive'), true);
-state.vars = [{ ...tree.variables[0], value: 'Gland' }];
-assert.equal(isDone('arrive'), false);
-state.vars = tree.variables;
-assert.equal(isDone('arrive'), true);
-assert.equal(storyWithVars(story, [{ ...tree.variables[0], value: 'Gland' }], tree.variables),
-  'I live in Nyon and will move to Gland. I hold a B permit.');
-state.answers = { q_permit: 'EU/EFTA' };
-state.answerSets[scenarioKey(tree.variables)] = { answers: state.answers };
-assert.equal(Object.keys(answersFor([{ ...tree.variables[0], value: 'Gland' }])).length, 0);
-assert.equal(answersFor(tree.variables).q_permit, 'EU/EFTA');
-state.answers = {}; state.answerSets = {};
-state.story = story; state.tree = tree; state.vars = tree.variables;
-state.answers = { q_permit: 'EU/EFTA' };
-state.pending = { id: 'commune', from: 'Saint-Cergue', to: 'Gland', vars: [{ ...tree.variables[0], value: 'Gland' }], tree };
-adopt();
-assert.match(state.story, /move to Gland/);
-assert.equal(Object.keys(state.answers).length, 0);
-assert.equal(state.vars[0].span, 'Gland');
-state.pending = { id: 'commune', from: 'Gland', to: 'Saint-Cergue', vars: [{ ...state.vars[0], value: 'Saint-Cergue' }], tree };
-adopt();
-assert.equal(state.story, story);
-assert.equal(state.answers.q_permit, 'EU/EFTA');
-state.answers = {}; state.answerSets = {};
-state.story = 'I live in Nyon & my child is 8. Saint-Cergue is the destination.';
-state.tree = tree; state.vars = [
-  { id: 'home', label: 'Home', value: 'Nyon', span: 'Nyon', alternatives: [] },
-  { id: 'child', label: 'Child', value: '8', span: '8', alternatives: [] },
-  { id: 'destination', label: 'Destination', value: 'Saint-Cergue', span: 'Saint-Cergue', alternatives: [] }
-];
-renderStory({ tree, previewOn: false, exploreOn: false });
-const storyHtml = element('story').innerHTML;
-assert.match(storyHtml, /I live in <button/);
-assert.match(storyHtml, /Nyon<\/button> &amp; my child is <button/);
-assert.match(storyHtml, /Saint-Cergue<\/button> is the destination/);
+ await test('Nyon-only links are withheld on a Gland arrival and the reason is visible',()=>{const h=harness(),raw=map('Gland');raw.branches[0].steps[1].sources=[{id:'nyon-cdh',claim:'c1'}];const tree=h.app.validate(raw,story.replace('Saint-Cergue','Gland'));const st=tree.branches[0].steps[1];assert.equal(st.sources.length,0);assert.equal(st.sourceGaps.length,1);assert.match(h.app.sourceBlock(st),/Reference withheld/);assert.match(h.app.sourceBlock(st),/nyon/);});
+ await test('Vaud-only links are withheld for a named Geneva step; federal moving links remain',()=>{const h=harness(),raw=map('Geneva');raw.branches[0].steps[1].sources=[{id:'vd-address',claim:'c1'},{id:'ch-move',claim:'c1'}];const tree=h.app.validate(raw,story.replace('Saint-Cergue','Geneva'));assert.equal(tree.branches[0].steps[1].sources.length,1);assert.equal(tree.branches[0].steps[1].sources[0].id,'ch-move');assert.equal(tree.branches[0].steps[0].sources[0].id,'ch-move');});
+ await test('An exact returned catalogue note becomes c1; a model paraphrase cannot become verified evidence',()=>{const h=harness(),raw=map();raw.branches[0].steps[0].sources=[{id:'ch-move',claim:'For a move between communes, announce departure to the old commune and arrival to the new one.'}];assert.equal(h.app.validate(raw,story).branches[0].steps[0].sources[0].claim,'c1');raw.branches[0].steps[0].sources[0].claim='You must move in five days';assert.equal(h.app.validate(raw,story).branches[0].steps[0].sources[0].claim,null);});
+ await test('Changing destination preserves completed Nyon departure, without completing a Gland arrival',async()=>{const h=harness(),a=saved(h);a.state.done=[a.doneKey('departure'),a.doneKey('arrival')];h.queue([map('Gland')]);await a.propose('destination','Gland');a.adopt();assert.equal(a.isDone('departure'),true);assert.equal(a.isDone('arrival'),false);a.undo();assert.equal(a.isDone('departure'),true);assert.equal(a.isDone('arrival'),true);});
+ await test('An altered action cannot inherit completion from an unchanged ID',()=>{const h=harness(),a=saved(h);a.state.done=[a.doneKey('departure')];a.state.tree.branches[0].steps[0].title='A new action with the same id';assert.equal(a.isDone('departure'),false);});
+ await test('Opening a step preserves a composed follow-up and shows both compared versions',async()=>{const h=harness(),a=saved(h);a.state.followDraft='I want to ask about the school';h.queue([map('Gland')]);await a.propose('destination','Gland');h.click('[data-sel]',{sel:'0|arrival|1'});assert.match(h.element('story').innerHTML,/value="I want to ask about the school"/);assert.match(h.element('detail').innerHTML,/Gland/);assert.match(h.element('detail').innerHTML,/Saved version/);assert.match(h.element('detail').innerHTML,/Saint-Cergue/);assert.equal(h.element('.layout').classes.has('has-detail'),true);});
+ await test('New hypothetical questions are visible before adoption and never answer the saved scenario',async()=>{const h=harness(),a=saved(h),raw=map('Gland');raw.questions.push({id:'new_question',text:'Will you need childcare?',why:'This affects the proposed path.',type:'choice',options:['yes','no']});h.queue([raw]);await a.propose('destination','Gland');assert.match(h.element('tree-host').innerHTML,/data-q-alt="new_question"/);h.click('[data-q-alt]',{qAlt:'new_question'});assert.match(h.element('detail').innerHTML,/On the proposed path/);assert.match(h.element('detail').innerHTML,/This question remains open/);assert.equal(a.state.answers.new_question,undefined);});
+ await test('Failure on the first draw preserves the sentence draft for retry',async()=>{const h=harness(),a=h.app;a.conn.status='ok';a.conn.proxyUrl='https://fixture.invalid';h.queue([new Error('HTTP 502')]);await a.startStory(story);assert.equal(a.state.tree,null);assert.equal(a.state.draftStory,story);assert.match(h.element('tree-host').innerHTML,/I live in Nyon/);assert.match(h.element('tree-host').innerHTML,/role="alert"/);});
+ await test('Legacy saved maps receive the source-scope guard on reload',()=>{const h=harness(),raw=map('Gland');raw.branches[0].steps[1].sources=[{id:'nyon-cdh',claim:'c1'}];const saved={story:story.replace('Saint-Cergue','Gland'),vars:raw.variables,tree:raw,done:[],answers:{}};const loaded=harness({storage:[['public-ai-commune.v5',JSON.stringify(saved)]]}).app;assert.equal(loaded.state.tree.branches[0].steps[1].sources.length,0);assert.equal(loaded.state.tree.branches[0].steps[1].sourceGaps.length,1);});
 
-// Four nodes plus a long branch name and six questions used to paint over the detail panel.
-const carSteps = Array.from({ length: 4 }, (_, i) => ({ ...a, id: 'car_' + i, short: 'Pay import duties and VAT' }));
-const carQuestions = Array.from({ length: 6 }, (_, i) => ({ id: 'question_' + i, text: 'A question with several words?' }));
-renderTree({ tree: { ...tree, questions: carQuestions }, rows: [{ id: 'car', name: 'Importing a car from France to Switzerland', cmp: carSteps.map(st => ({ id: st.id, a: st, b: null, kind: 'same' })) }], answers: {}, previewOn: false, exploreOn: false });
-const mapHtml = element('tree-host').innerHTML;
-const mapWidth = Number(mapHtml.match(/viewBox="0 0 (\d+) /)[1]);
-assert.ok(mapWidth >= 1320, `map should include the last question and branch label, got ${mapWidth}`);
-assert.match(mapHtml, new RegExp(`min-width:${mapWidth}px`));
-assert.match(mapHtml, /aria-label="Importing a car from France to Switzerland"/);
-assert.ok(mapLabelLines('Pay import duties and VAT', 18, 2).length === 2);
-assert.doesNotMatch(html, /\.tree svg\{[^}]*overflow:visible/);
+ await test('A diff with eight old/new points cannot produce NaN or clip its branch label',async()=>{const h=harness(),a=saved(h),old=map(),next=map('Gland');old.branches=old.branches.slice(0,1);next.branches=next.branches.slice(0,1);old.branches[0].steps=Array.from({length:4},(_,i)=>step('old_'+i,'Old action '+i,'Saved action '+i,null));next.branches[0].steps=Array.from({length:4},(_,i)=>step('new_'+i,'New action '+i,'Proposed action '+i,null));a.state.tree=a.validate(old,story);h.queue([next]);await a.propose('destination','Gland');const html=h.element('tree-host').innerHTML;assert.doesNotMatch(html,/NaN|undefined/);assert.equal(a.derive().rows[0].cmp.length,8);assert.equal((html.match(/data-sel=/g)||[]).length,8);assert.ok(Number(html.match(/viewBox="0 0 (\d+)/)[1])>1500);assert.ok(a.mapLabelLines('WWWWWWWWWWWWWWWWWW',18,3).length>1);});
 
-// Follow-up facts stay a visible proposal until the visitor adopts them.
-conn.status = 'ok'; conn.proxyUrl = 'https://example.invalid';
-context.fetch = async url => url.endsWith('/chat') ? ({ ok: true, json: async () => ({
-  choices: [{ message: { content: JSON.stringify({ kind: 'fact', story: 'I now rent in Gland.', answer: '', steps: [], not_covered: false }) } }],
-  provenance: { provider: 'test', model: 'test' }
-}) }) : ({ ok: false });
-converse('I now rent in Gland.').then(async () => {
-  assert.equal(state.story, 'I live in Nyon & my child is 8. Saint-Cergue is the destination.');
-  assert.equal(state.suggestedStory, 'I now rent in Gland.');
-  assert.match(element('story').innerHTML, /Adopt and redraw/);
-  // A malformed first map gets one shorter retry, as in the live Gland fork.
-  let calls = 0;
-  context.fetch = async url => url.endsWith('/chat') ? ({ ok: true, json: async () => ({
-    choices: [{ message: { content: ++calls === 1 ? '{"variables":[]}]' : JSON.stringify(raw) } }],
-    provenance: { provider: 'test', model: 'test' }
-  }) }) : ({ ok: false });
-  const retried = await fetchTree(story + ' retry test', [], {}, tree, { id: 'commune', from: 'Saint-Cergue', to: 'Gland' });
-  assert.equal(calls, 2);
-  assert.equal(retried.branches[0].steps[0].title, 'Register your arrival');
-  assert.equal(retried.incomplete, false);
-  console.log('smoke checks passed');
-}).catch(e => { console.error(e); process.exitCode = 1; });
+ await test('The real model’s permit change in changes[] becomes an answer fork and its unsupported prose is withheld',async()=>{const h=harness(),a=saved(h,withAnswer(),story.replace(' I hold a B permit.',''));a.state.answers={permit_type:'C permit'};h.queue([{kind:'compare',story:a.state.story+' My residence permit is B instead of C.',answer:'B permits allow broader employment and mobility rights than C permits.',changes:[{id:'permit_type',value:'B permit'}],steps:['registration/permit_check']},withAnswer('B permit')]);await a.converse('What if instead of a C permit I have a B permit?');assert.equal(a.state.pending.kind,'answer');assert.equal(a.state.pending.answers.permit_type,'B permit');assert.equal(a.state.answers.permit_type,'C permit');assert.doesNotMatch(h.element('story').innerHTML,/broader employment/);a.adopt();assert.equal(a.state.answers.permit_type,'B permit');});
+ await test('Question guidance renders catalogue notes, not an unsupported legal claim from the model',async()=>{const h=harness(),a=saved(h,withAnswer());h.queue([{kind:'question',story:a.state.story,answer:'B permits allow broader employment and mobility rights than C permits.',steps:['registration/permit_check'],not_covered:false}]);await a.converse('What do these permits change?');const html=h.element('story').innerHTML;assert.doesNotMatch(html,/broader employment/);assert.match(html,/residence conditions depend on the permit and personal situation/);assert.match(html,/Step selection:/);assert.match(html,/prepared and unreviewed/);});
+
+ await test('Start over during the initial health check does not break an otherwise healthy connection',async()=>{const h=harness(),a=h.app;a.conn.proxyUrl='https://fixture.invalid';let resolve,signal;h.context.fetch=async(url,opt)=>new Promise(r=>{resolve=r;signal=opt.signal});const connection=a.connect();await Promise.resolve();a.reset();assert.equal(signal.aborted,false);resolve({ok:true,status:200,json:async()=>({ready:true,provider:'fixture',model:'fixture-model',maxTokens:3500})});await connection;assert.equal(a.conn.status,'ok');assert.equal(a.state.story,'');});
+
+ await test('Keyboard activation works on an SVG node even when it has no click() method',()=>{const h=harness(),a=saved(h);let prevented=false;const target={dataset:{sel:'0|arrival|0'},closest:s=>s==='[data-sel]'?target:null,dispatchEvent:event=>{assert.equal(event.bubbles,true);for(const f of h.events.get('click'))f({target})}};for(const f of h.events.get('keydown'))f({key:'Enter',target,preventDefault:()=>{prevented=true}});assert.equal(prevented,true);assert.equal(a.state.sel.id,'arrival');assert.match(h.element('detail').innerHTML,/Saint-Cergue/);});
+ await test('Rendering the story cannot mutate the accepted model map or its shared variable objects',()=>{const h=harness(),a=saved(h);a.state.vars=a.state.tree.variables;const before=JSON.stringify(a.state.tree);a.render();assert.equal(JSON.stringify(a.state.tree),before);});
+ await test('A proposal that drops an action declared unaffected gets one continuity repair, not a misleading diff',async()=>{const h=harness(),a=saved(h),bad=map('Gland');bad.branches[0].steps=bad.branches[0].steps.filter(s=>s.id!=='departure');const calls=h.queue([bad,map('Gland')]);await a.propose('destination','Gland');assert.equal(calls.length,2);assert.match(calls[1].messages[1].content,/registration\/departure/);assert.ok(a.state.pending);assert.equal(a.derive().rows[0].cmp.find(c=>c.id==='departure').kind,'same');});
+ await test('Two continuity failures leave the accepted map intact and do not offer Adopt',async()=>{const h=harness(),a=saved(h),bad=map('Gland');bad.branches[0].steps=bad.branches[0].steps.filter(s=>s.id!=='departure');const before=JSON.stringify(a.state.tree);h.queue([bad,bad]);await a.propose('destination','Gland');assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/alternative omitted existing steps/);});
+ await test('Moving an existing action into another branch triggers a continuity repair',async()=>{const h=harness(),a=saved(h),bad=map('Gland');const st=bad.branches[0].steps.pop();bad.branches[1].steps.push(st);const calls=h.queue([bad,map('Gland')]);await a.propose('destination','Gland');assert.equal(calls.length,2);assert.ok(a.state.pending);assert.ok(a.state.pending.tree.branches[0].steps.some(s=>s.id==='arrival'));});
+ if(process.env.REVIEW_OUTPUT){const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');fs.mkdirSync(process.env.REVIEW_OUTPUT,{recursive:true});fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-desktop.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map"[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));h.context.window.innerWidth=390;a.render();fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-mobile.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));}
+ console.log('\n'+checks+' regression checks passed.');
+})().catch(e=>{console.error(e);process.exitCode=1});

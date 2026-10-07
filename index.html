@@ -40,12 +40,20 @@
   .lang{display:flex;gap:2px;font-size:12px}
   .lang button{height:30px;padding:0 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600}
   .lang button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
-  .layout{display:grid;grid-template-columns:340px minmax(0,1fr) 400px;min-height:calc(100vh - 56px)}
-  @media (max-width:1100px){.layout{grid-template-columns:1fr}.story,.detail{border:none;border-bottom:1px solid var(--line)}.story.is-empty{display:none}.detail{border-top:1px solid var(--line)}}
+  .layout{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:calc(100vh - 56px);align-items:start}
+  .story,.tree,.detail{min-width:0}
+  .layout.is-new{grid-template-columns:1fr}
+  .layout.is-new .story{display:none}
+  .layout.is-new .tree{max-width:1000px;width:100%;margin:auto}
+  .detail{display:none!important}
+  .layout.has-detail .detail{display:flex!important;position:fixed;right:18px;top:76px;width:370px;max-height:calc(100vh - 94px);overflow:auto;z-index:4;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px #1b1a1729}
+  .detail-close{align-self:flex-end;border:1px solid var(--line);border-radius:99px;background:white;padding:5px 12px;color:var(--muted)}
+  @media(min-width:1700px){.layout.has-detail{grid-template-columns:300px minmax(0,1fr) 370px}.layout.has-detail .detail{position:sticky;top:16px;width:auto;max-height:calc(100vh - 32px);margin:16px;right:auto}}
+  @media (max-width:900px){.layout{grid-template-columns:1fr}.story{border:none;border-bottom:1px solid var(--line)}.story.is-empty{display:none}.layout.has-detail .detail{top:auto;bottom:12px;left:12px;right:12px;width:auto;max-height:75vh}.story{padding:20px!important}}
   .story{padding:28px 24px 20px 28px;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:16px}
   .eyebrow{font-size:12px;color:var(--muted)}
   body.explore .eyebrow.story-label{color:var(--accent)}
-  .sentence{margin:0;font-family:var(--serif);font-size:21px;font-weight:500;line-height:1.55;white-space:pre-wrap}
+  .sentence{overflow-wrap:anywhere;margin:0;font-family:var(--serif);font-size:21px;font-weight:500;line-height:1.55;white-space:pre-wrap}
   .word{display:inline;padding:0 2px;margin:0;border:none;border-bottom:2px solid #B9B3A5;background:transparent;color:var(--ink);border-radius:3px 3px 0 0;font:inherit}
   .word.pending{border-bottom-style:dashed;border-bottom-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
   .word.changed{border-bottom-color:var(--accent);color:var(--accent)}
@@ -73,29 +81,56 @@
   .turn.guide{background:var(--accent-mist);border:1px dashed #C9D5E8;display:flex;flex-direction:column;gap:6px}
   .ask{display:flex;flex-direction:column;gap:6px}
   .ask textarea{width:100%;min-height:96px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--white);font:inherit;color:var(--ink);resize:vertical}
-  .ask .field{display:flex;gap:8px}
+  .ask .field{display:flex;gap:8px;min-width:0;flex-wrap:wrap}
+  .ask .field input{min-width:0;width:0;flex-basis:140px}
+  .ask textarea.story-edit{min-height:140px}
+  .ask .field button{height:auto;min-height:40px}
   .ask input{flex:1;height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--white);font:inherit;color:var(--ink)}
   .ask input:disabled,.ask textarea:disabled{border-style:dashed;background:transparent;color:var(--faint)}
   .ask button{min-width:40px;height:40px;padding:0 14px;border-radius:8px;border:none;background:var(--accent);color:var(--white);display:flex;align-items:center;justify-content:center;font-weight:500}
   .ask button:disabled{background:#B9B3A5;cursor:default}
-  .tree{padding:16px 12px 10px;display:flex;flex-direction:column;position:relative;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tree{padding:24px 28px 20px;display:flex;flex-direction:column;position:relative;min-width:0;overflow:hidden;min-height:calc(100vh - 56px)}
+  #tree-host{min-width:0}
+  .map-viewport{overflow:auto;max-width:100%;-webkit-overflow-scrolling:touch;padding:8px 0 12px}
+  .map-tools{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .map-title{font-family:var(--serif);font-size:24px;line-height:1.15}
+  .map-meta{font-size:12px;color:var(--muted);margin-top:5px}
+  .map-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .map-actions button,.lane-tabs button{border:1px solid var(--line);background:var(--white);padding:7px 11px;border-radius:8px;color:var(--ink)}
+  .map-actions button[aria-pressed="true"],.lane-tabs button[aria-pressed="true"]{background:var(--accent);color:white;border-color:var(--accent)}
+  .map-comparison{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px dashed var(--accent);background:var(--accent-soft);padding:12px 14px;border-radius:12px;font-size:13px;margin-bottom:12px}
+  .map-comparison span{flex:1;min-width:160px}
+  .map-comparison button{border:1px solid var(--accent);border-radius:8px;padding:7px 12px;background:white;color:var(--accent)}
+  .map-comparison button:last-child{background:var(--accent);color:white}
+  .map-questions{border-top:1px solid var(--line);padding-top:16px;margin:8px 0 16px}
+  .question-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .question-link{display:flex;align-items:center;gap:8px;text-align:left;border:1px dashed #b9b3a5;background:var(--panel);color:var(--ink);border-radius:99px;padding:8px 14px;font-size:13px;max-width:100%}
+  .question-link{overflow-wrap:anywhere}
+  .question-link i{font-style:normal;border:1px dashed #8a867c;width:22px;height:22px;flex-shrink:0;display:grid;place-items:center;border-radius:50%}
+  .lane-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  @media(max-width:600px){.tree{padding:20px 14px}.map-title{font-size:22px}.map-actions{gap:4px}.map-actions button{font-size:12px;padding:6px 9px}.map-viewport{overflow:hidden}.legend{gap:10px;justify-content:flex-start}.conn-panel{right:12px;left:12px;width:auto}}
   .tree svg{width:100%;height:auto;display:block;overflow:hidden}
   .tree .preview{min-width:0}
   .tree text{font-family:var(--sans)}
   .tree .branch-name{font-family:var(--serif)}
   .tree [data-sel]{cursor:pointer}
+  .tree [data-sel]:hover circle[stroke]{stroke-width:4}
+  .loading button{font-family:var(--sans);font-size:13px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:white}
+  .answered button{font:inherit;text-align:left;border:none;border-bottom:1px dashed var(--muted);color:inherit;background:none;padding:0}
+  #print-plan{display:none}
+  @media print{body{background:white}header,.layout,#announcer{display:none!important}#print-plan{display:block;font:11pt/1.45 system-ui;color:#111}#print-plan h1{font:26pt Georgia}#print-plan svg{width:100%!important;height:auto;max-height:120mm;break-inside:avoid;margin:10pt 0}#print-plan h2{font:18pt Georgia;margin:24pt 0 8pt}#print-plan h3{margin:14pt 0 4pt}#print-plan section{break-inside:avoid}#print-plan a{color:#111;word-break:break-word}#print-plan .print-meta{font-size:9pt;color:#444}#print-plan .print-step{border-top:1px solid #ddd;padding-top:8pt;margin-top:10pt}#print-plan .print-question{font-weight:600}#print-plan .print-alternative{break-before:page}}
   .empty{margin:auto;max-width:640px;display:flex;flex-direction:column;gap:16px;padding:24px}
   .empty h1{margin:0;font-family:var(--serif);font-size:34px;font-weight:500;line-height:1.15}
   .preview{width:100%;max-width:560px;height:auto;display:block;margin:0 auto 4px}
   .empty p{margin:0;font-size:15px;color:var(--muted)}
   .empty .example{padding:12px 14px;border-radius:10px;border:1px dashed #B9B3A5;background:var(--white);text-align:left;font:inherit;font-family:var(--serif);font-size:16px;line-height:1.45;color:var(--ink)}
-  .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(243,241,236,.82);font-family:var(--serif);font-size:20px;color:var(--ink);text-align:center;padding:24px;z-index:2}
+  .loading{position:absolute;inset:0;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;background:rgba(243,241,236,.82);font-family:var(--serif);font-size:20px;color:var(--ink);text-align:center;padding:24px;z-index:2}
   .legend{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;padding-top:6px;font-size:11px;color:var(--muted)}
   .legend[hidden]{display:none}
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--white);border:2px solid #8A867C}
   .dot.done{background:var(--done);border-color:var(--done)} .dot.ghost{border-style:dashed} .dot.alt{border-style:dashed;border-color:var(--accent)} .dot.changed{background:var(--accent);border-color:var(--accent)}
-  @media (prefers-reduced-motion:no-preference){.tree path,.tree circle{transition:stroke .25s,fill .25s,stroke-width .25s}.tree path.grow{animation:grow .7s ease-out}@keyframes grow{from{opacity:0}to{opacity:1}}.tree path.draw,.preview path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s cubic-bezier(.4,0,.2,1) forwards}@keyframes draw{to{stroke-dashoffset:0}}}
+  @media (prefers-reduced-motion:no-preference){.tree path,.tree circle{transition:stroke .25s,fill .25s,stroke-width .25s}.tree path.grow{animation:grow .7s ease-out}@keyframes grow{from{opacity:0}to{opacity:1}}.tree path.draw:not([stroke-dasharray]),.preview path:not([stroke-dasharray]){stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s cubic-bezier(.4,0,.2,1) forwards}@keyframes draw{to{stroke-dashoffset:0}}}
   .detail{padding:24px;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:14px}
   .detail h2{margin:0;font-family:var(--serif);font-size:20px;font-weight:600;line-height:1.3}
   .detail .lead{font-size:13px;color:var(--muted);margin:0}
@@ -158,8 +193,9 @@
     <div id="tree-host"></div>
     <div class="legend" id="legend" hidden></div>
   </main>
-  <aside class="detail" id="detail"></aside>
+  <aside class="detail" id="detail" role="region" aria-label="Step details / Détail de l’étape"></aside>
 </div>
+<section id="print-plan" aria-label="Printable plan"></section>
 <script>
 (function () {
   'use strict';
@@ -206,17 +242,58 @@
   const catalogById = id => CATALOG.find(c => c.id === id) || null;
   const catalogForPrompt = () => CATALOG.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.map(k => k.id + ': ' + k.text).join(' ; ') : '')).join('\n');
   const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid) || null : null; };
+  // A conservative scope guard for named places in the demo. This does not verify the claim itself.
+  const PLACES = [
+    { names: ['nyon'], commune: 'nyon', canton: 'VD' }, { names: ['saint-cergue','st-cergue','saint cergue'], commune: 'saint-cergue', canton: 'VD' },
+    { names: ['gland'], commune: 'gland', canton: 'VD' }, { names: ['lausanne'], commune: 'lausanne', canton: 'VD' },
+    { names: ['la cure'], commune: 'saint-cergue', canton: 'VD' }, { names: ['geneva','genève','geneve'], commune: 'geneva', canton: 'GE' },
+    { names: ['lugano'], commune: 'lugano', canton: 'TI' }, { names: ['zurich','zürich'], commune: 'zurich', canton: 'ZH' }
+  ];
+  const pageScope = id => id === 'nyon-cdh' ? { commune: 'nyon' } : id === 'stcergue-arrival' ? { commune: 'saint-cergue' } : (id.startsWith('vd-') || ['mobilis','jestime'].includes(id)) ? { canton: 'VD' } : null;
+  function mentionedPlaces(text) { return PLACES.filter(p => p.names.some(name => new RegExp('(?<![\\p{L}\\p{N}])' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])','iu').test(text))); }
+  function constrainSources(tree) {
+    tree.branches.forEach(b => b.steps.forEach(st => {
+      let places = mentionedPlaces(st.title + ' ' + st.short + ' ' + (st.confirm_with || ''));
+      if (!places.length) places = mentionedPlaces(tree.variables.filter(v => st.depends_on.includes(v.id)).map(v => v.value).join(' '));
+      st.sourceGaps = (st.sourceGaps || []).filter(g => catalogById(g.id));
+      st.sources = st.sources.filter(ref => { const scope = pageScope(ref.id); if (!scope || !places.length || places.some(p => (!scope.commune || p.commune === scope.commune) && (!scope.canton || p.canton === scope.canton))) return true; st.sourceGaps.push({ id: ref.id, reason: t('Référence écartée : la page concerne ', 'Reference withheld: this page covers ') + (scope.commune || scope.canton) + t(', alors que l’étape concerne ', ', while the step names ') + places.map(p => p.names[0]).join(', ') + '.' }); return false; });
+      st.source = st.sources.length ? st.sources[0].id : null;
+    }));
+    return tree;
+  }
+  function claimId(id, value) { const cat = catalogById(id); if (!cat || !value) return null; const exact = cat.claims.find(k => k.id === value || k.text === value || k.fr === value || id + '/' + k.id === value || id + '#' + k.id === value); return exact ? exact.id : null; }
+
 
   // ---- State ----
   const scenarioKey = vars => hash(JSON.stringify((vars || []).map(v => [v.id, v.value])));
-  const state = { mode: 'situation', story: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
+  const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
   function storyWithVars(story, vars, original) { let result = story; (vars || []).forEach(v => { const was = (original || []).find(x => x.id === v.id); if (!was || was.value === v.value) return; const oldText = was.span || was.value, at = result.toLowerCase().indexOf(oldText.toLowerCase()); if (at >= 0) result = result.slice(0, at) + v.value + result.slice(at + oldText.length); }); return result; }
-  function normalizeTree(tree) { if (tree && Array.isArray(tree.branches)) tree.branches.forEach(b => (b.steps || []).forEach(s => { if (!Array.isArray(s.sources)) s.sources = s.source ? [{ id: s.source, claim: null }] : []; })); return tree; }
-  function load() { try { const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (d && d.story) { state.story = d.story; state.vars = d.vars || []; state.answers = d.answers || {}; state.qtexts = d.qtexts || {}; state.answerSets = d.answerSets || {}; state.turns = d.turns || []; state.trees = d.trees || {}; Object.keys(state.trees).forEach(k => normalizeTree(state.trees[k])); state.tree = normalizeTree(d.tree || null); state.done = (d.done || []).map(x => String(x).includes('|') ? x : doneKey(x)); } } catch (e) {} }
-  function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, answerSets: state.answerSets, trees: state.trees, tree: state.tree, done: state.done, turns: state.turns })); } catch (e) {} }
+  function normalizeTree(tree) { if (tree && Array.isArray(tree.branches)) tree.branches.forEach(b => (b.steps || []).forEach(s => { if (!Array.isArray(s.sources)) s.sources = s.source ? [{ id: s.source, claim: null }] : []; })); return tree && Array.isArray(tree.branches) ? constrainSources(tree) : tree; }
+  function load() { try { const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (d && d.story) { state.story = d.story; state.vars = d.vars || []; state.answers = d.answers || {}; state.qtexts = d.qtexts || {}; state.questionDefs = d.questionDefs || Object.fromEntries(((d.tree || {}).questions || []).map(q => [q.id, q])); state.answerSets = d.answerSets || {}; state.turns = d.turns || []; state.history = (d.history || []).slice(-5).map(h => Object.assign({}, h, { tree: normalizeTree(h.tree) })); state.trees = d.trees || {}; Object.keys(state.trees).forEach(k => normalizeTree(state.trees[k])); state.tree = normalizeTree(d.tree || null); const legacyScope = hash(JSON.stringify(state.vars.map(v => [v.id,v.value])) + JSON.stringify(state.answers)); state.done = (d.done || []).map(x => { x = String(x); if (x.includes('|v2|')) return x; const [id,scope] = x.split('|'); return !scope || scope === legacyScope ? doneKey(id) : x; }); } } catch (e) {} }
+  function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, questionDefs: state.questionDefs, answerSets: state.answerSets, trees: state.trees, tree: state.tree, done: state.done, turns: state.turns, history: state.history })); } catch (e) {} }
   const set = (patch, save) => { Object.assign(state, patch); if (save) persist(); render(); };
+
+
+  let requestId = 0;
+  const requests = new Set();
+  function cancelRequests() { requestId++; requests.forEach(c => c.abort()); requests.clear(); }
+  function beginRequest(message) { cancelRequests(); const id = requestId; set({ loading: message, error: '', pending: null, sel: null }); return id; }
+  const stillCurrent = id => id === requestId;
+  function snapshot() { return JSON.parse(JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, questionDefs: state.questionDefs, answerSets: state.answerSets, tree: state.tree, done: state.done, turns: state.turns, note: state.note })); }
+  function remember() { if (state.tree) state.history = state.history.concat([snapshot()]).slice(-5); }
+  function undo() { if (!state.history.length) return; cancelRequests(); const previous = state.history[state.history.length - 1], history = state.history.slice(0, -1); set(Object.assign({}, previous, { history, prevTree: null, pending: null, loading: '', error: '', sel: null, suggestedStory: '', mode: 'situation', exploreStory: null, exploreTree: null, exploreVars: null }), true); }
+  function reset() { cancelRequests(); lastDrawn = null; try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ story: '', draftStory: '', followDraft: '', editDraft: '', vars: [], answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, history: [], pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, error: '', loading: '', mode: 'situation', exploreVars: null, exploreTree: null, exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], turns: [], editing: false, activeLane: null }); }
+  function viewedStory() { return state.mode === 'explore' ? (state.exploreStory || storyWithVars(state.story, state.exploreVars, state.vars)) : state.story; }
+  function viewedAnswers() { return state.mode === 'explore' ? state.exploreAnswers : state.answers; }
+  async function requestJSON(url, options, timeout, cancellable = true) {
+    const controller = new AbortController(); if (cancellable) requests.add(controller);
+    const timer = setTimeout(() => controller.abort(), timeout || 65000);
+    try { const response = await fetch(url, Object.assign({}, options, { signal: controller.signal })); const data = await response.json(); return { response, data }; }
+    catch (e) { if (e.name === 'AbortError') throw new Error(t('Délai dépassé ou requête annulée. Votre carte est conservée.', 'Timed out or cancelled. Your map is preserved.')); throw e; }
+    finally { clearTimeout(timer); requests.delete(controller); }
+  }
 
   // ---- Connection (proxy only on the public site) ----
   const conn = Object.assign({ proxyUrl: '', status: 'off', error: '', prov: null }, (() => { try { return JSON.parse(sessionStorage.getItem(CONN_KEY) || '{}'); } catch (e) { return {}; } })());
@@ -225,16 +302,15 @@
   const live = () => conn.status === 'ok';
   const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : t('Texte préparé', 'Prepared text');
   async function chat(messages, maxTokens) {
-    const r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) });
+    const { response: r, data: j } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) });
     if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 429 ? t(' (limite atteinte)', ' (limit reached)') : ''));
-    const j = await r.json();
     return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '', prov: j.provenance || { provider: 'proxy', model: '' } };
   }
   async function connect() {
     conn.status = 'testing'; conn.error = ''; conn.prov = null; saveConn(); renderConn();
     try {
       if (!conn.proxyUrl) throw new Error(t('adresse du proxy manquante', 'proxy address missing'));
-      const r = await fetch(conn.proxyUrl.replace(/\/$/, '') + '/health'); let h = null; try { h = await r.json(); } catch (e) {}
+      const { response: r, data: h } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/health', {}, 12000, false);
       if (!h) throw new Error('HTTP ' + r.status);
       if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing ? ' : ' + h.missing.join(', ') : ''));
       if (h.maxTokens === undefined) throw new Error(t('le proxy tourne avec un ancien serveur. Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', 'the proxy is running an old server. In the Codespace: git pull; pkill node; bash proxy/start.sh'));
@@ -251,35 +327,39 @@
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, with the office that handles them. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt() +
-      '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same step ids for steps that stay the same when a variable changes. Output compact JSON on a single line, no indentation, no text outside the JSON.';
+      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, in a sensible chronological order, with the office that handles them. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers the general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s office page for Gland or a Vaud page for a Geneva-only action. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt() +
+      '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. claim is the short note ID (for example "c1"), not the note text. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same branch ids AND step ids for matching paths and actions in the previous map. Copy every field of an unchanged step exactly, including why, sources and confirm_with. Do not ask again about a fact in the sentence or answered questions. Current values override any older wording in the previous map. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
     let u = 'Situation: ' + story;
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
-    if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, depends_on: s.depends_on, sources: s.sources })) })) });
+    if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: s.sources, authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
-  function validate(j, story) {
+  function validate(j, story, confirmedAnswers = {}) {
     const snake = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x';
     const vars = (Array.isArray(j.variables) ? j.variables : []).slice(0, 8).map(v => ({ id: snake(v.id), label: String(v.label || v.id || ''), value: String(v.value || ''), span: String(v.span || ''), alternatives: (Array.isArray(v.alternatives) ? v.alternatives : []).map(String).filter(a => a && a !== v.value).slice(0, 3) })).filter(v => v.value);
     const said = String(story || '').toLowerCase();
-    const grounded = v => { const a = v.span.toLowerCase().trim(), b = v.value.toLowerCase().trim(); return (a && said.includes(a)) || (b && said.includes(b)); };
-    const inferred = vars.filter(v => !grounded(v));
+    const containsFact = (text, value) => { if (!value) return false; const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'iu').test(text); };
+    const alreadyAnswered = v => Object.values(confirmedAnswers).some(a => containsFact(String(a), v.value));
+    const grounded = v => { const a = v.span.toLowerCase().trim(), b = v.value.toLowerCase().trim(); return !!b && containsFact(said, b) && (!a || containsFact(said, a)); };
+    const inferred = vars.filter(v => !grounded(v) && !alreadyAnswered(v));
     const questions = (Array.isArray(j.questions) ? j.questions : []).slice(0, 4).map(q => ({ id: snake(q.id), text: String(q.text || ''), why: String(q.why || ''), type: ['yesno', 'choice', 'text'].includes(q.type) ? q.type : 'text', options: Array.isArray(q.options) ? q.options.map(String).slice(0, 5) : [] })).filter(q => q.text);
     // Apertus assumed these; the person never said them. Ask instead of asserting.
     inferred.forEach(v => { if (!questions.some(q => q.id === v.id)) questions.push({ id: v.id, text: v.label.charAt(0).toUpperCase() + v.label.slice(1) + ' ?', why: t('Vous ne l’avez pas dit ; Apertus avait supposé « ', 'You did not say it; Apertus had assumed “') + v.value + t(' ». La carte en dépend, alors nous demandons.', '”. The map depends on it, so we ask.'), type: 'choice', options: [v.value].concat(v.alternatives).slice(0, 5), inferred: true }); });
     const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => ({
       id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
-      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id)).map(r => ({ id: r.id, claim: claimOf(r.id, r.claim) ? r.claim : null })).slice(0, 3),
+      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id)).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
       authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : 'other',
       confirm_with: s.confirm_with ? String(s.confirm_with) : null
     })).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
+    const seenBranches = new Set(), seenSteps = new Set();
+    branches.forEach(b => { const original = b.id; let i = 2; while (seenBranches.has(b.id)) b.id = original + '_' + i++; seenBranches.add(b.id); b.steps.forEach(st => { const originalId = st.id; let n = 2; while (seenSteps.has(st.id)) st.id = b.id + '_' + originalId + '_' + n++; seenSteps.add(st.id); }); });
     if (!branches.length) throw new Error(t('aucune piste exploitable dans la réponse', 'no usable branch in the answer'));
-    return { variables: vars.filter(grounded), questions: questions.slice(0, 6), branches, note: String(j.note || '') };
+    return constrainSources({ variables: vars.filter(grounded), questions: questions.slice(0, 6), branches, note: String(j.note || '') });
   }
   function extractJSON(raw) {
     const s = raw.indexOf('{'); if (s < 0) throw new Error(t('pas de JSON dans la réponse', 'no JSON in the answer'));
@@ -314,119 +394,201 @@
     if (!lastValid) throw new Error(t('réponse coupée avant une étape complète', 'answer cut off before a complete step'));
     return { text: lastValid, truncated: true };
   }
-  const treeKey = (story, vars, answers) => hash(LANG + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
+  const treeKey = (story, vars, answers) => hash('review8-continuity1|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
-    const key = treeKey(story, vars, answers);
+    const effectiveStory = change && prev ? storyWithVars(story, vars, prev.variables) : story;
+    const key = treeKey(effectiveStory, vars, answers);
+    const generation = requestId;
     if (state.trees[key]) return state.trees[key];
-    const prompt = userPrompt(story, vars, answers, prev, change);
+    const prompt = userPrompt(effectiveStory, vars, answers, prev, change);
+    let retryReason = "";
     for (let attempt = 0; attempt < 2; attempt++) {
-      const retry = attempt ? '\nYour previous response was not parseable as a complete map. Try again with at most three relevant branches and two steps per branch. Include every required field, valid JSON brackets, and no text outside the object.' : '';
+      if (generation !== requestId) throw new Error('cancelled');
+      const retry = attempt ? '\nRepair the previous response: ' + (retryReason || 'it was not parseable as a complete map') + '. Return the FULL map, retaining every existing branch and action not affected by the changed input. Keep their original branch ids and step ids, not just their titles. Do not move an action into a different branch. Include all required fields; use short explanations and no text outside JSON.' : '';
       const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + retry }], 3000);
       try {
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
-        const tree = validate(JSON.parse(ex.text), story);
+        let tree = reconcileIds(validate(JSON.parse(ex.text), effectiveStory, answers), prev, effectiveStory);
+        const gaps = comparisonGaps(tree, prev, change);
+        if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
+        const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
+        if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
+          try {
+            const reviewed = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
+            const reviewJSON = extractJSON(reviewed.text.replace(/```json|```/g, '').trim());
+            if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers), tree, effectiveStory); res.prov = reviewed.prov; }
+          } catch (e) { /* the first complete map remains usable */ }
+        }
         tree.incomplete = ex.truncated;
         tree.prov = res.prov; tree.key = key;
         // An incomplete map must be fetched again when the person presses Redraw.
-        if (!ex.truncated) state.trees[key] = tree;
+        if (!ex.truncated && generation === requestId) { state.trees[key] = tree; const keys = Object.keys(state.trees); if (keys.length > 20) delete state.trees[keys[0]]; }
         return tree;
       } catch (e) {
-        if (attempt) throw e;
+        retryReason = e.message || String(e);
+        if (attempt || generation !== requestId) throw e;
       }
     }
+  }
+
+  function comparisonGaps(tree, previous, change) {
+    if (!previous || !change) return [];
+    const known = new Set([...(previous.variables || []).map(v => v.id), ...(previous.questions || []).map(q => q.id), ...Object.keys(viewedAnswers())]);
+    const gaps = [];
+    previous.branches.forEach(b => b.steps.forEach(st => {
+      const branch = tree.branches.find(x => x.id === b.id), matching = branch && branch.steps.find(x => x.id === st.id);
+      const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
+      const declaredUnchanged = st.depends_on.length && !st.depends_on.includes(change.id) && st.depends_on.every(id => known.has(id));
+      if (relocated || (declaredUnchanged && !matching)) gaps.push(b.id + '/' + st.id);
+    }));
+    return gaps;
+  }
+
+  function reconcileIds(tree, previous, story = '') {
+    if (!previous) return tree;
+    const renames = {};
+    tree.variables.forEach(v => { const old = (previous.variables || []).find(x => x.id === v.id) || (previous.variables || []).find(x => (x.span || x.value).toLowerCase() === (v.span || v.value).toLowerCase()); if (old && !tree.variables.some(x => x !== v && x.id === old.id)) { renames[v.id] = old.id; v.id = old.id; if (!v.alternatives.length) v.alternatives = old.alternatives || []; } });
+    if (story) (previous.variables || []).forEach(old => { const quote = old.span || old.value; if (quote && story.toLowerCase().includes(quote.toLowerCase()) && !tree.variables.some(v => v.id === old.id || (v.span || v.value).toLowerCase() === quote.toLowerCase())) tree.variables.push(Object.assign({}, old)); });
+    tree.branches.forEach(b => b.steps.forEach(st => { st.depends_on = st.depends_on.map(id => renames[id] || id); }));
+    const usedBranches = new Set(), usedSteps = new Set();
+    tree.branches.forEach(b => {
+      const old = previous.branches.find(x => x.id === b.id) || previous.branches.find(x => x.name.toLowerCase() === b.name.toLowerCase());
+      if (old && !usedBranches.has(old.id)) b.id = old.id;
+      usedBranches.add(b.id);
+      b.steps.forEach(st => { const match = old && (old.steps.find(x => x.id === st.id) || old.steps.find(x => x.title === st.title && JSON.stringify(x.sources) === JSON.stringify(st.sources))); if (match && !usedSteps.has(match.id)) st.id = match.id; usedSteps.add(st.id); });
+    });
+    return tree;
   }
 
   // ---- Conversation ----
-  function mapForPrompt(tree) {
-    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = claimOf(r.id, r.claim); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in state.answers)).map(q => q.text) });
+  function mapForPrompt(tree, answers = viewedAnswers()) {
+    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = claimOf(r.id, r.claim); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => q.text) });
   }
   function followSystem() {
     return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
-      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"fact|question|both","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","steps":["ids of map steps the answer refers to"],"not_covered":true|false}' +
-      '\nRules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states anything about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
+      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"compare|whatif|fact|question|both","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","changes":[{"id":"existing variable or answered-question id","value":"proposed value"}],"steps":["ids of map steps the answer refers to"],"not_covered":true|false,"target":{"type":"variable|question","id":"existing id","value":"alternative answer"}}' +
+      '\nA request for another path, a hypothetical, "what if", "et si", "instead", or changing an answer MUST use kind compare and give the full alternative story or changes to existing variable ids. A comparison is NOT a confirmed fact. For an answered-question alternative, use target type question, its existing id and the proposed value; do not turn it into an unrelated situation sentence. For a variable alternative use target type variable. Preserve every other stated fact in story. A correction such as "it is Nyon, not Hyon" must replace the mistaken word in story. Do not merely explain the alternative: return the changed situation so the app can preview its map. If kind fact or both, also preserve existing facts except explicit corrections. Rules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states anything about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
+  }
+  function directAlternative(text) {
+    if (!/\b(what if|instead|rather|switch|change|move to|et si|plutôt|changer|remplacer|déménager)\b/i.test(text)) return null;
+    const words = text.toLowerCase().match(/[\p{L}\p{N}-]+/gu) || [];
+    const matches = []; currentVars().forEach(v => (v.alternatives || []).forEach(a => { const tokens = a.toLowerCase().match(/[\p{L}\p{N}-]+/gu) || []; if (tokens.length && words.some((_, i) => tokens.every((w, j) => words[i + j] === w))) matches.push({ id: v.id, to: a }); }));
+    return matches.length === 1 ? matches[0] : null;
   }
   async function converse(text) {
-    text = text.trim(); if (!text) return;
+    text = text.trim(); if (!text || state.loading) return;
+    state.followDraft = '';
     if (!state.tree) { startStory(text); return; }
     if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
-    const turns = state.turns.concat([{ role: 'you', text }]);
-    set({ turns, loading: t('Apertus lit votre message…', 'Apertus is reading your message…'), error: '' }, true);
+    const exploring = state.mode === 'explore', turns = (exploring ? state.exploreTurns : state.turns).concat([{ role: 'you', text }]);
+    set(exploring ? { exploreTurns: turns } : { turns }, !exploring);
+    const direct = directAlternative(text);
+    if (direct) { await propose(direct.id, direct.to); return; }
+    const id = beginRequest(t('Apertus lit votre message…', 'Apertus is reading your message…'));
     try {
-      const viewTree = (state.mode === 'explore' && state.exploreTree) ? state.exploreTree : state.tree;
-      const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + ((state.mode === 'explore' && state.exploreStory) ? state.exploreStory : state.story) + '\nMap: ' + mapForPrompt(viewTree) + '\nFollow-up: ' + text }], 700);
-      const ex = extractJSON(res.text.replace(/```json|```/g, '').trim()); const j = JSON.parse(ex.text);
-      let answer = String(j.answer || '').trim(); let newStory = String(j.story || state.story).trim();
-      const baseStory = (state.mode === 'explore' && state.exploreStory) ? state.exploreStory : state.story;
-      state.tree.branches.forEach(b => b.steps.forEach(s => { if (answer.includes(s.id)) answer = answer.split(s.id).join('“' + s.short + '”'); }));
-      const looksLikeFact = /^(i |i'm |i’m |i am |i hold|i have|i live|i own|i rent|i work|we |my |je |j'|j’|nous |mon |ma |mes )/i.test(text) && !/\?\s*$/.test(text);
-      if (looksLikeFact && (newStory === state.story || newStory === baseStory)) { j.kind = j.kind === 'question' ? 'both' : (j.kind || 'fact'); newStory = baseStory.replace(/\s*$/, '') + ' ' + text.replace(/\.?\s*$/, '.'); }
-      const ids = (Array.isArray(j.steps) ? j.steps : []).map(String);
-      let sel = null; const found = []; viewTree.branches.forEach((b, li) => b.steps.forEach(s => { if (ids.includes(s.id)) found.push({ li, id: s.id }); }));
-      if (found.length) sel = { li: found[0].li, id: found[0].id, alt: false };
-      const guide = answer ? [{ role: 'guide', text: answer, steps: found, prov: res.prov, notCovered: !!j.not_covered }] : [];
-      const changed = newStory && newStory !== baseStory && (j.kind === 'fact' || j.kind === 'both');
-      if (changed && state.mode === 'explore') {
-        // Explore: nothing is saved, so a fact redraws the hypothesis straight away
-        set({ turns: turns.concat(guide), sel: null, loading: t('Apertus redessine l’hypothèse avec ce que vous ajoutez…', 'Apertus is redrawing the hypothesis with what you added…') });
-        const tree = await fetchTree(newStory, state.exploreVars || [], {}, state.exploreTree || state.tree, null);
-        set({ exploreStory: newStory, exploreTree: tree, exploreVars: tree.variables.length ? tree.variables : (state.exploreVars || []), loading: '' });
-        return;
+      const viewTree = exploring ? state.exploreTree : state.tree, baseStory = viewedStory();
+      const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + baseStory + '\nVariables: ' + JSON.stringify(currentVars()) + '\nConfirmed answers: ' + JSON.stringify(Object.keys(viewedAnswers()).map(q => ({ id: q, text: (state.mode === 'explore' ? state.exploreQtexts : state.qtexts)[q] || q, answer: viewedAnswers()[q] }))) + '\nMap: ' + mapForPrompt(viewTree) + '\nFollow-up: ' + text }], 1100);
+      if (!stillCurrent(id)) return;
+      const ex = extractJSON(res.text.replace(/```json|```/g, '').trim()), j = JSON.parse(ex.text);
+      if (j.target && typeof j.target.value === 'string' && ['compare','whatif'].includes(j.kind)) {
+        set({ loading: '' });
+        if (currentVars().some(v => v.id === j.target.id)) { await propose(j.target.id, j.target.value); return; }
+        if (j.target.id in viewedAnswers()) { await proposeAnswer(j.target.id, j.target.value); return; }
       }
-      set({ turns: turns.concat(guide), sel: sel || state.sel, suggestedStory: changed ? newStory : '', loading: '' }, true);
-    } catch (e) { set({ loading: '', error: (e && e.message) || 'error' }); }
+      const answerChanges = (Array.isArray(j.changes) ? j.changes : []).filter(c => c && typeof c.value === 'string' && c.id in viewedAnswers());
+      if (answerChanges.length === 1 && ['compare','whatif'].includes(j.kind)) { set({ loading: '' }); await proposeAnswer(answerChanges[0].id, answerChanges[0].value); return; }
+      let answerText = String(j.answer || '').trim(), newStory = String(j.story || baseStory).trim();
+      const correction = text.match(/(?:^|\b)(?:is|it's|it’s|it is|c'est|c’est)\s+([\p{L}][\p{L}\-'’]*)\s*,?\s*(?:no|not|non|pas)\s+([\p{L}][\p{L}\-'’]*)/iu);
+      if (correction && newStory === baseStory) { const escaped = correction[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); newStory = baseStory.replace(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'), correction[1]); }
+      const changes = Array.isArray(j.changes) ? j.changes.filter(c => c && currentVars().some(v => v.id === c.id) && typeof c.value === 'string' && c.value.trim()) : [];
+      if (changes.length) { const vars = currentVars().map(v => { const c = changes.find(c => c.id === v.id); return c ? Object.assign({}, v, { value: c.value.trim() }) : v; }); newStory = storyWithVars(baseStory, vars, currentVars()); }
+      const looksLikeFact = /^(i |i'm |i’m |i am |i hold|i have|i live|i own|i rent|i work|we |my |je |j'|j’|nous |mon |ma |mes )/i.test(text) && !/\?\s*$/.test(text);
+      if (looksLikeFact && newStory === baseStory && !['compare', 'question'].includes(j.kind)) newStory = baseStory + ' ' + text.replace(/\.?\s*$/, '.');
+      const ids = (Array.isArray(j.steps) ? j.steps : []).map(String), found = [], selectedSteps = [];
+      const rows = derive().rows; viewTree.branches.forEach(b => b.steps.forEach(st => { if (ids.some(id => id === st.id || id === b.id + '/' + st.id)) { found.push({ li: rows.findIndex(r => r.id === b.id), id: st.id }); selectedSteps.push(st); } }));
+      const notes = [], seenNotes = new Set(); selectedSteps.forEach(st => (st.sources || []).forEach(ref => { const claim = claimOf(ref.id,ref.claim), key = ref.id + '/' + ref.claim; if (claim && !seenNotes.has(key)) { seenNotes.add(key); notes.push(LANG === 'fr' ? claim.fr || claim.text : claim.text); } }));
+      const comparing = ['compare','whatif'].includes(j.kind) || newStory !== baseStory;
+      const safeText = notes.length ? t('Voici les notes non relues du catalogue liées aux étapes choisies : ', 'Here are the unreviewed catalogue notes linked to the selected steps: ') + notes.join(' ') : t('Le catalogue ne fournit pas de réponse établie à cette question. Ouvrez l’étape proposée et confirmez auprès de ', 'The catalogue does not establish an answer to this question. Open the proposed step and confirm with ') + (selectedSteps[0] && selectedSteps[0].confirm_with || t('l’autorité compétente', 'the competent authority')) + '.';
+      const guide = !comparing && (answerText || j.kind === 'question' || found.length) ? [{ role: 'guide', text: safeText, steps: found, prov: res.prov, catalogueOnly: true, notCovered: !notes.length || !!j.not_covered }] : [];
+      set(exploring ? { exploreTurns: turns.concat(guide), loading: '' } : { turns: turns.concat(guide), loading: '' }, !exploring);
+      // Any proposed changed situation gets a map, even if the model mislabels a "what if" as a question.
+      if (newStory !== baseStory) { await stageStory(newStory); return; }
+      if (['compare', 'fact', 'both'].includes(j.kind) && !answerText) set({ error: t('Le changement n’a pas été compris. Touchez un mot souligné ou réécrivez la phrase pour comparer.', 'The change was not understood. Touch an underlined word or rewrite the sentence to compare.') });
+      else if (found.length) set({ sel: Object.assign({ alt: false }, found[0]) });
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
-
-  async function applySuggestedStory(text) {
-    text = text.trim(); if (!text || text === state.story) { set({ suggestedStory: '' }); return; }
-    const previous = state.tree;
-    set({ loading: t('Apertus redessine votre carte…', 'Apertus is redrawing your map…'), error: '' });
+  async function stageStory(text) {
+    text = String(text || '').trim(); if (!text || text === viewedStory()) return;
+    if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
+    const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
+    const id = beginRequest(t('Apertus dessine le chemin alternatif…', 'Apertus is drawing the alternative path…'));
     try {
-      const tree = await fetchTree(text, [], {}, previous, null);
-      set({ story: text, vars: tree.variables, answers: {}, qtexts: {}, answerSets: {}, tree, prevTree: previous, pending: null, suggestedStory: '', sel: null, done: [], loading: '', note: { text: tree.note, prov: tree.prov } }, true);
-    } catch (e) { set({ loading: '', error: (e && e.message) || 'error' }); }
+      const tree = await fetchTree(text, [], {}, previous, null); if (!stillCurrent(id)) return;
+      if (exploring) set({ exploreStory: text, exploreVars: tree.variables, exploreTree: tree, exploreAnswers: {}, exploreQtexts: {}, loading: '', sel: null });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'story', story: text, vars: tree.variables, tree, answers: {}, qtexts: {}, from: t('ma situation', 'my situation'), to: t('ce chemin', 'this path') }, suggestedStory: '', loading: '', sel: null });
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', suggestedStory: text, error: e.message || 'error' }); }
   }
-
-  // ---- Flows ----
+  async function applySuggestedStory(text) { await stageStory(text); }
   async function startStory(text) {
-    text = text.trim(); if (!text) return;
+    text = text.trim(); if (!text || state.loading) return;
+    if (state.tree) { await stageStory(text); return; }
     if (!live()) { set({ error: t('Apertus n’est pas connecté : la carte ne peut pas être dessinée.', 'Apertus is not connected: the map cannot be drawn.') }); return; }
-    set({ loading: t('Apertus lit votre situation et dessine les pistes… (10 à 30 secondes)', 'Apertus is reading your situation and drawing the paths… (10 to 30 seconds)'), error: '', story: text, vars: [], answers: {}, qtexts: {}, answerSets: {}, tree: null, pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, mode: 'situation', exploreVars: null, turns: [], editing: false });
+    state.draftStory = text;
+    const id = beginRequest(t('Apertus lit votre situation et dessine les pistes… (10 à 30 secondes)', 'Apertus is reading your situation and drawing the paths… (10 to 30 seconds)'));
     try {
-      const tree = await fetchTree(text, [], {}, null, null);
-      set({ tree, vars: tree.variables, loading: '', note: { text: tree.note, prov: tree.prov } }, true);
-      if (window.innerWidth < 1100) document.getElementById('tree-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (e) { set({ loading: '', error: t('Apertus n’a pas renvoyé une carte lisible (', 'Apertus did not return a readable map (') + (e.message || 'error') + t('). Réessayez ou reformulez.', '). Try again or rephrase.') }); }
+      const tree = await fetchTree(text, [], {}, null, null); if (!stillCurrent(id)) return;
+      set({ story: text, draftStory: '', tree, vars: tree.variables, loading: '', pending: null, note: { text: tree.note, prov: tree.prov }, editing: false }, true);
+      if (window.innerWidth < 900) document.getElementById('tree-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: t('Apertus n’a pas renvoyé une carte lisible (', 'Apertus did not return a readable map (') + (e.message || 'error') + t('). Réessayez ou reformulez.', '). Try again or rephrase.') }); }
   }
   function currentVars() { return state.mode === 'explore' && state.exploreVars ? state.exploreVars : state.vars; }
   async function propose(varId, to) {
-    const v = currentVars().find(x => x.id === varId); if (!v || !to || to === v.value) return;
-    if (state.mode === 'explore') {
-      const vars = state.exploreVars.map(x => x.id === varId ? Object.assign({}, x, { value: to }) : x);
-      set({ loading: t('Apertus redessine l’hypothèse…', 'Apertus is redrawing the hypothesis…'), error: '', sel: null });
-      try { const tree = await fetchTree(state.story, vars, answersFor(vars), state.tree, { id: varId, from: v.value, to }); set({ exploreVars: vars, exploreTree: tree, loading: '' }); }
-      catch (e) { set({ loading: '', error: e.message || 'error' }); }
-      return;
-    }
-    const vars = state.vars.map(x => x.id === varId ? Object.assign({}, x, { value: to }) : x);
-    set({ loading: t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'), error: '', sel: null, touched: true });
-    try { const cand = await fetchTree(state.story, vars, answersFor(vars), state.tree, { id: varId, from: v.value, to }); set({ pending: { id: varId, from: v.value, to, vars, tree: cand }, loading: '' }, true); }
-    catch (e) { set({ loading: '', error: e.message || 'error' }); }
+    const v = currentVars().find(x => x.id === varId); to = String(to || '').trim(); if (!v || !to || to === v.value || state.loading) return;
+    const exploring = state.mode === 'explore', original = currentVars(), vars = original.map(x => x.id === varId ? Object.assign({}, x, { value: to, span: to }) : x);
+    const story = storyWithVars(viewedStory(), vars, original), previous = exploring ? state.exploreTree : state.tree;
+    const answers = exploring ? {} : answersFor(vars), qtexts = exploring ? {} : qtextsFor(vars);
+    const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
+    try {
+      const tree = await fetchTree(story, vars, answers, previous, { id: varId, from: v.value, to }); if (!stillCurrent(id)) return;
+      if (exploring) set({ exploreVars: vars, exploreStory: story, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars, tree, answers, qtexts }, loading: '' });
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
-  function adopt() { const p = state.pending; if (!p) return; const next = state.answerSets[scenarioKey(p.vars)] || { answers: {}, qtexts: {} }; const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers: state.answers, qtexts: state.qtexts } }); const story = storyWithVars(state.story, p.vars, state.vars); const vars = p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v); set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets, pending: null, sel: null, note: { text: p.tree.note, prov: p.tree.prov } }, true); }
+  function adopt() {
+    const p = state.pending; if (!p || state.loading) return; remember();
+    const next = p.answers ? { answers: p.answers, qtexts: p.qtexts || {} } : (state.answerSets[scenarioKey(p.vars)] || { answers: {}, qtexts: {} });
+    const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers: state.answers, qtexts: state.qtexts } });
+    const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
+    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: p.kind === 'story' ? {} : answerSets, questionDefs: p.kind === 'story' ? {} : state.questionDefs, done: p.kind === 'story' ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
+  }
   function keep() { set({ pending: null, sel: null }); }
+  async function proposeAnswer(qid, to) {
+    to = String(to || '').trim(); const cur = viewedAnswers(); if (!to || !(qid in cur) || cur[qid] === to || state.loading) return;
+    const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree, answers = Object.assign({}, cur, { [qid]: to });
+    const id = beginRequest(t('Apertus dessine cette autre réponse…', 'Apertus is drawing this alternative answer…'));
+    try {
+      const tree = await fetchTree(viewedStory(), currentVars(), answers, previous, { id: qid, from: cur[qid], to }); if (!stillCurrent(id)) return;
+      if (exploring) set({ exploreTree: tree, exploreAnswers: answers, loading: '' });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'answer', answerChange: true, id: qid, from: cur[qid], to, story: state.story, vars: state.vars, answers, qtexts: state.qtexts, tree }, loading: '' });
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
+  }
   async function answer(qid, value) {
-    if (state.mode === 'explore') { set({ error: t('Revenez à votre situation pour répondre ; l’hypothèse reste sans effet sur votre carte enregistrée.', 'Return to your situation to answer; the hypothesis does not change your saved map.') }); return; }
-    value = String(value).trim(); if (!value) return;
-    const answers = Object.assign({}, state.answers); answers[qid] = value;
-    const qq = state.tree && state.tree.questions.find(x => x.id === qid); if (qq) state.qtexts[qid] = qq.text;
-    set({ loading: t('Apertus fait pousser la branche…', 'Apertus is growing the branch…'), error: '', sel: null });
-    try { const tree = await fetchTree(state.story, state.vars, answers, state.tree, null); set({ prevTree: state.tree, tree, answers, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers, qtexts: state.qtexts } }), loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
-    catch (e) { set({ loading: '', error: e.message || 'error' }); }
+    if (qid in viewedAnswers()) { await proposeAnswer(qid, value); return; }
+    value = String(value).trim(); if (!value || state.loading) return;
+    const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
+    const answers = Object.assign({}, viewedAnswers(), { [qid]: value }), qtexts = Object.assign({}, exploring ? state.exploreQtexts : state.qtexts);
+    const qq = previous && previous.questions.find(x => x.id === qid); if (qq) { qtexts[qid] = qq.text; const defs = exploring ? state.exploreQuestionDefs : state.questionDefs; defs[qid] = qq; }
+    const id = beginRequest(t('Apertus fait pousser la branche…', 'Apertus is growing the branch…'));
+    try {
+      const tree = await fetchTree(viewedStory(), currentVars(), answers, previous, null); if (!stillCurrent(id)) return;
+      if (exploring) set({ exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
+      else { remember(); set({ prevTree: previous, tree, answers, qtexts, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers, qtexts } }), pending: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
 
   // ---- Diff by id ----
-  const same = (a, b) => a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && JSON.stringify(a.sources || []) === JSON.stringify(b.sources || []);
+  const same = (a, b) => a.short === b.short && JSON.stringify(a.depends_on || []) === JSON.stringify(b.depends_on || []) && a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && JSON.stringify(a.sources || []) === JSON.stringify(b.sources || []) && JSON.stringify(a.sourceGaps || []) === JSON.stringify(b.sourceGaps || []);
   function diffBranches(A, B) {
     const ids = A.map(b => b.id); B.forEach((b, i) => { if (!ids.includes(b.id)) ids.splice(Math.min(i, ids.length), 0, b.id); });
     return ids.map(id => {
@@ -445,9 +607,17 @@
     if (previewOn) rows = diffBranches(tree.branches, s.pending.tree.branches);
     else if (!exploreOn && s.prevTree) rows = diffBranches(s.prevTree.branches, tree.branches).filter(r => !r.removed).map(r => ({ id: r.id, name: r.name, cmp: r.cmp.filter(c => c.kind !== 'removed').map(c => ({ id: c.id, a: c.b, b: null, kind: c.kind === 'same' ? 'same' : 'applied-' + c.kind })) }));
     else rows = tree.branches.map(b => ({ id: b.id, name: b.name, cmp: b.steps.map(st => ({ id: st.id, a: st, b: null, kind: 'same' })) }));
-    return { exploreOn, tree, rows, previewOn, answers: exploreOn ? answersFor(s.exploreVars || s.vars) : s.answers, qtexts: exploreOn ? qtextsFor(s.exploreVars || s.vars) : s.qtexts };
+    return { exploreOn, tree, rows, previewOn, answers: exploreOn ? s.exploreAnswers : s.answers, qtexts: exploreOn ? s.exploreQtexts : s.qtexts };
   }
-  const doneKey = (id, vars = currentVars(), answers = answersFor(vars)) => id + '|' + hash(JSON.stringify((vars || []).map(v => [v.id, v.value])) + JSON.stringify(answers || {}));
+  function doneKey(id, vars = currentVars(), answers = vars === state.exploreVars ? state.exploreAnswers : answersFor(vars)) {
+    const tree = state.mode === 'explore' ? state.exploreTree : state.tree;
+    const step = tree && tree.branches.flatMap(b => b.steps).find(s => s.id === id);
+    const dependencies = step && step.depends_on && step.depends_on.length ? step.depends_on : null;
+    const facts = (vars || []).filter(v => !dependencies || dependencies.includes(v.id)).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0]));
+    const responses = Object.keys(answers || {}).filter(k => !dependencies || dependencies.includes(k)).sort().map(k => [k, answers[k]]);
+    const meaning = step ? [step.title,step.why,step.authority,step.confirm_with,step.sources,step.sourceGaps || []] : [];
+    return id + '|v2|' + hash(JSON.stringify([facts,responses,meaning]));
+  }
   const isDone = id => state.done.includes(doneKey(id));
   let lastDrawn = null;
 
@@ -464,75 +634,77 @@
     // the sentence as written, with the variables Apertus found underlined where they appear
     const occupied = [];
     const placements = [];
-    const storyText = d.exploreOn && s.exploreStory ? s.exploreStory : s.story;
+    const placedVars = new Set();
+    const storyText = viewedStory();
     vars.forEach(v => {
       const cls = (d.previewOn && s.pending.id === v.id) ? 'pending' : (d.exploreOn && s.vars.find(o => o.id === v.id && o.value !== v.value)) ? 'hyp' : (!d.exploreOn && s.prevTree && s.trees && vars !== s.vars) ? '' : '';
-      const label = (d.previewOn && s.pending.id === v.id) ? esc(v.value) + ' → ' + esc(s.pending.to) + ' ?' : esc(v.value);
+      const label = (d.previewOn && s.pending.id === v.id && !s.pending.answerChange) ? esc(v.span || v.value) + ' → ' + esc(s.pending.to) + ' ?' : esc(v.span || v.value);
       const btn = '<button type="button" class="word ' + cls + '" data-var="' + esc(v.id) + '" title="' + esc(v.label) + '">' + label + '</button>';
       const span = v.span || v.value;
       const idx = span ? storyText.toLowerCase().indexOf(span.toLowerCase()) : -1;
-      if (idx >= 0 && !occupied.some(p => idx < p[1] && idx + span.length > p[0])) { occupied.push([idx, idx + span.length]); placements.push({ start: idx, end: idx + span.length, html: btn }); v._placed = true; } else v._placed = false;
+      if (idx >= 0 && !occupied.some(p => idx < p[1] && idx + span.length > p[0])) { occupied.push([idx, idx + span.length]); placements.push({ start: idx, end: idx + span.length, html: btn }); placedVars.add(v); }
     });
     placements.sort((a, b) => a.start - b.start);
     let sentence = '', cursor = 0;
     placements.forEach(p => { sentence += esc(storyText.slice(cursor, p.start)) + p.html; cursor = p.end; });
     sentence += esc(storyText.slice(cursor));
     html += '<p class="sentence">' + sentence + '</p>';
-    const loose = vars.filter(v => !v._placed);
+    const loose = vars.filter(v => !placedVars.has(v));
     if (loose.length) html += '<div class="chips">' + loose.map(v => '<button type="button" class="word chip" data-var="' + esc(v.id) + '">' + esc(v.label) + ' : ' + esc(v.value) + '</button>').join('') + '</div>';
-    const qa = Object.keys(d.answers || {}).map(q => { const qq = d.tree && d.tree.questions.find(x => x.id === q); return '<b>' + esc(qq ? qq.text : (d.qtexts[q] || q)) + '</b> ' + esc(d.answers[q]); });
+    const qa = Object.keys(d.answers || {}).map(q => { const qq = d.tree && d.tree.questions.find(x => x.id === q); return '<button type="button" data-answered="' + esc(q) + '"><b>' + esc(qq ? qq.text : (d.qtexts[q] || q)) + '</b> ' + esc(d.answers[q]) + '</button>'; });
     if (qa.length) html += '<p class="answered">' + qa.join(' · ') + '</p>';
     html += '<div class="hint">' + (d.exploreOn ? t('Ici, changer un mot souligné redessine sans enregistrer.', 'Here, changing an underlined word redraws without saving.') : t('Les mots soulignés sont ce qu’Apertus a compris comme vos réponses. Touchez-en un pour proposer une autre valeur.', 'The underlined words are what Apertus understood as your answers. Touch one to propose another value.')) + '</div>';
     if (d.previewOn) {
       const c = count(d);
-      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div><div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' partout', ' everywhere') + '</button></div></div>';
+      const parked = Object.keys(s.answers).filter(id => !(id in (s.pending.answers || {}))).length;
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' à ma situation', ' to my situation') + '</button></div></div>';
     }
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
-    const note = s.note && s.note.text ? s.note : null;
+    const note = d.previewOn ? { text: s.pending.tree.note, prov: s.pending.tree.prov } : d.exploreOn && d.tree ? { text: d.tree.note, prov: d.tree.prov } : s.note && s.note.text ? s.note : null;
     html += '<div class="spacer"></div>' + (note ? '<div class="note"><div class="who live"><i></i>' + esc(provLabel(note.prov)) + '</div><div>' + esc(note.text) + '</div></div>' : '');
     if (d.tree && d.tree.incomplete) html += '<div class="err">' + t('Réponse coupée : la carte est incomplète. Cliquez sur Redessiner pour réessayer.', 'Answer cut off: the map is incomplete. Click Redraw to try again.') + '</div>';
     if (s.error) html += '<div class="err">' + esc(s.error) + '</div>';
-    const turns = s.turns.slice(-6);
-    if (turns.length) html += '<div class="chat">' + turns.map(u => u.role === 'you' ? '<div class="turn you">' + esc(u.text) + '</div>' : '<div class="turn guide"><div class="who live"><i></i>' + esc(provLabel(u.prov)) + (u.notCovered ? ' · ' + t('non couvert', 'not covered') : '') + '</div><div>' + esc(u.text) + '</div><div class="small">' + t('Réponse proposée par le modèle : vérifiez le point et sa page avant d’agir.', 'Model suggestion: check the step and its page before acting.') + '</div>' + ((u.steps || []).length ? '<div class="chips">' + u.steps.map(x => { const b = d.tree && d.tree.branches[x.li]; const st = b && b.steps.find(y => y.id === x.id); return st ? '<button type="button" class="chip" data-sel="' + x.li + '|' + esc(x.id) + '|0">' + esc(st.short) + '</button>' : ''; }).join('') + '</div>' : '') + '</div>').join('') + '</div>';
-    if (s.suggestedStory) html += '<form class="ask" data-suggest-form><label for="suggest" class="hint">' + t('Apertus propose cette nouvelle phrase. Relisez-la ou corrigez-la avant de redessiner.', 'Apertus suggests this new sentence. Review or edit it before redrawing.') + '</label><div class="field"><input id="suggest" name="text" type="text" value="' + esc(s.suggestedStory) + '"><button type="submit">' + t('Adopter et redessiner', 'Adopt and redraw') + '</button><button type="button" data-action="dismiss-suggestion">' + t('Ignorer', 'Dismiss') + '</button></div></form>';
-    html += '<form class="ask" data-converse-form><label for="ask" class="hint">' + t('Ajoutez un fait ou posez une question sur la carte', 'Add a fact or ask about the map') + '</label><div class="field"><input id="ask" name="text" type="text" autocomplete="off" placeholder="' + t('Je travaille aussi à Genève… / Que dois-je apporter ?', 'I also work in Geneva… / What do I bring?') + '"' + (live() ? '' : ' disabled') + '><button type="submit"' + (live() ? '' : ' disabled') + ' aria-label="' + t('Envoyer', 'Send') + '">→</button></div></form>';
-    html += s.editing ? '<form class="ask" data-story-form><label for="edit" class="hint">' + t('Réécrire la phrase (redessine la carte)', 'Rewrite the sentence (redraws the map)') + '</label><div class="field"><input id="edit" name="text" type="text" value="' + esc(s.story) + '"><button type="submit">' + t('Redessiner', 'Redraw') + '</button></div></form>' : '<button type="button" class="link-btn" data-action="edit-story" style="align-self:flex-start">' + t('Réécrire la phrase', 'Rewrite the sentence') + '</button>';
+    const turns = (d.exploreOn ? s.exploreTurns : s.turns).slice(-6);
+    if (turns.length) html += '<div class="chat">' + turns.map(u => u.role === 'you' ? '<div class="turn you">' + esc(u.text) + '</div>' : '<div class="turn guide"><div class="who live"><i></i>' + esc(u.catalogueOnly ? t('Sélection des étapes : ', 'Step selection: ') + provLabel(u.prov) : provLabel(u.prov)) + (u.notCovered ? ' · ' + t('non couvert', 'not covered') : '') + '</div><div>' + esc(u.text) + '</div><div class="small">' + t('Ces notes sont préparées, non relues. Apertus a choisi les étapes ; vérifiez leurs pages avant d’agir.', 'These notes are prepared and unreviewed. Apertus selected the steps; check their pages before acting.') + '</div>' + ((u.steps || []).length ? '<div class="chips">' + u.steps.map(x => { const b = d.tree && d.tree.branches[x.li]; const st = b && b.steps.find(y => y.id === x.id); return st ? '<button type="button" class="chip" data-sel="' + x.li + '|' + esc(x.id) + '|0">' + esc(st.short) + '</button>' : ''; }).join('') + '</div>' : '') + '</div>').join('') + '</div>';
+    if (s.suggestedStory) html += '<form class="ask" data-suggest-form><label for="suggest" class="hint">' + t('La carte n’a pas pu être dessinée. Vous pouvez corriger ce chemin proposé et réessayer.', 'The map could not be drawn. You can edit this proposed path and try again.') + '</label><textarea id="suggest" name="text">' + esc(s.suggestedStory) + '</textarea><div class="field"><button type="submit">' + t('Prévisualiser à nouveau', 'Preview again') + '</button><button type="button" data-action="dismiss-suggestion">' + t('Ignorer', 'Dismiss') + '</button></div></form>';
+    html += '<form class="ask" data-converse-form><label for="ask" class="hint">' + t('Ajoutez un fait ou posez une question sur la carte', 'Add a fact or ask about the map') + '</label><div class="field"><input id="ask" name="text" type="text" autocomplete="off" value="' + esc(s.followDraft || '') + '" placeholder="' + t('Je travaille aussi à Genève… / Que dois-je apporter ?', 'I also work in Geneva… / What do I bring?') + '"' + (live() && !s.loading ? '' : ' disabled') + '><button type="submit"' + (live() && !s.loading ? '' : ' disabled') + ' aria-label="' + t('Envoyer', 'Send') + '">→</button></div></form>';
+    html += s.editing ? '<form class="ask" data-story-form><label for="edit" class="hint">' + t('Réécrire la phrase (prévisualise un autre chemin)', 'Rewrite the sentence (preview another path)') + '</label><textarea class="story-edit" id="edit" name="text">' + esc(s.editDraft || viewedStory()) + '</textarea><div class="field"><button type="submit">' + t('Comparer', 'Compare') + '</button></div></form>' : '<button type="button" class="link-btn" data-action="edit-story" style="align-self:flex-start">' + t('Réécrire la phrase', 'Rewrite the sentence') + '</button>';
     document.getElementById('story').innerHTML = html;
   }
   function count(d) { const c = { changed: 0, added: 0, removed: 0, same: 0 }; d.rows.forEach(r => r.cmp.forEach(x => { c[x.kind === 'same' ? 'same' : x.kind]++; })); return c; }
 
   // ---- Tree ----
-  function mapLabelLines(value, maxChars, maxLines) {
-    const words = String(value || '').trim().split(/\s+/).filter(Boolean), lines = [];
-    let line = '';
+  let labelContext = null;
+  function mapLabelLines(value, maxChars, maxLines, fontSize = 12) {
+    if (!labelContext && document.createElement) { try { labelContext = document.createElement('canvas').getContext('2d'); } catch (e) {} }
+    const limit = maxChars * fontSize * .6;
+    const width = text => {
+      if (labelContext) { labelContext.font = (fontSize === 16 ? '600 16px Fraunces, Georgia, serif' : '500 ' + fontSize + 'px "IBM Plex Sans", Arial, sans-serif'); return labelContext.measureText(text).width; }
+      return Array.from(text).reduce((n,c) => n + (/\s/.test(c) ? .3 : /[MW@#%]/.test(c) ? .95 : /[ilI.,'’]/.test(c) ? .28 : /[A-Z]/.test(c) ? .7 : .58), 0) * fontSize;
+    };
+    const words = String(value || '').trim().split(/\s+/).filter(Boolean), lines = []; let line = '';
     words.forEach(word => {
-      while (word.length > maxChars) {
-        if (line) { lines.push(line); line = ''; }
-        lines.push(word.slice(0, maxChars)); word = word.slice(maxChars);
-      }
+      while (width(word) > limit && word.length > 1) { if (line) { lines.push(line); line = ''; } let end = 1; while (end < word.length && width(word.slice(0,end + 1)) <= limit) end++; lines.push(word.slice(0,end)); word = word.slice(end); }
       if (!word) return;
-      if (line && line.length + 1 + word.length > maxChars) { lines.push(line); line = word; }
-      else line += (line ? ' ' : '') + word;
+      if (line && width(line + ' ' + word) > limit) { lines.push(line); line = word; } else line += (line ? ' ' : '') + word;
     });
     if (line) lines.push(line);
-    if (lines.length > maxLines) {
-      lines.length = maxLines;
-      lines[maxLines - 1] = lines[maxLines - 1].slice(0, maxChars - 1).trimEnd() + '…';
-    }
+    if (lines.length > maxLines) { lines.length = maxLines; let last = lines[maxLines - 1]; while (last && width(last + '…') > limit) last = last.slice(0,-1); lines[maxLines - 1] = last.trimEnd() + '…'; }
     return lines.length ? lines : [''];
   }
   function mapText(value, x, y, attrs, maxChars, maxLines, lineHeight) {
-    const lines = mapLabelLines(value, maxChars, maxLines);
+    const fontSize = Number((attrs.match(/font-size="([0-9.]+)"/) || [])[1]) || 12;
+    const lines = mapLabelLines(value, maxChars, maxLines, fontSize);
     return '<text x="' + x + '" y="' + y + '" ' + attrs + ' aria-label="' + esc(value) + '">' +
       lines.map((line, i) => '<tspan x="' + x + '" dy="' + (i ? lineHeight : 0) + '">' + esc(line) + '</tspan>').join('') + '</text>';
   }
   function renderTree(d) {
     const host = document.getElementById('tree-host'), s = state;
-    let overlay = s.loading ? '<div class="loading">' + esc(s.loading) + '</div>' : '';
+    let overlay = s.loading ? '<div class="loading" role="status"><span>' + esc(s.loading) + '</span><button type="button" data-action="cancel-request">' + t('Annuler · garder ma carte', 'Cancel · keep my map') + '</button></div>' : '';
     if (!d.tree) {
       const preview = '<svg class="preview" viewBox="0 0 640 200" aria-hidden="true"><path d="M 30 100 C 110 100, 110 40, 190 40 L 330 40 C 400 40, 420 40, 520 40" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1"/><path d="M 30 100 L 190 100 L 330 100 L 520 100" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1" style="animation-delay:.15s"/><path d="M 30 100 C 110 100, 110 160, 190 160 L 330 160 L 520 160" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1" style="animation-delay:.3s"/><path d="M 190 100 C 240 100, 240 135, 330 135 L 520 135" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="6 6" pathLength="1" style="animation-delay:.9s"/><circle cx="30" cy="100" r="11" fill="#1B1A17"/><circle cx="30" cy="100" r="4" fill="#fff"/>' + [[190,40,'#9A452A'],[330,40,'#2E6A4B'],[520,40,'#2C3140'],[190,100,'#9A452A'],[330,100,'#9A452A'],[520,100,'#2E6A4B'],[190,160,'#2E6A4B'],[330,160,'#2C3140']].map(c => '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="#fff" stroke="' + c[2] + '" stroke-width="2.5"/>').join('') + '<circle cx="330" cy="135" r="8" fill="#fff" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><circle cx="520" cy="135" r="8" fill="#fff" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><text x="560" y="44" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('Permis', 'Permit') + '</text><text x="560" y="104" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('École', 'School') + '</text><text x="560" y="139" font-size="12" fill="' + ACCENT + '" font-family="Fraunces,serif">' + t('et si… ?', 'what if…?') + '</text><text x="560" y="164" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('Logement', 'Housing') + '</text></svg>';
-      host.innerHTML = overlay + '<div class="empty">' + preview + '<h1>' + t('Qu’est-ce qui change dans votre vie ?', 'What is changing in your life?') + '</h1><p>' + t('Une ou deux phrases suffisent : où vous vivez, ce qui change, qui vit avec vous, votre permis si vous en avez un. Apertus ouvre les pistes ; chaque étape propose une page du catalogue où vérifier, ou signale qu’aucune page n’est reliée.', 'One or two sentences are enough: where you live, what is changing, who lives with you, your permit if you have one. Apertus opens the paths; each step suggests a catalogue page to check, or says none is linked.') + '</p>' +
-        '<form class="ask" data-start-form><textarea name="text" placeholder="' + t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.') + '"' + (live() ? '' : ' disabled') + '></textarea><div class="field"><span class="spacer"></span><button type="submit"' + (live() ? '' : ' disabled') + '>' + t('Dessiner ma carte', 'Draw my map') + '</button></div></form>' +
+      host.innerHTML = overlay + '<div class="empty">' + (s.error ? '<div class="err" role="alert">' + esc(s.error) + '</div>' : '') + preview + '<h1>' + t('Qu’est-ce qui change dans votre vie ?', 'What is changing in your life?') + '</h1><p>' + t('Une ou deux phrases suffisent : où vous vivez, ce qui change, qui vit avec vous, votre permis si vous en avez un. Apertus ouvre les pistes ; chaque étape propose une page du catalogue où vérifier, ou signale qu’aucune page n’est reliée.', 'One or two sentences are enough: where you live, what is changing, who lives with you, your permit if you have one. Apertus opens the paths; each step suggests a catalogue page to check, or says none is linked.') + '</p>' +
+        '<form class="ask" data-start-form><textarea name="text" placeholder="' + t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.') + '"' + (live() && !s.loading ? '' : ' disabled') + '>' + esc(state.draftStory || '') + '</textarea><div class="field"><span class="spacer"></span><button type="submit"' + (live() && !s.loading ? '' : ' disabled') + '>' + t('Dessiner ma carte', 'Draw my map') + '</button></div></form>' +
         '<div class="hint">' + t('Ou partez d’un exemple :', 'Or start from an example:') + '</div>' +
         '<button type="button" class="example" data-example="' + esc(t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.')) + '">' + t('Une famille de Nyon pense à Saint-Cergue', 'A Nyon family thinks about Saint-Cergue') + '</button>' +
         '<button type="button" class="example" data-example="' + esc(t('Je suis propriétaire d’un chalet à La Cure, le toit fuit et je voudrais aussi isoler et poser des panneaux solaires. Je ne sais pas quels permis et quelles aides existent.', 'I own a chalet in La Cure, the roof leaks and I would also like to insulate and put solar panels. I do not know which permits and subsidies exist.')) + '">' + t('Un propriétaire, un toit qui fuit, des panneaux solaires', 'A homeowner, a leaking roof, solar panels') + '</button>' +
@@ -542,19 +714,19 @@
     const rows = d.rows, n = rows.length;
     const qsOpen = (d.tree.questions || []).filter(q => !(q.id in (d.answers || {})));
     const GAP = 170, YS = rows.map((_, i) => 110 + i * GAP), lastRowY = YS[n - 1];
-    const H = lastRowY + (qsOpen.length ? 225 : 120), QY = lastRowY + 160;
+    const H = lastRowY + 120;
     const ROOT = { x: 36, y: (YS[0] + lastRowY) / 2 }, X0 = 170, XSTEP = 165;
     const maxPoints = Math.max(1, ...rows.map(row => row.cmp.length));
     const branchRight = X0 + (maxPoints - 1) * XSTEP + 70 + 260;
-    const questionRight = qsOpen.length ? X0 + (qsOpen.length - 1) * 190 + 16 + 160 + 24 : 0;
-    const W = Math.max(900, branchRight, questionRight);
+    const W = Math.max(760, branchRight);
     const seg = (p, q) => { const mx = (p.x + q.x) / 2; return ' C ' + mx + ' ' + p.y + ', ' + mx + ' ' + q.y + ', ' + q.x + ' ' + q.y; };
     const pathThrough = (start, pts, tailX) => { let dd = 'M ' + start.x + ' ' + start.y, prev = start; pts.forEach(p => { dd += seg(prev, p); prev = p; }); if (tailX) dd += ' L ' + tailX + ' ' + prev.y; return dd; };
     let out = '';
     rows.forEach((row, li) => {
       const y = YS[li], m = row.cmp.length;
-      const pts = row.cmp.map((c, i) => ({ x: X0 + i * XSTEP, y: y + [0, -8, 6, -4][i] }));
-      const hl = s.hover === row.id || (s.sel && s.sel.li === li);
+      const pts = row.cmp.map((c, i) => ({ x: X0 + i * XSTEP, y: y + [0, -8, 6, -4][i % 4] }));
+      const hl = s.sel && s.sel.li === li;
+      const nextId = (row.cmp.find(c => c.a && c.kind !== 'removed' && !isDone(c.a.id)) || {}).id;
       const mainPts = row.cmp.map((c, i) => c.kind === 'added' ? null : pts[i]).filter(Boolean);
       const affected = row.cmp.some(c => ['changed', 'added', 'removed'].includes(c.kind)), applied = row.cmp.some(c => c.kind.indexOf('applied-') === 0);
       out += '<g data-lane="' + esc(row.id) + '">';
@@ -565,55 +737,76 @@
         for (let i = Math.max(0, first); i < m; i++) { const k = row.cmp[i].kind; if (k === 'removed') continue; route.push({ x: pts[i].x, y: k === 'same' ? pts[i].y : pts[i].y + 48 }); }
         out += '<path class="grow" d="' + pathThrough(start, route, null) + '" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6"/>';
       }
-      const tag = d.previewOn ? (affected ? t('changerait', 'would change') : t('ne bouge pas', 'does not move')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
-      const nameX = X0 + (m - 1) * XSTEP + 70, lastY = pts[m - 1].y;
-      const nameLines = mapLabelLines(row.name, 24, 3);
+      const tag = d.previewOn ? (row.added ? t('nouvelle piste', 'new path') : row.removed ? t('disparaîtrait', 'would disappear') : affected ? t('changerait', 'would change') : t('ne bouge pas', 'does not move')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
+      const nameX = X0 + (m - 1) * XSTEP + 70, lastY = pts[m - 1].y + (mainPts.length ? 0 : 48);
+      const nameLines = mapLabelLines(row.name, 24, 3, 16);
       const nameY = lastY + 5 - (nameLines.length - 1) * 9;
       out += mapText(row.name, nameX, nameY, 'class="branch-name" font-size="16" font-weight="600" fill="' + (hl ? '#1B1A17' : '#3E3B35') + '"', 24, 3, 18);
-      if (tag) out += '<text x="' + nameX + '" y="' + (nameY + (nameLines.length - 1) * 18 + 15) + '" font-size="10" fill="' + ((affected || applied) ? ACCENT : '#7A766E') + '">' + esc(tag) + '</text>';
+      if (tag) out += '<text x="' + nameX + '" y="' + (nameY + (nameLines.length - 1) * 18 + 15) + '" font-size="12" fill="' + ((affected || applied) ? ACCENT : '#5A5751') + '">' + esc(tag) + '</text>';
       row.cmp.forEach((c, i) => {
         const p = pts[i], k = c.kind;
         if (k !== 'added') {
           const st = c.a, changed = k.indexOf('applied-') === 0, done = isDone(st.id), removed = k === 'removed';
           const selected = s.sel && s.sel.li === li && s.sel.id === c.id && !s.sel.alt;
           out += '<g data-sel="' + li + '|' + esc(c.id) + '|0" tabindex="0" role="button" aria-label="' + esc(st.title) + '"' + (removed ? ' opacity="0.55"' : '') + '>';
+          out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="23" fill="transparent"/>';
+          if (!selected && c.id === nextId && !d.exploreOn) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="none" stroke="' + ACCENT + '" stroke-width="1.5"/>';
           if (selected) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="19" fill="none" stroke="#1B1A17" stroke-width="1.5" stroke-dasharray="3 3"/>';
           if (k === 'changed' || removed) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="' + ACCENT + '" opacity="0.14"/>';
           const ring = (LV()[st.authority] || LV().other).bg;
           out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + (changed ? ACCENT : done ? '#2E6A4B' : '#FFFFFF') + '" stroke="' + (changed ? '#FFFFFF' : done ? '#2E6A4B' : ring) + '" stroke-width="' + (changed ? 3 : 2.5) + '"/>';
           if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
           const stepLines = mapLabelLines(st.short, 18, 2);
-          out += mapText(st.short, p.x, p.y - 17 - (stepLines.length - 1) * 14, 'text-anchor="middle" font-size="12" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : ''), 18, 2, 14);
-          const sub = k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
-          if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="10" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + esc(sub) + '</text>';
+          out += mapText(st.short, p.x, p.y - 17 - (stepLines.length - 1) * 14, 'text-anchor="middle" font-size="14" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : ''), 18, 2, 14);
+          const sub = !d.previewOn && c.id === nextId && !d.exploreOn && !changed ? t('prochaine étape', 'next step') : k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
+          if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="12" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + esc(sub) + '</text>';
           out += '</g>';
         }
         if (k === 'changed' || k === 'added') {
           const ay = p.y + 48, alt = c.b, selA = s.sel && s.sel.li === li && s.sel.id === c.id && s.sel.alt;
-          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.title) + '">' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>' + mapText(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : ''), p.x, ay + 26, 'text-anchor="middle" font-size="12" font-weight="600" fill="' + ACCENT + '"', 18, 2, 14) + '</g>';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.title) + '"><circle cx="' + p.x + '" cy="' + ay + '" r="23" fill="transparent"/>' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>' + mapText(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : ''), p.x, ay + 26, 'text-anchor="middle" font-size="14" font-weight="600" fill="' + ACCENT + '"', 18, 2, 14) + '</g>';
         }
       });
       out += '</g>';
     });
-    // open questions hang under the tree as dashed points
-    const qs = qsOpen;
-    if (qs.length) {
-      const qy = QY; out += '<text x="' + X0 + '" y="' + (qy - 26) + '" font-size="12" fill="#5A5751">' + t('Questions qui changeraient la carte :', 'Questions that would change the map:') + '</text>';
-      qs.forEach((q, i) => { const x = X0 + i * 190; out += '<g data-q="' + esc(q.id) + '" tabindex="0" role="button" aria-label="' + esc(q.text) + '" style="cursor:pointer"><circle cx="' + x + '" cy="' + qy + '" r="10" fill="#FFFFFF" stroke="#8A867C" stroke-width="2" stroke-dasharray="3 3"/><text x="' + x + '" y="' + (qy + 4) + '" text-anchor="middle" font-size="12" font-weight="600" fill="#8A867C">?</text>' + mapText(q.text, x + 16, qy - 3, 'font-size="12" fill="#1B1A17"', 20, 2, 14) + '</g>'; });
-    }
-    out += '<circle cx="36" cy="' + ROOT.y + '" r="17" fill="#1B1A17"/><circle cx="36" cy="' + ROOT.y + '" r="6" fill="#FFFFFF"/><text x="36" y="' + (ROOT.y + 38) + '" text-anchor="middle" font-size="10" fill="#5A5751">' + t('Vous', 'You') + '</text>';
-    host.innerHTML = overlay + '<svg class="journey-map" viewBox="0 0 ' + W + ' ' + H + '" style="min-width:' + W + 'px" aria-label="' + t('Carte des pistes', 'Map of paths') + '">' + out + '</svg>';
+    out += '<circle cx="36" cy="' + ROOT.y + '" r="17" fill="#1B1A17"/><circle cx="36" cy="' + ROOT.y + '" r="6" fill="#FFFFFF"/><text x="36" y="' + (ROOT.y + 38) + '" text-anchor="middle" font-size="12" fill="#5A5751">' + t('Vous', 'You') + '</text>';
+    const mobile = window.innerWidth < 600;
+    const available = host.clientWidth || 1000;
+    const scale = s.mapZoom === 'fit' ? Math.min(1, available / W) : s.mapZoom;
+    const svg = mobile ? mobileTree(d) : '<svg class="journey-map" font-family="Arial,sans-serif" viewBox="0 0 ' + W + ' ' + H + '" style="width:' + Math.round(W * scale) + 'px;max-width:none" aria-label="' + t('Carte des pistes', 'Map of paths') + '">' + out + '</svg>';
+    host.innerHTML = overlay + mapToolbar(d, mobile) + '<div class="map-viewport">' + svg + '</div>' + questionLinks(qsOpen) + (d.previewOn ? questionLinks((s.pending.tree.questions || []).filter(q => !(q.id in (s.pending.answers || {})) && !qsOpen.some(x => x.id === q.id && x.text === q.text)), true) : '');
     lastDrawn = d.tree.key;
     const lg = document.getElementById('legend'); lg.hidden = false;
-    lg.innerHTML = '<span><i class="dot" style="border-color:#9A452A"></i>' + t('Commune', 'Commune') + '</span><span><i class="dot" style="border-color:#2E6A4B"></i>' + t('Canton', 'Canton') + '</span><span><i class="dot" style="border-color:#2C3140"></i>' + t('Confédération', 'Confederation') + '</span><span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';
+    lg.innerHTML = '<span><i class="dot" style="border-color:#9A452A"></i>' + t('Commune', 'Commune') + '</span><span><i class="dot" style="border-color:#2E6A4B"></i>' + t('Canton', 'Canton') + '</span><span><i class="dot" style="border-color:#2C3140"></i>' + t('Confédération', 'Confederation') + '</span><span><i class="dot" style="border-color:' + ACCENT + '"></i>' + t('Prochaine étape', 'Next step') + '</span><span><i class="dot done"></i>' + t('Faite (marquée par vous)', 'Done (marked by you)') + '</span><span><i class="dot ghost"></i>' + t('Question en attente', 'Open question') + '</span><span><i class="dot alt"></i>' + t('Branche proposée', 'Proposed branch') + '</span><span><i class="dot changed"></i>' + t('Modifiée ou ajoutée', 'Modified or added') + '</span>';
   }
 
   // ---- Detail ----
+  function mapToolbar(d, mobile) {
+    const c = count(d), p = state.pending;
+    let html = '<div class="map-tools"><div><div class="map-title">' + (d.exploreOn ? t('Explorer un autre chemin', 'Explore another path') : d.previewOn ? t('Votre chemin, et l’alternative', 'Your path, and the alternative') : t('Votre carte de parcours', 'Your journey map')) + '</div><div class="map-meta">' + d.rows.length + t(' pistes · étapes proposées par Apertus', ' paths · steps proposed by Apertus') + '</div></div><div class="map-actions">' + (!mobile ? '<button data-action="zoom-out" aria-label="' + t('Réduire', 'Zoom out') + '">−</button><button data-action="fit" aria-pressed="' + (state.mapZoom === 'fit') + '">' + t('Vue entière', 'Fit map') + '</button><button data-action="zoom-in" aria-label="' + t('Agrandir', 'Zoom in') + '">+</button>' : '') + '<button data-action="plan">' + t('Mon plan', 'My plan') + '</button>' + (state.history.length && !d.exploreOn ? '<button data-action="undo">' + t('Annuler le changement', 'Undo change') + '</button>' : '') + '</div></div>';
+    if (d.previewOn) html += '<div class="map-comparison"><span>' + c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') + c.same + t(' identiques. Rien n’est appliqué.', ' identical. Nothing is applied.') + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt">' + t('Adopter', 'Adopt') + '</button></div>';
+    if (mobile) html += '<div class="lane-tabs" role="group" aria-label="' + t('Pistes', 'Paths') + '">' + d.rows.map(r => '<button data-lane-select="' + esc(r.id) + '" aria-pressed="' + (r.id === (state.activeLane && d.rows.some(x => x.id === state.activeLane) ? state.activeLane : d.rows[0].id)) + '">' + esc(r.name) + '</button>').join('') + '</div>';
+    return html;
+  }
+  function questionLinks(questions, alternate = false) { return questions.length ? '<div class="map-questions"><div class="eyebrow">' + (alternate ? t('Questions ouvertes sur le chemin proposé', 'Open questions on the proposed path') : t('Pour faire évoluer votre carte', 'Help your map grow')) + '</div><div class="question-links">' + questions.map(q => '<button class="question-link" ' + (alternate ? 'data-q-alt' : 'data-q') + '="' + esc(q.id) + '"><i>?</i>' + esc(q.text) + '</button>').join('') + '</div></div>' : ''; }
+  function mobileTree(d) {
+    const li = Math.max(0, d.rows.findIndex(r => r.id === state.activeLane)), row = d.rows[li], nextId = (row.cmp.find(c => c.a && c.kind !== 'removed' && !isDone(c.a.id)) || {}).id, comparing = d.previewOn && row.cmp.some(c => c.kind !== 'same'), x = comparing ? 90 : 62, ax = 264, root = { x: comparing ? 180 : x, y: 40 }, gap = 120, y0 = 130, height = y0 + row.cmp.length * gap;
+    let out = '<circle cx="' + root.x + '" cy="40" r="14" fill="#1B1A17"/><text x="' + (root.x + 25) + '" y="45" font-size="12">' + t('Vous', 'You') + '</text>', prior = root, altPrior = root;
+    const line = (a,b,alt) => '<path d="M ' + a.x + ' ' + a.y + ' C ' + a.x + ' ' + ((a.y+b.y)/2) + ', ' + b.x + ' ' + ((a.y+b.y)/2) + ', ' + b.x + ' ' + b.y + '" fill="none" stroke="' + (alt ? ACCENT : '#C9C2B2') + '" stroke-width="2.5"' + (alt || d.exploreOn ? ' stroke-dasharray="6 6"' : '') + '/>';
+    row.cmp.forEach((c,i) => { const point = { x, y: y0+i*gap }, alternate = { x: ax, y: point.y };
+      if (c.a) { out += line(prior,point,false); prior=point; }
+      if (comparing && c.b) { const target = c.kind === 'same' ? point : alternate; out += line(altPrior,target,true); altPrior=target; }
+      const node = (st,p,alt,removed) => { const selected = state.sel && state.sel.li === li && state.sel.id === c.id && state.sel.alt === alt; const done = !alt && isDone(st.id), changed = !alt && c.kind.startsWith('applied-'); return '<g role="button" tabindex="0" data-sel="'+li+'|'+esc(c.id)+'|'+(alt?1:0)+'" aria-label="'+esc(st.title)+'"'+(removed?' opacity=".5"':'')+'><circle cx="'+p.x+'" cy="'+p.y+'" r="23" fill="transparent"/>'+(!selected && !alt && c.id === nextId && !d.exploreOn ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="16" fill="none" stroke="'+ACCENT+'" stroke-width="1.5"/>' : '')+(selected?'<circle cx="'+p.x+'" cy="'+p.y+'" r="20" fill="none" stroke="'+ACCENT+'" stroke-dasharray="3 3"/>':'')+'<circle cx="'+p.x+'" cy="'+p.y+'" r="10" fill="'+(changed?ACCENT:done?'#2E6A4B':'white')+'" stroke="'+(changed?'white':alt?ACCENT:(LV()[st.authority]||LV().other).bg)+'" stroke-width="2.5"'+(alt?' stroke-dasharray="4 3"':'')+'/>'+mapText(st.short,comparing?p.x:p.x+26,comparing?p.y-43:p.y-5,'font-size="13" fill="'+(alt?ACCENT:'#1B1A17')+'"'+(comparing?' text-anchor="middle"':''),comparing?18:30,3,16)+'</g>'; };
+      if(c.a)out+=node(c.a,point,false,c.kind==='removed'); if(d.previewOn&&c.b&&c.kind!=='same')out+=node(c.b,alternate,true,false);
+    });
+    return '<svg class="journey-map mobile-map" font-family="Arial,sans-serif" viewBox="0 0 360 '+height+'" aria-label="'+esc(row.name)+'">'+out+'</svg>';
+  }
   function fmtDate(d) { if (!d) return ''; const [y, m, dd] = d.split('-'); return LANG === 'en' ? Number(dd) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m) - 1] + ' ' + y : Number(dd) + ' ' + ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'][Number(m) - 1] + ' ' + y; }
   function sourceBlock(st) {
     const lv = LV()[st.authority] || LV().other;
     const refs = (st.sources || []).map(r => ({ cat: catalogById(r.id), claim: claimOf(r.id, r.claim) })).filter(r => r.cat);
-    if (!refs.length) return '<div class="zone soft"><div class="zone-title">' + t('Aucune page du catalogue reliée pour cette étape', 'No catalogue page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune n’a été sélectionnée pour cette étape. À vérifier auprès de : ', 'The guide links only catalogue pages; none was selected for this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
+    const gaps = (st.sourceGaps || []).map(g => '<div class="small cf">' + esc(g.reason) + '</div>').join('');
+    if (!refs.length) return gaps + '<div class="zone soft"><div class="zone-title">' + t('Aucune page du catalogue reliée pour cette étape', 'No catalogue page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune n’a été sélectionnée pour cette étape. À vérifier auprès de : ', 'The guide links only catalogue pages; none was selected for this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
     let html = '<div class="zone draft-zone"><div class="zone-title"><span class="draft-title">' + t('Non relu', 'Unreviewed') + '</span> · ' + (refs.length > 1 ? t('Pages proposées du catalogue', 'Suggested catalogue pages') : t('Page proposée du catalogue', 'Suggested catalogue page')) + '</div>';
     refs.forEach(r => {
       const exact = r.cat.url.split('/').filter(Boolean).length > 2;
@@ -623,7 +816,7 @@
       html += '</div>';
     });
     if (st.confirm_with) html += '<div class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(st.confirm_with) + '</b></div>';
-    return html + '</div>';
+    return gaps + html + '</div>';
   }
 
   function buildPlan(d) {
@@ -634,20 +827,37 @@
   }
   function planText(d) {
     const p = buildPlan(d);
-    return [t('Ma situation : ', 'My situation: ') + (d.exploreOn ? storyWithVars(state.story, state.exploreVars, state.vars) : state.story), '', t('Prochaines étapes proposées', 'Suggested next steps')].concat(p.next.map(x => '- ' + x.branch + ': ' + x.title)).concat(p.open.length ? ['', t('Encore à répondre', 'Still to answer')].concat(p.open.map(q => '- ' + q)) : []).concat(['', t('Pages à consulter', 'Pages to consult')]).concat(p.pages.map(c => '- ' + c.title + ' — ' + c.url)).concat(['', t('Carte dessinée par Apertus ; aucune commune n’a relu. Vérifiez sur les pages avant d’agir.', 'Map drawn by Apertus; no commune has reviewed it. Verify on the pages before acting.')]).join('\n');
+    return [t('Ma situation : ', 'My situation: ') + viewedStory(), '', t('Prochaines étapes proposées', 'Suggested next steps')].concat(p.next.map(x => '- ' + x.branch + ': ' + x.title)).concat(p.open.length ? ['', t('Encore à répondre', 'Still to answer')].concat(p.open.map(q => '- ' + q)) : []).concat(['', t('Pages à consulter', 'Pages to consult')]).concat(p.pages.map(c => '- ' + c.title + ' — ' + c.url)).concat(['', t('Carte dessinée par Apertus ; aucune commune n’a relu. Vérifiez sur les pages avant d’agir.', 'Map drawn by Apertus; no commune has reviewed it. Verify on the pages before acting.')]).join('\n');
+  }
+  function printPlan(d) {
+    if (!d.tree) return;
+    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p><div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const cat = catalogById(r.id), claim = claimOf(r.id, r.claim); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a>' + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
+    const visual = (document.getElementById('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/) || [''])[0];
+    const date = new Date().toLocaleString(LANG === 'fr' ? 'fr-CH' : 'en-GB');
+    document.getElementById('print-plan').innerHTML = '<h1>' + t('Mon parcours · document de préparation', 'My journey · preparation document') + '</h1><p>' + esc(viewedStory()) + '</p><p class="print-meta">' + esc(date) + ' · ' + esc(provLabel(d.tree.prov)) + ' · ' + t('Version de la carte : ', 'Map version: ') + esc(d.tree.key || hash(JSON.stringify(d.tree.branches))) + '</p><p><b>' + t('Étapes proposées par un modèle, non relues par une commune. Ce document prépare vos questions pour le service ou le professionnel compétent ; il ne confirme aucune décision.', 'Model-proposed steps, unreviewed by a commune. This document prepares your questions for the competent office or professional; it confirms no decision.') + '</b></p>' + (visual ? '<p class="print-meta">' + t('Vue de la carte affichée ; toutes les étapes sont détaillées ci-dessous.', 'View of the displayed map; all steps are detailed below.') + '</p>' + visual : '') + treeHTML(d.tree, d.answers || {}, d.qtexts || {}, d.exploreOn) + (d.previewOn ? '<div class="print-alternative"><p>' + esc(state.pending.story) + '</p>' + treeHTML(state.pending.tree, state.pending.answers || {}, state.pending.qtexts || {}, true) + '</div>' : '') + '<h2>' + t('À compléter avec votre interlocuteur', 'Complete with your adviser') + '</h2><p>' + t('Questions, corrections, documents à apporter :', 'Questions, corrections, documents to bring:') + '</p><br><br><br>';
+    window.print();
   }
   function renderDetail(d) {
     const s = state, foot = '<div class="foot"><span><i style="background:#1F4E8C"></i>' + t('Les liens viennent d’un catalogue limité de pages publiques et de l’outil indépendant jestime.ch. Apertus choisit un identifiant ; il ne peut pas inventer d’URL.', 'Links come from a limited catalogue of public pages and the independent jestime.ch tool. Apertus chooses an id; it cannot invent a URL.') + '</span><span><i style="background:#7A766E"></i>' + t('Les notes du catalogue et les correspondances entre étapes et pages attendent une relecture ; aucune commune n’a encore relu le contenu.', 'Catalogue notes and matches between steps and pages await review; no commune has reviewed the content yet.') + '</span><span><i style="background:#2E6A4B"></i>' + t('Les étapes et leurs explications sont écrites par Apertus ; vérifiez sur la page reliée avant d’agir.', 'Steps and explanations are written by Apertus; verify on the linked page before acting.') + '</span></div>';
     let html = '';
     if (!d.tree) { html = '<div class="eyebrow">' + t('Comment ça marche', 'How it works') + '</div><h2>' + t('Vous racontez. Apertus dessine. Vous changez un mot.', 'You tell. Apertus draws. You change a word.') + '</h2><p class="lead">' + t('La carte montre des pistes parallèles. Chaque point est une étape avec une page suggérée du catalogue, ou une lacune explicite. Touchez un mot souligné pour voir, en pointillé, ce qui changerait avant de décider.', 'The map shows parallel paths. Each point is a step with a suggested catalogue page, or an explicit gap. Touch an underlined word to see, dashed, what would change before deciding.') + '</p>'; document.getElementById('detail').innerHTML = html + foot; return; }
+    if (s.sel && s.sel.qAlt && s.pending) {
+      const q = s.pending.tree.questions.find(q => q.id === s.sel.qAlt);
+      if (q) { html = '<div class="eyebrow">' + t('Sur le chemin proposé', 'On the proposed path') + '</div><h2>' + esc(q.text) + '</h2><p class="lead">' + esc(q.why) + '</p><p>' + t('Cette question reste ouverte. Adoptez ce chemin pour y répondre, ou explorez sans changer votre situation.', 'This question remains open. Adopt this path to answer it, or explore without changing your situation.') + '</p><button class="btn primary" data-action="adopt">' + t('Adopter ce chemin', 'Adopt this path') + '</button>'; document.getElementById('detail').innerHTML = html + foot; return; }
+    }
     if (s.sel && s.sel.q) {
-      const q = d.tree.questions.find(x => x.id === s.sel.q);
+      const q = d.tree.questions.find(x => x.id === s.sel.q) || ((d.qtexts || {})[s.sel.q] ? { id: s.sel.q, text: d.qtexts[s.sel.q], why: t('Vous pouvez corriger cette réponse ; la carte sera recalculée.', 'You can correct this answer; the map will be recalculated.'), type: 'text', options: [] } : null);
       if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div></div>';
-        if (d.exploreOn) { document.getElementById('detail').innerHTML = html + '<div class="small">' + t('Dans Explorer, cette question reste une hypothèse. Revenez à votre situation pour y répondre.', 'In Explore, this question stays hypothetical. Return to your situation to answer it.') + '</div>' + foot; return; }
         if (q.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
         else if (q.type === 'choice') html += '<div class="row">' + q.options.map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
         else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
         document.getElementById('detail').innerHTML = html + foot; return; }
+    }
+    if (s.sel && s.sel.aq) {
+      const qid = s.sel.aq, qq = d.tree.questions.find(q => q.id === qid) || (s.mode === 'explore' ? s.exploreQuestionDefs : s.questionDefs)[qid], cur = d.answers[qid];
+      const options = qq && qq.type === 'yesno' ? [t('oui','yes'),t('non','no')] : (qq && qq.options || []);
+      html = '<div class="eyebrow">' + esc((qq || {}).text || d.qtexts[qid] || qid) + '</div><h2>' + t('Et si votre réponse changeait ?', 'What if your answer changed?') + '</h2><p class="lead">' + t('Votre réponse actuelle : ', 'Your current answer: ') + esc(cur) + '</p><div class="row">' + options.filter(o => o !== cur).map(o => '<button class="btn" data-propose-answer="' + esc(qid) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div><form data-propose-answer-form="' + esc(qid) + '"><input name="value" aria-label="' + t('Autre réponse', 'Alternative answer') + '" placeholder="' + t('Ou une autre réponse…', 'Or another answer…') + '"><button class="btn primary" type="submit">' + t('Comparer cette réponse', 'Compare this answer') + '</button></form>';
+      document.getElementById('detail').innerHTML = html + foot; return;
     }
     if (s.sel && s.sel.v) {
       const v = currentVars().find(x => x.id === s.sel.v);
@@ -661,19 +871,19 @@
         '<div class="zone"><div class="zone-title">' + t('Prochaine étape sur chaque piste', 'Next step on each path') + '</div>' + plan.next.map(x => '<div class="small"><b>' + esc(x.branch) + '</b> · ' + esc(x.title) + (x.done ? ' <span class="checked">' + t('(toutes faites)', '(all done)') + '</span>' : '') + '</div>').join('') + '</div>' +
         (plan.open.length ? '<div class="zone soft"><div class="zone-title">' + t('Encore à répondre', 'Still to answer') + '</div>' + plan.open.map(q => '<div class="small">' + esc(q) + '</div>').join('') + '</div>' : '') +
         '<div class="zone draft-zone"><div class="zone-title"><span class="draft-title">' + t('Non relu', 'Unreviewed') + '</span> · ' + t('Pages à consulter', 'Pages to consult') + '</div>' + (plan.pages.length ? plan.pages.map(c => '<a class="source" href="' + esc(c.url) + '" target="_blank" rel="noopener">' + draftBadge(c.level) + '<span class="link">' + esc(c.title) + '</span></a>').join('') : '<div class="small">' + t('Aucune page reliée pour l’instant.', 'No page linked yet.') + '</div>') + '</div>' +
-        '<div class="row"><button type="button" class="btn" data-action="copy-plan">' + t('Copier le plan', 'Copy the plan') + '</button></div><p class="lead">' + t('Touchez un mot souligné pour proposer un changement, un point pour une étape, un « ? » pour une question.', 'Touch an underlined word to propose a change, a point for a step, a “?” for a question.') + '</p>';
+        '<div class="row"><button type="button" class="btn" data-action="copy-plan">' + t('Copier le plan', 'Copy the plan') + '</button><button type="button" class="btn primary" data-action="print-plan">' + t('Imprimer / PDF', 'Print / PDF') + '</button></div><p class="lead">' + t('Touchez un mot souligné pour proposer un changement, un point pour une étape, un « ? » pour une question.', 'Touch an underlined word to propose a change, a point for a step, a “?” for a question.') + '</p>';
       document.getElementById('detail').innerHTML = html + foot; return;
     }
     const k = cmp.kind, viewingAlt = !!(s.sel.alt && cmp.b), st = viewingAlt ? cmp.b : cmp.a, other = viewingAlt ? cmp.a : (d.previewOn ? cmp.b : null);
     const prov = viewingAlt && s.pending ? s.pending.tree.prov : d.tree.prov;
     const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? t('Apparaîtrait', 'Would appear') : t('Proposée', 'Proposed')) + '</span>' : k === 'applied-changed' ? '<span class="pill solid">' + t('Modifiée', 'Modified') + '</span>' : k === 'applied-added' ? '<span class="pill solid">' + t('Ajoutée', 'Added') + '</span>' : k === 'changed' ? '<span class="pill">' + t('Changerait', 'Would change') + '</span>' : k === 'removed' ? '<span class="pill">' + t('Disparaîtrait', 'Would disappear') + '</span>' : '';
     html = '<div class="head"><div class="eyebrow">' + esc(row.name) + '</div>' + pill + '</div><h2>' + esc(st.title) + '</h2>' + sourceBlock(st);
-    html += '<div class="zone model"><div class="zone-title">' + t('Ce qu’Apertus explique', 'What Apertus explains') + '</div><div class="who live"><i></i>' + esc(provLabel(prov)) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.join(', ')) + '</div>' : '') + '</div>';
+    html += '<div class="zone model"><div class="zone-title">' + t('Ce qu’Apertus explique', 'What Apertus explains') + '</div><div class="who live"><i></i>' + esc(provLabel(prov)) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.map(id => { const v = currentVars().find(v => v.id === id); return v ? v.label || v.value : (state.qtexts[id] || ((d.tree.questions || []).find(q => q.id === id) || {}).text || id); }).join(' · ')) + '</div>' : '') + '</div>';
     if (!viewingAlt && !d.previewOn && !d.exploreOn && k !== 'removed') { const dn = isDone(st.id); html += '<div class="row"><button type="button" class="btn ' + (dn ? 'done' : '') + '" data-done="' + esc(st.id) + '">' + (dn ? t('Faite — la remettre à faire', 'Done — mark as not done') : t('Je l’ai faite', 'I have done this')) + '</button></div>'; }
     if (other) {
       html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? t('Version enregistrée', 'Saved version') : t('Version proposée', 'Proposed version')) + '</div><div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><div class="small">' + esc(other.why) + '</div>' + sourceBlock(other) + '</div>';
     } else if (viewingAlt) html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + t('Aujourd’hui : cette étape n’existe pas', 'Today: this step does not exist') + '</div></div>';
-    if (d.previewOn) html += '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' partout', ' everywhere') + '</button></div>';
+    if (d.previewOn) html += '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' à ma situation', ' to my situation') + '</button></div>';
     document.getElementById('detail').innerHTML = html + foot;
   }
 
@@ -688,39 +898,67 @@
   function renderChrome() {
     document.documentElement.lang = LANG; document.title = t('Public AI pour chaque commune', 'Public AI for every commune');
     document.getElementById('brand-text').textContent = t('Public AI pour chaque commune', 'Public AI for every commune');
+    document.getElementById('clear-btn').hidden = !state.story;
     document.getElementById('clear-btn').textContent = state.story ? t('Recommencer', 'Start over') : '';
     document.getElementById('mode-situation').textContent = t('Ma situation', 'My situation'); document.getElementById('mode-explore').textContent = t('Explorer', 'Explore');
     document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr')); document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
   }
-  function render() { const d = derive(); renderChrome(); document.body.classList.toggle('explore', d.exploreOn); document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn)); document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn)); renderStory(d); renderTree(d); renderDetail(d); document.getElementById('announcer').textContent = state.loading || state.error || (conn.status === 'error' ? conn.error : ''); }
-  async function setLang(l) { LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render(); if (state.story && live()) { set({ loading: t('Apertus traduit la carte…', 'Apertus is translating the map…') }); try { const tree = await fetchTree(state.story, state.vars, state.answers, null, null); set({ tree, prevTree: null, pending: null, sel: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); } catch (e) { set({ loading: '' }); } } }
+  function render() {
+    const focused = document.activeElement, focusId = focused && focused.id, focusNode = focused && focused.dataset && focused.dataset.sel, caret = focused && typeof focused.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
+    const d = derive(); renderChrome(); document.body.classList.toggle('explore', d.exploreOn);
+    document.getElementById('mode-situation').setAttribute('aria-pressed', String(!d.exploreOn)); document.getElementById('mode-explore').setAttribute('aria-pressed', String(d.exploreOn));
+    renderStory(d); renderTree(d); renderDetail(d);
+    const layout = document.querySelector('.layout'), detail = document.getElementById('detail');
+    if (layout) { layout.classList.toggle('has-detail', !!state.sel); layout.classList.toggle('is-new', !state.story); }
+    if (document.querySelectorAll && state.loading) document.querySelectorAll('.layout button, .layout input, .layout textarea').forEach(el => { if (!el.matches('[data-action="cancel-request"]')) el.disabled = true; });
+    if (state.sel) detail.innerHTML = '<button type="button" class="detail-close" data-action="close-detail">' + t('Fermer ×', 'Close ×') + '</button>' + detail.innerHTML;
+    if (focusNode && !state.loading) { const nextNode = document.querySelector('[data-sel="' + focusNode + '"]'); if (nextNode && typeof nextNode.focus === 'function') nextNode.focus(); }
+    if (focusId && ['ask','edit','suggest'].includes(focusId) && !state.loading) { const next = document.getElementById(focusId); if (next && typeof next.focus === 'function') { next.focus(); if (caret && typeof next.setSelectionRange === 'function') next.setSelectionRange(caret[0],caret[1]); } }
+    document.getElementById('announcer').textContent = state.loading || state.error || (conn.status === 'error' ? conn.error : '') || (d.previewOn ? t('Le chemin alternatif est prêt. Rien n’est appliqué.', 'The alternative path is ready. Nothing is applied.') : '');
+  }
+  async function setLang(l) {
+    if (state.loading || LANG === l) return; const old = LANG, exploring = state.mode === 'explore'; LANG = l;
+    try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render();
+    if (!state.tree || !live()) return;
+    const id = beginRequest(t('Apertus traduit la carte…', 'Apertus is translating the map…'));
+    try { const tree = await fetchTree(viewedStory(), currentVars(), viewedAnswers(), exploring ? state.exploreTree : state.tree, null); if (!stillCurrent(id)) return; set(exploring ? { exploreTree: tree, loading: '' } : { tree, prevTree: null, pending: null, sel: null, loading: '', note: { text: tree.note, prov: tree.prov } }, !exploring); }
+    catch (e) { if (stillCurrent(id)) { LANG = old; set({ loading: '', error: e.message }); } }
+  }
+  function leaveExplore() { cancelRequests(); set({ mode: 'situation', loading: '', error: '', sel: null, exploreVars: null, exploreTree: null, exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreTurns: [] }); }
 
   // ---- Events ----
   document.addEventListener('click', e => {
     const cb = e.target.closest('[data-conn]'); if (cb) { const p = document.getElementById('conn-panel'); if (cb.dataset.conn === 'close') { p.hidden = true; } else { const el = document.getElementById('c-proxy'); if (el) conn.proxyUrl = el.value.trim(); connect(); } return; }
     const ex = e.target.closest('[data-example]'); if (ex) { startStory(ex.dataset.example); return; }
-    const narrow = () => window.innerWidth < 1100 && document.getElementById('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const narrow = () => {};
+    const aw = e.target.closest('[data-answered]'); if (aw) { set({ sel: { aq: aw.dataset.answered } }); return; }
+    const pa = e.target.closest('[data-propose-answer]'); if (pa) { proposeAnswer(pa.dataset.proposeAnswer, pa.dataset.value); return; }
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'edit-story') { set({ editing: !state.editing }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null, exploreStory: null }); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
+    const lane = e.target.closest('[data-lane-select]'); if (lane) { set({ activeLane: lane.dataset.laneSelect, sel: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }
+    const qa = e.target.closest('[data-q-alt]'); if (qa) { set({ sel: { qAlt: qa.dataset.qAlt } }); return; }
     const q = e.target.closest('[data-q]'); if (q) { set({ sel: { q: q.dataset.q } }); narrow(); return; }
     const n = e.target.closest('[data-sel]'); if (n) { const [li, id, alt] = n.dataset.sel.split('|'); set({ sel: { li: Number(li), id, alt: alt === '1' } }); narrow(); }
   });
+  document.addEventListener('input', e => { const el = e.target; if (el.id === 'ask') state.followDraft = el.value; else if (el.id === 'edit') state.editDraft = el.value; else if (el.closest('[data-start-form]')) state.draftStory = el.value; });
   document.addEventListener('submit', e => {
     const sf = e.target.closest('[data-start-form]'); if (sf) { e.preventDefault(); startStory(sf.elements.text.value); return; }
     const cf = e.target.closest('[data-converse-form]'); if (cf) { e.preventDefault(); const v = cf.elements.text.value; cf.elements.text.value = ''; converse(v); return; }
     const sg = e.target.closest('[data-suggest-form]'); if (sg) { e.preventDefault(); applySuggestedStory(sg.elements.text.value); return; }
-    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); state.editing = false; if (st.elements.text.value.trim() !== state.story || (state.tree && state.tree.incomplete)) startStory(st.elements.text.value); else render(); return; }
+    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); state.editing = false; if (st.elements.text.value.trim() !== viewedStory()) stageStory(st.elements.text.value); else if ((derive().tree || {}).incomplete) { const text = viewedStory(); state.trees = {}; if (state.tree) { const id = beginRequest(t('Apertus complète la carte…', 'Apertus is completing the map…')); fetchTree(text, currentVars(), viewedAnswers(), derive().tree, null).then(tree => { if (stillCurrent(id)) set(state.mode === 'explore' ? { exploreTree: tree, loading: '' } : { tree, loading: '' }, state.mode !== 'explore'); }).catch(err => { if (stillCurrent(id)) set({ loading: '', error: err.message }); }); } } else render(); return; }
     const pf = e.target.closest('[data-propose-form]'); if (pf) { e.preventDefault(); propose(pf.dataset.proposeForm, pf.elements.value.value); return; }
+    const paf = e.target.closest('[data-propose-answer-form]'); if (paf) { e.preventDefault(); proposeAnswer(paf.dataset.proposeAnswerForm, paf.elements.value.value); return; }
     const af = e.target.closest('[data-answer-form]'); if (af) { e.preventDefault(); answer(af.dataset.answerForm, af.elements.answer.value); }
   });
-  document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const n = e.target.closest && (e.target.closest('[data-sel]') || e.target.closest('[data-q]')); if (!n) return; e.preventDefault(); n.click(); });
-  document.getElementById('tree-host').addEventListener('mouseover', e => { const g = e.target.closest('[data-lane]'); const id = g ? g.dataset.lane : null; if (id !== state.hover) set({ hover: id }); });
-  document.getElementById('mode-situation').addEventListener('click', () => set({ mode: 'situation', sel: null, exploreVars: null, exploreTree: null, exploreStory: null }));
-  document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree) return; set({ mode: 'explore', pending: null, sel: null, exploreStory: null, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree }); });
-  document.getElementById('clear-btn').addEventListener('click', () => { try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ story: '', vars: [], answers: {}, qtexts: {}, answerSets: {}, tree: null, pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, error: '', mode: 'situation', exploreVars: null, exploreTree: null, turns: [], editing: false }); });
+  document.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const n = e.target.closest && (e.target.closest('[data-sel]') || e.target.closest('[data-q]')); if (!n) return; e.preventDefault(); if (typeof n.click === 'function') n.click(); else n.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  document.getElementById('mode-situation').addEventListener('click', leaveExplore);
+  document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree || state.loading || state.mode === 'explore') return; set({ mode: 'explore', pending: null, sel: null, exploreStory: state.story, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree, exploreAnswers: Object.assign({}, state.answers), exploreQtexts: Object.assign({}, state.qtexts), exploreQuestionDefs: Object.assign({}, state.questionDefs), exploreTurns: [] }); });
+  document.getElementById('clear-btn').addEventListener('click', reset);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (state.loading) { cancelRequests(); set({ loading: '' }); } else set({ sel: null }); } });
+  let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => renderTree(derive()), 150); });
   document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
   document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; renderConn(); });

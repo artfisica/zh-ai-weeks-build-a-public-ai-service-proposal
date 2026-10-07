@@ -2,6 +2,8 @@
 
 6 October baseline on the currently published page: the Nyon → Saint-Cergue example produced a two-branch map (moving and school), and its Saint-Cergue arrival step opened the source panel. Proposing Gland as a custom alternative failed with “unreadable answer (brackets)”; the saved map remained visible. The accompanying update adds a bounded retry and partial-map recovery for malformed JSON. Those changes pass the local smoke test but need a fresh live retest after publishing. This is one partial run, not a pass for the ten cases below.
 
+8 October update: 44 dependency-free regression checks pass. Live Swisscom/Apertus tests exercised a generated Nyon-family map and Gland preview/Keep, plus a typed answered-permit fork with Adopt/Undo. The permit rehearsal initially failed because the model returned the question change in `changes[]`, and its prose included an unsupported assertion; the update now routes that shape correctly and excludes free-form question-answer prose. A separate later commune run encountered a network failure while retaining its accepted map. The ten-case manual set below remains uncompleted. Detailed limits and the review are in `docs/REVIEW-2026-10-08.md`.
+
 These ten fictional situations probe the journey map before the recorded session. The expected paths are **things to inspect**, not rules that the model must assert. Record the actual branches, open questions, source status, time and failure mode. Do not use real addresses or identifying details.
 
 | # | Sentence to enter | Paths or questions to look for | Failure to watch for |

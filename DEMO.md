@@ -3,7 +3,7 @@
 ## The 30 minutes
 
 - **0:00–1:00 — one slide.** “A life change crosses several authorities. A person writes a situation; Apertus proposes parallel paths. The distinctive moment is changing one answer and seeing, on the same map, what would change before deciding.”
-- **1:00–8:00 — show one case well.** Type the Nyon → Saint-Cergue parent example. Open a step with an exact page and its draft-note/review status. Touch Saint-Cergue, propose Gland, let the dashed branch appear, inspect a changed point and Keep. Answer one open question if that specific map gives you a good one. Show the plan and its source links. Stop while it still feels clear.
+- **1:00–8:00 — show one case well.** Type the Nyon → Saint-Cergue parent example. Open a step with an exact page and its draft-note/review status. Touch Saint-Cergue, propose Gland, let the dashed branch appear, inspect a changed point and Keep. Answer one open question if that specific map gives you a good one. Open **My plan**; show its source links and **Print / PDF** if useful. Stop while it still feels clear.
 - **8:00–10:00 — show the boundary.** Open a step without a linked page. Say that an id from the catalogue controls links, but the model's choice of a page for a step has *not* been independently verified. Show a different life case only if time and inference budget allow.
 - **10:00–12:00 — ask.** Propose the bounded six-week pilot in `PILOT.md`: one journey, Nyon and Saint-Cergue, a reviewed source pack, deterministic conditions for consequential steps, resident testing and a decision to expand or stop. Ask for a technical counterpart and introductions to appropriate content owners, not an endorsement today.
 - **12:00–30:00 — discuss.** Listen for what Public AI would need to make the project useful to them. Clarify ownership, inference, review responsibility, privacy and the first pilot contact.
@@ -24,6 +24,20 @@
 - “The transport data is linked as a possible future integration. The prototype does not calculate a route or a fare.”
 - “I want to test whether this can become a reviewed, maintainable local service. The interaction is working; the civic content and operations are the pilot work.”
 
-## Avoid a risky live path
+## Show a second move only if it helps
 
-The new follow-up box is useful for exploration, but its answers remain model suggestions. When someone adds a fact, the app now shows the rewritten situation for review before redrawing. Keep the live demonstration centered on the visible fork and source panel. If a generated map is partial, it says so; redraw it, or move to the recorded example.
+The 8 October update routes typed alternatives and previously answered questions to a visible proposal. After a permit question is answered, touch its answer, choose another value, inspect the dashed step, Adopt, then **Undo change**. The same flow accepts “What if instead of a C permit I have a B permit?”; the model is not asked to certify permit rights.
+
+Question replies show prepared catalogue notes attached to selected steps or a coverage gap. Map steps and explanations are still model proposals. One live test linked a Gland arrival to Nyon’s office; the new scope guard withholds that reference. That is a useful example of why a commune-reviewed pack is still required.
+
+Keep the demo centred on one case. A complete model map took about 25 seconds in the latest rehearsal; a typed permit comparison took about 28 seconds across interpretation and map calls. Latency and provider availability are variable. A network error occurred in another run; the accepted map survived. Keep the video ready. If a map is partial, redraw it or use the recording.
+
+Before the call, do this quick browser check after deploying the update:
+
+1. Hard-refresh and draw the rehearsed sentence.
+2. Touch Saint-Cergue → Gland, inspect a dashed point, Keep.
+3. Repeat, Adopt, Undo; verify the original sentence and marks return.
+4. Enter Explore, change one answer, return; verify saved answers and conversation are unchanged.
+5. Open My plan, Print / PDF, cancel the print dialogue, and try a narrow mobile window.
+
+The revised layout has been inspected through its generated desktop/mobile SVGs and event-handler regressions. It still needs this browser walkthrough on the deployed build. The previously published page was inspected in a real browser; that inspection does not validate the new layout.
