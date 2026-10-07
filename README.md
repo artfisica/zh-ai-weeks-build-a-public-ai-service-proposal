@@ -11,9 +11,11 @@ Three-minute silent demo: six situations typed in, the maps Apertus draws, a sou
 
 Live page: https://artfisica.github.io/zh-ai-weeks-build-a-public-ai-service-proposal/
 
+Architecture: [one-slide overview](docs/architecture-one-slide.svg) · [detailed prototype diagram](docs/architecture-detailed.svg). The detailed diagram is a dated engineering snapshot; the live journey map is the product demonstration.
+
 For a bounded next step with Public AI and local content owners, see [the six-week pilot proposal](PILOT.md).
 
-The [manual evaluation set](EVALUATION.md) lists ten fictional situations and the failure modes to look for. It has not yet been run against the live model. GitHub Actions checks JavaScript syntax and the local state-machine smoke test on each push; those checks do not validate civic facts or the model's choice of source.
+The [manual evaluation set](EVALUATION.md) lists ten fictional situations and the failure modes to look for. The full set has not yet been run against the live model. GitHub Actions checks JavaScript syntax and the local state-machine smoke test on each push; those checks do not validate civic facts or the model's choice of source.
 
 ## The idea
 
@@ -64,6 +66,8 @@ SPEC.md                            interaction and data model
 DEMO.md                            demo run and fallbacks
 EVALUATION.md                      ten-case manual rehearsal set (results pending)
 PILOT.md                           six-week discovery pilot proposal
+docs/architecture-one-slide.svg    readable presentation overview
+docs/architecture-detailed.svg     dated engineering and trust-boundary diagram
 tests/check-inline.js              inline script syntax check
 tests/smoke.js                     state, source and follow-up smoke checks
 .github/workflows/check.yml        syntax and smoke checks on push and PR

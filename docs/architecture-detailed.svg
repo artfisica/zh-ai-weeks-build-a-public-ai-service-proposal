@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1140" viewBox="0 0 2000 1140" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#1B1A17" xmlns:c2pa="http://c2pa.org/manifest">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1F4E8C"/></marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7A766E"/></marker>
+    <marker id="arrow-ochre" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9A452A"/></marker>
+    <style>
+      .title{font-family:Georgia,'Times New Roman',serif;font-size:27px;font-weight:600}
+      .sub{font-size:14px;fill:#5A5751}
+      .zone{fill:#FBFAF7;stroke:#DDD8CC;stroke-width:1.5}
+      .zonet{font-family:Georgia,serif;font-size:17px;font-weight:600;fill:#3E3B35}
+      .zonesub{font-size:12px;fill:#7A766E}
+      .box{fill:#FFFFFF;stroke:#B9B3A5;stroke-width:1.2}
+      .boxh{font-weight:700;font-size:14px}
+      .h13{font-weight:700;font-size:13px}
+      .mono{font-family:Menlo,Consolas,'Courier New',monospace;font-size:11.5px;fill:#3E3B35}
+      .small{font-size:12px;fill:#3E3B35}
+      .muted{font-size:11.5px;fill:#5A5751}
+      .flow{stroke:#1F4E8C;stroke-width:1.8;fill:none;marker-end:url(#arrow)}
+      .ops{stroke:#7A766E;stroke-width:1.6;fill:none;stroke-dasharray:6 5;marker-end:url(#arrow-grey)}
+      .ext{stroke:#9A452A;stroke-width:1.8;fill:none;marker-end:url(#arrow-ochre)}
+      .numt{fill:#FFFFFF;font-size:11px;font-weight:700;text-anchor:middle}
+      .planned{fill:#F3F1EC;stroke:#B9B3A5;stroke-width:1.2;stroke-dasharray:5 4}
+      .store{fill:#EEF2F8;stroke:#C9D5E8;stroke-width:1.2}
+      .pill{font-size:10.5px;font-weight:700;fill:#FFFFFF;text-anchor:middle}
+    </style>
+  </defs>
+
+  <rect width="2000" height="1140" fill="#F3F1EC"/>
+
+  <text class="title" x="40" y="48">Public AI for every commune — system architecture (prototype, 6 October 2026)</text>
+  <text class="sub" x="40" y="72">A static page, a presenter-operated proxy that holds the key, Apertus 1.5 70B via Swisscom, and a fixed catalogue of public pages.</text>
+  <text class="sub" x="40" y="90">Blue arrows: runtime requests, numbered in order. Grey dashed: operations. Ochre: the visitor's browser opening a third-party page directly.</text>
+
+  <!-- ===================== ZONE 1 · visitor ===================== -->
+  <rect class="zone" x="40" y="110" width="520" height="660" rx="14"/>
+  <text class="zonet" x="60" y="138">1 · Visitor's device</text>
+  <text class="zonesub" x="60" y="156">Any browser, no login. Journey saved here; relevant text sent to the model.</text>
+
+  <rect class="box" x="60" y="176" width="480" height="296" rx="10"/>
+  <text class="boxh" x="76" y="200">index.html — one file, no build, no dependencies</text>
+  <text class="small" x="76" y="222">Story · sentence with underlined facts, answers, transcript, follow-up</text>
+  <text class="small" x="76" y="240">Map · SVG tree, dashed fork for a proposal, “?” open questions</text>
+  <text class="small" x="76" y="258">Detail · step, references (page + note + status), explanation, plan</text>
+  <line x1="76" y1="272" x2="524" y2="272" stroke="#DDD8CC"/>
+  <text class="h13" x="76" y="294">Guards, run in the browser before anything is drawn</text>
+  <text class="small" x="76" y="314">• balanced-JSON parser; cut answers repaired to the last complete step</text>
+  <text class="small" x="76" y="332">• source ids must exist in CATALOG; note ids must exist on that entry</text>
+  <text class="small" x="76" y="350">• a “variable” must be literally in the sentence, else it becomes a question</text>
+  <text class="small" x="76" y="368">• malformed map → one shorter retry; incomplete maps are not cached</text>
+  <text class="small" x="76" y="386">• proposal before apply (keep / adopt); Explore never writes the path</text>
+  <text class="small" x="76" y="404">• every text labelled: model (provider, model) · catalogue note · you</text>
+  <text class="muted" x="76" y="430">Map cache key = hash(language, sentence, variable values, answers)</text>
+  <text class="muted" x="76" y="448">Follow-up: answers from map + notes only; a fact → editable proposed sentence</text>
+
+  <rect class="store" x="60" y="492" width="480" height="104" rx="10"/>
+  <text class="boxh" x="76" y="516" style="fill:#1F4E8C">localStorage — this browser only</text>
+  <text class="small" x="76" y="536">sentence · variables · answers · done marks (both scoped) · cached maps</text>
+  <text class="small" x="76" y="554">transcript + language (localStorage) · proxy address (sessionStorage)</text>
+  <text class="muted" x="76" y="578">“Start over” removes the saved journey; requests send text and map context to the provider.</text>
+
+  <rect class="box" x="60" y="616" width="480" height="134" rx="10"/>
+  <text class="boxh" x="76" y="640">CATALOG — embedded in index.html, 14 entries</text>
+  <text class="small" x="76" y="660">id · level (commune / canton / Confederation / other) · exact URL</text>
+  <text class="small" x="76" y="678">draft notes (EN, FR) of what the page covers; the only references the model may cite</text>
+  <text class="small" x="76" y="696">Status today: all notes draft, no reviewer, no checked date</text>
+  <text class="muted" x="76" y="720">Planned pack: condition · office · page + claim · checked date + reviewer</text>
+  <text class="muted" x="76" y="736">· dependencies — one file per commune, versioned</text>
+
+  <!-- ===================== ZONE 2 · GitHub ===================== -->
+  <rect class="zone" x="620" y="110" width="680" height="660" rx="14"/>
+  <text class="zonet" x="640" y="138">2 · GitHub — artfisica / zh-ai-weeks-build-a-public-ai-service-proposal</text>
+  <text class="zonesub" x="640" y="156">Hosts page, code, checks and proxy. Repo stores no visitor stories.</text>
+
+  <rect class="box" x="640" y="176" width="320" height="96" rx="10"/>
+  <text class="boxh" x="656" y="200">GitHub Pages — static hosting</text>
+  <text class="mono" x="656" y="220">artfisica.github.io/zh-ai-weeks-…/</text>
+  <text class="small" x="656" y="240">serves index.html, proxy-url.json, demo.gif, docs</text>
+  <text class="muted" x="656" y="260">cannot hold a secret → hence the proxy</text>
+
+  <rect class="box" x="980" y="176" width="300" height="96" rx="10"/>
+  <text class="boxh" x="996" y="200">Repository · main</text>
+  <text class="small" x="996" y="220">index.html · proxy/ · tests/ · docs: README, SPEC,</text>
+  <text class="small" x="996" y="238">DEMO, PILOT, EVALUATION · LICENSE · NOTICE</text>
+  <text class="muted" x="996" y="260">Actions: node --check · check-inline · smoke</text>
+  <path class="ops" d="M 980 214 L 962 214"/>
+
+  <rect class="box" x="640" y="296" width="640" height="454" rx="10"/>
+  <text class="boxh" x="656" y="320">GitHub Codespace “laughing-cod” — presenter-operated, sleeps when idle</text>
+  <text class="small" x="656" y="340">.devcontainer: Node 20 image, gh CLI, forwards port 8787, declares the three secrets</text>
+
+  <rect class="box" x="656" y="356" width="608" height="118" rx="8"/>
+  <text class="h13" x="670" y="378">proxy/server.js — Node 20, no dependencies, listens on :8787</text>
+  <text class="mono" x="670" y="398">GET  /health  → ready · provider · model · maxTokens · processing · budget</text>
+  <text class="mono" x="670" y="414">POST /chat    → checks Origin, budget, caller limit → injects key → forwards</text>
+  <text class="small" x="670" y="436">Origin allow-list (not authentication) · daily cap 120 requests · per-caller hourly cap</text>
+  <text class="small" x="670" y="454">max_tokens ≤ 3500 · adds provenance {provider, model} to every answer</text>
+
+  <rect class="store" x="656" y="490" width="296" height="76" rx="8"/>
+  <text class="h13" x="670" y="512" style="fill:#1F4E8C">Codespaces secrets → environment</text>
+  <text class="mono" x="670" y="532">APERTUS_API_KEY · UPSTREAM_BASE</text>
+  <text class="mono" x="670" y="548">UPSTREAM_MODEL · UPSTREAM_PROCESSING?</text>
+  <text class="muted" x="670" y="562">never in the repo, never in the page</text>
+
+  <rect class="store" x="968" y="490" width="296" height="76" rx="8"/>
+  <text class="h13" x="982" y="512" style="fill:#1F4E8C">.budget.json — local disk</text>
+  <text class="small" x="982" y="532">request counters only: today's total,</text>
+  <text class="small" x="982" y="548">per caller per hour</text>
+  <text class="muted" x="982" y="562">message text is not deliberately retained</text>
+
+  <rect class="box" x="656" y="582" width="296" height="152" rx="8"/>
+  <text class="h13" x="670" y="604">proxy/start.sh — on start, idempotent</text>
+  <text class="small" x="670" y="624">git pull → start node → wait for /health</text>
+  <text class="small" x="670" y="642">gh codespace ports visibility 8787:public</text>
+  <text class="small" x="670" y="660">write proxy-url.json → commit → push</text>
+  <text class="muted" x="670" y="684">Idle timeout stops the machine (240 min);</text>
+  <text class="muted" x="670" y="700">keep-alive only counts with the tab open.</text>
+  <text class="muted" x="670" y="716">A changed server.js needs pkill node first.</text>
+
+  <rect class="box" x="968" y="582" width="296" height="152" rx="8"/>
+  <text class="h13" x="982" y="604">Public address — TLS by GitHub</text>
+  <text class="mono" x="982" y="624">https://laughing-cod-qjjw5vpqgg3x5xg</text>
+  <text class="mono" x="982" y="640">        -8787.app.github.dev</text>
+  <text class="small" x="982" y="662">Stable while the Codespace exists.</text>
+  <text class="small" x="982" y="680">If private after a restart,</text>
+  <text class="small" x="982" y="698">start.sh sets it public again.</text>
+  <text class="muted" x="982" y="720">Not a production endpoint.</text>
+
+  <!-- ===================== ZONE 3 · model provider ===================== -->
+  <rect class="zone" x="1360" y="110" width="600" height="320" rx="14"/>
+  <text class="zonet" x="1380" y="138">3 · Model provider</text>
+  <text class="zonesub" x="1380" y="156">Swiss {ai} Weeks hackathon endpoint — temporary key, will expire</text>
+
+  <rect class="box" x="1380" y="176" width="560" height="234" rx="10"/>
+  <text class="boxh" x="1396" y="200">Swisscom Swiss AI Platform — Apertus 1.5 70B</text>
+  <text class="mono" x="1396" y="220">POST https://api.swisscom.com/products/swiss-ai-weeks/</text>
+  <text class="mono" x="1396" y="236">     apertus-1.5-70b/v1/chat/completions · model: swiss-ai/Apertus-v1.5-70B · Bearer key</text>
+  <text class="small" x="1396" y="258">OpenAI-compatible · compact JSON · observed 10–30 s</text>
+  <text class="small" x="1396" y="276">Malformed maps can retry once; provider quota is temporary</text>
+  <text class="small" x="1396" y="294">Processing region shown only when independently verified and configured</text>
+  <text class="muted" x="1396" y="318">Story, answers, follow-ups and map context are processed here under provider terms.</text>
+  <text class="muted" x="1396" y="336">Apertus writes steps, explanations and questions. It cannot add a URL:</text>
+  <text class="muted" x="1396" y="354">it may only cite CATALOG ids; anything else is dropped by the browser (zone 1).</text>
+  <text class="muted" x="1396" y="372">The code restricts links, not the truth of a sentence → everything is labelled “proposed”.</text>
+
+  <!-- ===================== ZONE 4 · official pages ===================== -->
+  <rect class="zone" x="1360" y="450" width="600" height="320" rx="14"/>
+  <text class="zonet" x="1380" y="478">4 · Official pages and tools — third parties</text>
+  <text class="zonesub" x="1380" y="496">Opened directly by the visitor's browser. Never fetched or scraped by the service.</text>
+
+  <g font-size="12">
+    <rect x="1380" y="514" width="290" height="30" rx="6" fill="#FFFFFF" stroke="#2C3140"/><rect x="1386" y="521" width="84" height="16" rx="3" fill="#2C3140"/><text class="pill" x="1428" y="533">Confederation</text><text x="1478" y="534">ch.ch · SEM</text>
+    <rect x="1680" y="514" width="280" height="30" rx="6" fill="#FFFFFF" stroke="#2E6A4B"/><rect x="1686" y="521" width="52" height="16" rx="3" fill="#2E6A4B"/><text class="pill" x="1712" y="533">Canton</text><text x="1746" y="534">vd.ch · Statistique Vaud</text>
+    <rect x="1380" y="554" width="290" height="30" rx="6" fill="#FFFFFF" stroke="#9A452A"/><rect x="1386" y="561" width="66" height="16" rx="3" fill="#9A452A"/><text class="pill" x="1419" y="573">Commune</text><text x="1460" y="574">nyon.ch · st-cergue.ch</text>
+    <rect x="1680" y="554" width="280" height="30" rx="6" fill="#FFFFFF" stroke="#7A766E"/><rect x="1686" y="561" width="44" height="16" rx="3" fill="#7A766E"/><text class="pill" x="1708" y="573">Other</text><text x="1738" y="574">OTD · Mobilis · jestime.ch</text>
+  </g>
+  <text class="small" x="1380" y="614">Each catalogue entry is one of these pages plus a draft note of what it covers.</text>
+  <text class="small" x="1380" y="632">The badge names the page's publisher; the node ring is the model's proposed authority level.</text>
+  <text class="muted" x="1380" y="656">Review status today: 14 entries, 0 reviewed by a public authority.</text>
+  <text class="muted" x="1380" y="674">A reviewed pack would add: supported claim · checked date · reviewer · contact office.</text>
+  <text class="muted" x="1380" y="698">Found with the tool on 6 Oct: Vaud's eDéménagement page lists Nyon and St-Cergue as</text>
+  <text class="muted" x="1380" y="716">participating communes, not Gland — a real local fork, verifiable on a dated page.</text>
+
+  <!-- ===================== FLOWS ===================== -->
+  <path class="flow" d="M 540 212 L 640 212"/>
+  <circle cx="590" cy="198" r="10" fill="#1F4E8C"/><text class="numt" x="590" y="202">1</text>
+
+  <path class="flow" d="M 540 300 C 600 300, 600 392, 656 392"/>
+  <circle cx="574" cy="318" r="10" fill="#1F4E8C"/><text class="numt" x="574" y="322">2</text>
+
+  <path class="flow" d="M 540 440 C 600 440, 600 430, 656 430"/>
+  <circle cx="574" cy="456" r="10" fill="#1F4E8C"/><text class="numt" x="574" y="460">3</text>
+
+  <path class="flow" d="M 656 458 C 610 458, 610 360, 540 360"/>
+  <circle cx="608" cy="396" r="10" fill="#1F4E8C"/><text class="numt" x="608" y="400">6</text>
+
+  <path class="flow" d="M 1264 392 C 1320 392, 1320 240, 1380 240"/>
+  <circle cx="1322" cy="300" r="10" fill="#1F4E8C"/><text class="numt" x="1322" y="304">4</text>
+
+  <path class="flow" d="M 1380 290 C 1340 290, 1340 440, 1264 440"/>
+  <circle cx="1346" cy="384" r="10" fill="#1F4E8C"/><text class="numt" x="1346" y="388">5</text>
+
+  <path class="ext" d="M 300 750 C 300 822, 1660 822, 1660 770"/>
+  <circle cx="980" cy="822" r="10" fill="#9A452A"/><text class="numt" x="980" y="826">7</text>
+
+  <path class="ops" d="M 952 728 L 960 728 L 960 742 L 1290 742 L 1290 214 L 1280 214"/>
+  <text class="muted" x="1296" y="470" transform="rotate(-90 1296 470)" text-anchor="middle" style="font-size:11px">push proxy-url.json → repo → Pages</text>
+
+  <circle cx="300" cy="860" r="12" fill="#1B1A17"/><path d="M 282 890 C 282 872, 318 872, 318 890" fill="#1B1A17"/>
+  <text class="small" x="324" y="866">Presenter</text>
+  <text class="muted" x="324" y="882">opens the Codespace · bash proxy/start.sh · keeps the tab alive</text>
+  <path class="ops" d="M 400 866 C 600 866, 760 820, 800 736"/>
+
+  <!-- ===================== Runtime sequence ===================== -->
+  <rect class="box" x="40" y="910" width="1260" height="200" rx="10"/>
+  <text class="boxh" x="56" y="934">Runtime sequence</text>
+  <text class="small" x="56" y="956"><tspan font-weight="700">1</tspan>  GET index.html, then proxy-url.json (no-store).</text>
+  <text class="small" x="56" y="974"><tspan font-weight="700">2</tspan>  GET /health. The page refuses a proxy that is not ready, that lacks maxTokens (an old server process), or that caps under 2500 tokens.</text>
+  <text class="small" x="56" y="992"><tspan font-weight="700">3</tspan>  POST /chat — system: role, rules, CATALOG with notes · user: sentence, current values, answers, previous map ids for stability, optional change · max_tokens 3000, temperature 0.2.</text>
+  <text class="small" x="56" y="1010"><tspan font-weight="700">4</tspan>  The proxy checks Origin, budget and caller limit, injects the key and forwards.   <tspan font-weight="700">5</tspan>  The model returns compact JSON; the proxy adds {provider, model}.</text>
+  <text class="small" x="56" y="1028"><tspan font-weight="700">6</tspan>  The browser validates (guards above), renders, caches.   <tspan font-weight="700">7</tspan>  A visitor opens a reference: the selected page loads directly from its publisher.</text>
+  <text class="muted" x="56" y="1054">Follow-up turns reuse 3–6 with a shorter prompt (map + notes + question, 700 tokens).</text>
+  <text class="muted" x="56" y="1072">A proposed change (“Gland instead”) is a second map fetched with the previous map's ids and diffed by id in the browser: same / changed / added / removed.</text>
+  <text class="muted" x="56" y="1090">Language switch refetches without the previous map so texts come back in the chosen language.</text>
+
+  <!-- ===================== Planned ===================== -->
+  <rect class="planned" x="1360" y="790" width="600" height="320" rx="10"/>
+  <text class="boxh" x="1376" y="814" style="fill:#5A5751">Planned — not in the current system</text>
+  <text class="small" x="1376" y="836">• Always-on proxy with documented jurisdiction and operating ownership.</text>
+  <text class="small" x="1376" y="852">  Replaces the Codespace; the page only needs a new proxy-url.json.</text>
+  <text class="small" x="1376" y="874">• Provider switch by env values, with processing location confirmed for each provider.</text>
+  <text class="small" x="1376" y="896">• Commune packs: reviewed claims with date, reviewer, scope and office; a deterministic</text>
+  <text class="small" x="1376" y="912">  layer applies conditions, Apertus interprets words and explains changes (PILOT.md, 6 weeks).</text>
+  <text class="small" x="1376" y="934">• One dated Open Journey Planner point on the transport branch, kept apart from guidance.</text>
+  <text class="small" x="1376" y="956">• The 10-situation evaluation set (EVALUATION.md) run against the live model, then nightly.</text>
+  <text class="small" x="1376" y="978">• German and Italian: strings and prompts are already switchable.</text>
+  <text class="muted" x="1376" y="1010">What is stored where, today</text>
+  <text class="muted" x="1376" y="1028">zone 1 — saved journey · zone 2 — repo, proxy and request counters</text>
+  <text class="muted" x="1376" y="1046">zone 3 — request text and map context · zone 4 — publisher receives direct page visit</text>
+  <text class="muted" x="1376" y="1072">Trust boundary: the key never crosses from zone 2 to zone 1; personal text never enters zone 2's repo.</text>
+</svg>

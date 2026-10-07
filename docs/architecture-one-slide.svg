@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title description">
+  <title id="title">Public AI for every commune — prototype architecture</title>
+  <desc id="description">A resident describes a situation. A browser draws a persistent journey map and restricts links to a draft catalogue. A Codespace proxy holds the model key and sends the request to Apertus via Swisscom. The resident opens source pages directly. A reviewed two-commune pilot is proposed.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M2 2L10 6L2 10" fill="none" stroke="#315D91" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <rect width="1920" height="1080" fill="#F3F1EC"/>
+  <text x="80" y="105" font-family="Georgia, serif" font-size="56" font-weight="700" fill="#1B1A17">Public AI for every commune</text>
+  <text x="82" y="160" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#4C4A44">A person’s story becomes a map they can revisit, change and verify.</text>
+  <rect x="1534" y="73" width="306" height="48" rx="24" fill="#E7EEF8" stroke="#B6C9E2"/>
+  <text x="1687" y="105" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#1F4E8C">PROTOTYPE · OCT 2026</text>
+  <path d="M80 202H1840" stroke="#D7D2C6" stroke-width="2"/>
+
+  <g font-family="Helvetica, Arial, sans-serif" fill="#1B1A17">
+    <rect x="80" y="268" width="410" height="490" rx="22" fill="#FBFAF7" stroke="#D7D2C6" stroke-width="2"/>
+    <circle cx="124" cy="319" r="24" fill="#E9E3D5"/><text x="124" y="328" text-anchor="middle" font-size="24" font-weight="700">1</text>
+    <text x="165" y="329" font-size="22" font-weight="700" fill="#5A5751">RESIDENT</text>
+    <text x="112" y="395" font-family="Georgia, serif" font-size="34" font-weight="700">Tell a real story</text>
+    <text x="112" y="457" font-size="25">“I live in Nyon. My child</text>
+    <text x="112" y="492" font-size="25">is eight. We may move to</text>
+    <text x="112" y="527" font-size="25">Saint-Cergue.”</text>
+    <path d="M112 567H458" stroke="#D7D2C6"/>
+    <text x="112" y="615" font-size="24">Change a word. Explore another</text>
+    <text x="112" y="649" font-size="24">path. Open the source yourself.</text>
+    <rect x="112" y="689" width="135" height="39" rx="19" fill="#E9E3D5"/><text x="179" y="715" text-anchor="middle" font-size="19" font-weight="700">No login</text>
+
+    <rect x="530" y="268" width="410" height="490" rx="22" fill="#F5F8FC" stroke="#A8BEDA" stroke-width="2"/>
+    <circle cx="574" cy="319" r="24" fill="#DCE8F5"/><text x="574" y="328" text-anchor="middle" font-size="24" font-weight="700" fill="#1F4E8C">2</text>
+    <text x="615" y="329" font-size="22" font-weight="700" fill="#315D91">BROWSER</text>
+    <text x="562" y="395" font-family="Georgia, serif" font-size="34" font-weight="700">Draw a living map</text>
+    <text x="562" y="457" font-size="24">Questions and parallel paths</text>
+    <text x="562" y="491" font-size="24">stay visible. An edit shows a</text>
+    <text x="562" y="525" font-size="24">fork before it is adopted.</text>
+    <path d="M562 567H908" stroke="#B6C9E2"/>
+    <text x="562" y="615" font-size="23">Only known catalogue IDs</text>
+    <text x="562" y="648" font-size="23">become links; drafts are marked.</text>
+    <rect x="562" y="689" width="281" height="39" rx="19" fill="#DCE8F5"/><text x="702" y="715" text-anchor="middle" font-size="19" font-weight="700" fill="#1F4E8C">Saved in this browser</text>
+
+    <rect x="980" y="268" width="410" height="490" rx="22" fill="#FBFAF7" stroke="#D7D2C6" stroke-width="2"/>
+    <circle cx="1024" cy="319" r="24" fill="#E9E3D5"/><text x="1024" y="328" text-anchor="middle" font-size="24" font-weight="700">3</text>
+    <text x="1065" y="329" font-size="22" font-weight="700" fill="#5A5751">GITHUB CODESPACE</text>
+    <text x="1012" y="395" font-family="Georgia, serif" font-size="34" font-weight="700">Protect the key</text>
+    <text x="1012" y="457" font-size="24">A public demo proxy receives</text>
+    <text x="1012" y="491" font-size="24">the request, limits usage and</text>
+    <text x="1012" y="525" font-size="24">adds the provider secret.</text>
+    <path d="M1012 567H1358" stroke="#D7D2C6"/>
+    <text x="1012" y="615" font-size="23">Messages pass through; only</text>
+    <text x="1012" y="648" font-size="23">request counters persist here.</text>
+    <rect x="1012" y="689" width="289" height="39" rx="19" fill="#E9E3D5"/><text x="1156" y="715" text-anchor="middle" font-size="19" font-weight="700">Sleeps when idle</text>
+
+    <rect x="1430" y="268" width="410" height="490" rx="22" fill="#F4F8F4" stroke="#B0CCB6" stroke-width="2"/>
+    <circle cx="1474" cy="319" r="24" fill="#DEEDDF"/><text x="1474" y="328" text-anchor="middle" font-size="24" font-weight="700" fill="#2E6A4B">4</text>
+    <text x="1515" y="329" font-size="22" font-weight="700" fill="#2E6A4B">APERTUS · SWISSCOM</text>
+    <text x="1462" y="395" font-family="Georgia, serif" font-size="34" font-weight="700">Propose a path</text>
+    <text x="1462" y="457" font-size="24">Reads the story and relevant</text>
+    <text x="1462" y="491" font-size="24">map context. Proposes steps,</text>
+    <text x="1462" y="525" font-size="24">questions and explanations.</text>
+    <path d="M1462 567H1808" stroke="#B0CCB6"/>
+    <text x="1462" y="615" font-size="23">The app checks structure and</text>
+    <text x="1462" y="648" font-size="23">links, not civic truth.</text>
+    <rect x="1462" y="689" width="272" height="39" rx="19" fill="#DEEDDF"/><text x="1598" y="715" text-anchor="middle" font-size="19" font-weight="700" fill="#2E6A4B">Model text labelled</text>
+  </g>
+
+  <g fill="none" stroke="#315D91" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M496 513H518"/><path d="M946 513H968"/><path d="M1396 513H1418"/>
+  </g>
+
+  <rect x="80" y="798" width="1760" height="127" rx="18" fill="#FFFFFF" stroke="#D7D2C6" stroke-width="2"/>
+  <circle cx="121" cy="837" r="9" fill="#A4532A"/>
+  <text x="147" y="846" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#1B1A17">Controlled references · 14 draft entries · 0 commune reviews</text>
+  <text x="112" y="891" font-family="Helvetica, Arial, sans-serif" font-size="23" fill="#4C4A44">ch.ch · SEM · Vaud · Nyon · Saint-Cergue · independent tools tagged separately. The visitor opens each page directly.</text>
+
+  <rect x="80" y="960" width="1760" height="78" rx="16" fill="#1F4E8C"/>
+  <text x="112" y="1009" font-family="Helvetica, Arial, sans-serif" font-size="25" font-weight="700" fill="#FFFFFF">NEXT: a six-week Nyon + Saint-Cergue pilot — reviewed claims, explicit conditions and a ten-case evaluation.</text>
+</svg>
