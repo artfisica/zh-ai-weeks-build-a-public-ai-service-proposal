@@ -17,7 +17,7 @@ For a bounded next step with Public AI and local content owners, see [the six-we
 
 The [8 October review](docs/REVIEW-2026-10-08.md) records the concrete failures found and repaired, the live-model checks, and the remaining pilot work.
 
-The [manual evaluation set](EVALUATION.md) lists ten fictional situations and the failure modes to look for. The full set has not yet been run against the live model. GitHub Actions checks JavaScript syntax and the local state-machine smoke test on each push; those checks do not validate civic facts or the model's choice of source.
+The [manual evaluation set](EVALUATION.md) lists ten fictional situations and the failure modes to look for. The full set has not yet been run against the live model. GitHub Actions checks JavaScript syntax, the local state-machine smoke test and proxy HTTP integration tests on each push; those checks do not validate civic facts or the model's choice of source.
 
 ## The idea
 
@@ -75,9 +75,10 @@ PILOT.md                           six-week discovery pilot proposal
 docs/architecture-one-slide.svg    readable presentation overview
 docs/architecture-detailed.svg     dated engineering and trust-boundary diagram
 tests/check-inline.js              inline script syntax check
-tests/smoke.js                     44 state, source, path-change and failure regressions
+tests/smoke.js                     47 state, source, path-change and failure regressions
+tests/proxy.js                     6 local HTTP integration tests; no provider calls
 tests/harness.js / fixtures.js      isolated test harness and fictional cases
-.github/workflows/check.yml        syntax and smoke checks on push and PR
+.github/workflows/check.yml        syntax, smoke and proxy checks on push and PR
 LICENSE / NOTICE                   Apache 2.0 code license and attribution note
 ```
 
@@ -102,7 +103,13 @@ Set Settings → Codespaces → Default idle timeout to 240 minutes.
 
 Open the existing Codespace (Code → Codespaces → its name), run `bash proxy/start.sh` in its terminal, check `ready: yes` and `port 8787: public` (if the port could not be set automatically: Ports tab → 8787 → right-click → Port Visibility → Public), then open the page: the header must say "Apertus via Swisscom". Leave the Codespace tab open. While the Codespace is stopped, the page loads and says the map cannot be drawn; maps already drawn stay in the visitor's browser.
 
-After changing proxy files: `git pull`, stop the old Node server, then `bash proxy/start.sh`. A running server keeps the files it started with. The 8 October update changes the page and tests only; it does not require a proxy restart.
+After changing proxy files: `git pull`, stop the old Node server, then `bash proxy/start.sh`. A running server keeps the files it started with. This reliability update changes the proxy and requires a restart.
+
+For a private rehearsal, set the Codespaces secret `DEMO_TOKEN`, restart the proxy, and enter the token in the page’s connection panel when prompted. The page keeps it in memory for the current tab and sends it only when the connected proxy requests a token. Reloading the page requires entering it again. Leave the secret unset for the public demo.
+
+The proxy validates requests before charging the daily budget. Once sent upstream, a request counts even if the provider fails or the visitor cancels it. Model requests have a 55-second deadline (`upstreamTimeoutMs` in `proxy/proxy.config.json`) and are cancelled when the visitor disconnects. Cancellation ends the proxy’s request; provider-side cancellation and billing depend on the provider.
+
+The root `server.js` and `start.sh` are compatibility wrappers. Both use the maintained files in `proxy/`; configure only `proxy/proxy.config.json`.
 
 ## Run locally
 
@@ -111,6 +118,18 @@ python3 -m http.server 8000
 ```
 
 Open http://localhost:8000 and paste a proxy address in the connection panel (the Codespace one, or a local `node proxy/server.js` with the three variables set in the environment). Without a proxy the page draws nothing; it says so.
+
+## Local checks
+
+```
+node --check proxy/server.js
+node tests/check-inline.js
+node tests/smoke.js
+node --test tests/proxy.js
+bash -n start.sh proxy/start.sh
+```
+
+Proxy tests start temporary localhost servers, use fixture credentials and an isolated temporary budget, and make no calls to a model provider.
 
 ## Catalogue of sources
 

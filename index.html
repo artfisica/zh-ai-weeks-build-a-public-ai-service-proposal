@@ -296,13 +296,14 @@
   }
 
   // ---- Connection (proxy only on the public site) ----
-  const conn = Object.assign({ proxyUrl: '', status: 'off', error: '', prov: null }, (() => { try { return JSON.parse(sessionStorage.getItem(CONN_KEY) || '{}'); } catch (e) { return {}; } })());
+  const conn = Object.assign({ proxyUrl: '', status: 'off', error: '', prov: null, demoToken: '', tokenRequired: false }, (() => { try { return JSON.parse(sessionStorage.getItem(CONN_KEY) || '{}'); } catch (e) { return {}; } })());
   conn.status = 'off'; conn.prov = null; if (PUBLIC_PROXY_URL) conn.proxyUrl = PUBLIC_PROXY_URL;
   const saveConn = () => { try { sessionStorage.setItem(CONN_KEY, JSON.stringify({ proxyUrl: conn.proxyUrl })); } catch (e) {} };
   const live = () => conn.status === 'ok';
   const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : t('Texte préparé', 'Prepared text');
   async function chat(messages, maxTokens) {
-    const { response: r, data: j } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) });
+    const { response: r, data: j } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, conn.tokenRequired && conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {}), body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) });
+    if (r.status === 401) { document.getElementById('conn-panel').hidden = false; conn.status = 'error'; conn.error = t('Jeton de répétition manquant ou incorrect. Vérifiez la connexion.', 'Rehearsal token missing or incorrect. Check the connection.'); renderConn(); throw new Error(conn.error); }
     if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 429 ? t(' (limite atteinte)', ' (limit reached)') : ''));
     return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '', prov: j.provenance || { provider: 'proxy', model: '' } };
   }
@@ -313,6 +314,9 @@
       const { response: r, data: h } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/health', {}, 12000, false);
       if (!h) throw new Error('HTTP ' + r.status);
       if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing ? ' : ' + h.missing.join(', ') : ''));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      conn.tokenRequired = !!h.tokenRequired;
+      if (conn.tokenRequired && !conn.demoToken) { document.getElementById('conn-panel').hidden = false; throw new Error(t('Ce proxy demande un jeton de répétition.', 'This proxy requires a rehearsal token.')); }
       if (h.maxTokens === undefined) throw new Error(t('le proxy tourne avec un ancien serveur. Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', 'the proxy is running an old server. In the Codespace: git pull; pkill node; bash proxy/start.sh'));
       if (h.maxTokens && h.maxTokens < 2500) throw new Error(t('le proxy limite les réponses à ', 'the proxy caps answers at ') + h.maxTokens + t(' tokens ; une carte en demande 3000. Dans le Codespace : git pull, puis bash proxy/start.sh', ' tokens; a map needs 3000. In the Codespace: git pull, then bash proxy/start.sh'));
       conn.prov = { provider: h.provider || 'proxy', model: h.model || '', processing: h.processing || '' }; conn.status = 'ok';
@@ -547,7 +551,7 @@
     const v = currentVars().find(x => x.id === varId); to = String(to || '').trim(); if (!v || !to || to === v.value || state.loading) return;
     const exploring = state.mode === 'explore', original = currentVars(), vars = original.map(x => x.id === varId ? Object.assign({}, x, { value: to, span: to }) : x);
     const story = storyWithVars(viewedStory(), vars, original), previous = exploring ? state.exploreTree : state.tree;
-    const answers = exploring ? {} : answersFor(vars), qtexts = exploring ? {} : qtextsFor(vars);
+    const answers = exploring ? Object.assign({}, state.exploreAnswers) : answersFor(vars), qtexts = exploring ? Object.assign({}, state.exploreQtexts) : qtextsFor(vars);
     const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
     try {
       const tree = await fetchTree(story, vars, answers, previous, { id: varId, from: v.value, to }); if (!stillCurrent(id)) return;
@@ -893,7 +897,7 @@
     btn.className = 'conn-btn ' + (conn.status === 'ok' ? 'ok' : conn.status === 'error' ? 'error' : '');
     label.textContent = conn.status === 'ok' ? 'Apertus via ' + conn.prov.provider + (conn.prov.model ? ' (' + String(conn.prov.model).split('/').pop() + ')' : '') + (conn.prov.processing ? ' · ' + t('traité en ', 'processed in ') + conn.prov.processing : '') : conn.status === 'testing' ? t('Connexion…', 'Connecting…') : conn.status === 'error' ? t('Apertus indisponible pour l’instant', 'Apertus unavailable for now') : t('Apertus non connecté', 'Apertus not connected');
     if (panel.hidden) return;
-    panel.innerHTML = '<div style="font-weight:600">' + t('Connecter Apertus', 'Connect Apertus') + '</div><label for="c-proxy">' + t('Adresse du proxy', 'Proxy address') + '</label><input id="c-proxy" value="' + esc(conn.proxyUrl) + '" placeholder="https://…-8787.app.github.dev"><div class="caption">' + t('Le proxy garde la clé côté serveur et tient un budget quotidien.', 'The proxy keeps the key server-side and holds a daily budget.') + '</div>' + (conn.error ? '<div class="err">' + esc(conn.error) + '</div>' : '') + '<div class="row"><button type="button" class="btn" data-conn="close">' + t('Fermer', 'Close') + '</button><button type="button" class="btn primary" data-conn="go">' + t('Connecter', 'Connect') + '</button></div>';
+    panel.innerHTML = '<div style="font-weight:600">' + t('Connecter Apertus', 'Connect Apertus') + '</div><label for="c-proxy">' + t('Adresse du proxy', 'Proxy address') + '</label><input id="c-proxy" value="' + esc(conn.proxyUrl) + '" placeholder="https://…-8787.app.github.dev"><div class="caption">' + t('Le proxy garde la clé côté serveur et tient un budget quotidien.', 'The proxy keeps the key server-side and holds a daily budget.') + '</div><label for="c-token">' + t('Jeton de répétition (si demandé)', 'Rehearsal token (if required)') + '</label><input id="c-token" type="password" autocomplete="off" value="' + esc(conn.demoToken) + '"><div class="caption">' + t('Conservé en mémoire pour cet onglet uniquement.', 'Kept in memory for this tab only.') + '</div>' + (conn.error ? '<div class="err">' + esc(conn.error) + '</div>' : '') + '<div class="row"><button type="button" class="btn" data-conn="close">' + t('Fermer', 'Close') + '</button><button type="button" class="btn primary" data-conn="go">' + t('Connecter', 'Connect') + '</button></div>';
   }
   function renderChrome() {
     document.documentElement.lang = LANG; document.title = t('Public AI pour chaque commune', 'Public AI for every commune');
@@ -928,7 +932,7 @@
 
   // ---- Events ----
   document.addEventListener('click', e => {
-    const cb = e.target.closest('[data-conn]'); if (cb) { const p = document.getElementById('conn-panel'); if (cb.dataset.conn === 'close') { p.hidden = true; } else { const el = document.getElementById('c-proxy'); if (el) conn.proxyUrl = el.value.trim(); connect(); } return; }
+    const cb = e.target.closest('[data-conn]'); if (cb) { const p = document.getElementById('conn-panel'); if (cb.dataset.conn === 'close') { p.hidden = true; } else { const el = document.getElementById('c-proxy'); if (el) conn.proxyUrl = el.value.trim(); const token = document.getElementById('c-token'); if (token) conn.demoToken = token.value.trim(); connect(); } return; }
     const ex = e.target.closest('[data-example]'); if (ex) { startStory(ex.dataset.example); return; }
     const narrow = () => {};
     const aw = e.target.closest('[data-answered]'); if (aw) { set({ sel: { aq: aw.dataset.answered } }); return; }
@@ -943,7 +947,7 @@
     const q = e.target.closest('[data-q]'); if (q) { set({ sel: { q: q.dataset.q } }); narrow(); return; }
     const n = e.target.closest('[data-sel]'); if (n) { const [li, id, alt] = n.dataset.sel.split('|'); set({ sel: { li: Number(li), id, alt: alt === '1' } }); narrow(); }
   });
-  document.addEventListener('input', e => { const el = e.target; if (el.id === 'ask') state.followDraft = el.value; else if (el.id === 'edit') state.editDraft = el.value; else if (el.closest('[data-start-form]')) state.draftStory = el.value; });
+  document.addEventListener('input', e => { const el = e.target; if (el.id === 'c-token') conn.demoToken = el.value; else if (el.id === 'ask') state.followDraft = el.value; else if (el.id === 'edit') state.editDraft = el.value; else if (el.closest('[data-start-form]')) state.draftStory = el.value; });
   document.addEventListener('submit', e => {
     const sf = e.target.closest('[data-start-form]'); if (sf) { e.preventDefault(); startStory(sf.elements.text.value); return; }
     const cf = e.target.closest('[data-converse-form]'); if (cf) { e.preventDefault(); const v = cf.elements.text.value; cf.elements.text.value = ''; converse(v); return; }

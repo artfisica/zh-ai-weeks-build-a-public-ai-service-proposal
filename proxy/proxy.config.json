@@ -9,6 +9,7 @@
   "dailyBudget": 600,
   "hourlyPerCaller": 150,
   "maxTokens": 3500,
+  "upstreamTimeoutMs": 55000,
   "authHeader": "Authorization",
   "authPrefix": "Bearer ",
   "extraHeaders": {}
