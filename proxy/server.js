@@ -26,7 +26,7 @@ const crypto = require('crypto');
 const cfgPath = path.join(__dirname, 'proxy.config.json');
 const cfg = Object.assign({
   provider: 'swisscom', upstreamBase: '', upstreamModel: '', allowedOrigins: [],
-  dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 3500, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
+  dailyBudget: 120, hourlyPerCaller: 40, maxTokens: 3500, upstreamTimeoutMs: 55000, authHeader: 'Authorization', authPrefix: 'Bearer ', extraHeaders: {}
 }, fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {});
 // Codespaces secrets override the committed config, so a fresh Codespace needs no file edits.
 if (process.env.UPSTREAM_BASE) cfg.upstreamBase = process.env.UPSTREAM_BASE;
@@ -69,6 +69,24 @@ function readiness() {
   return { ready: missing.length === 0, missing };
 }
 
+// Reject malformed or oversized bodies before charging the shared model budget.
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []; let size = 0;
+    const cleanup = () => { req.removeListener('data', onData); req.removeListener('end', onEnd); req.removeListener('error', onError); req.removeListener('aborted', onAborted); };
+    const fail = (status, message) => { cleanup(); reject(Object.assign(new Error(message), { status })); };
+    const onData = chunk => {
+      size += chunk.length;
+      if (size > 120000) { fail(413, 'request too large'); req.resume(); }
+      else chunks.push(chunk);
+    };
+    const onEnd = () => { cleanup(); resolve(Buffer.concat(chunks).toString('utf8')); };
+    const onError = () => fail(400, 'request read failed');
+    const onAborted = () => fail(400, 'request aborted');
+    req.on('data', onData); req.on('end', onEnd); req.on('error', onError); req.on('aborted', onAborted);
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || '';
   const originOk = !!origin && cfg.allowedOrigins.includes(origin);
@@ -79,55 +97,64 @@ const server = http.createServer(async (req, res) => {
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
-  const send = (status, obj) => { res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, cors)); res.end(JSON.stringify(obj)); };
-  const url = new URL(req.url, 'http://x');
+  const send = (status, obj) => { if (res.destroyed || res.writableEnded) return; res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, cors)); res.end(JSON.stringify(obj)); };
+  try {
+    const url = new URL(req.url, 'http://x');
 
-  if (req.method === 'OPTIONS') { if (!originOk) return send(403, { error: 'origin not allowed' }); res.writeHead(204, cors); return res.end(); }
-  if (origin && !originOk) return send(403, { error: 'origin not allowed' });
+    if (req.method === 'OPTIONS') { if (!originOk) return send(403, { error: 'origin not allowed' }); res.writeHead(204, cors); return res.end(); }
+    if (origin && !originOk) return send(403, { error: 'origin not allowed' });
 
-  const rd = readiness();
-  if (url.pathname === '/health' && req.method === 'GET') {
-    return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, maxTokens: cfg.maxTokens, processing: cfg.processing || '', tokenRequired: TOKENS.length > 0, budget: peek() });
-  }
+    const rd = readiness();
+    if (url.pathname === '/health' && req.method === 'GET') {
+      return send(rd.ready ? 200 : 503, { ok: rd.ready, ready: rd.ready, missing: rd.missing, provider: providerName(cfg.provider), model: cfg.upstreamModel || null, maxTokens: cfg.maxTokens, processing: cfg.processing || '', tokenRequired: TOKENS.length > 0, budget: peek() });
+    }
 
-  if (url.pathname === '/chat' && req.method === 'POST') {
-    if (!rd.ready) return send(503, { error: 'proxy not ready', missing: rd.missing });
-    const token = req.headers['x-demo-token'] || '';
-    if (TOKENS.length) { if (!TOKENS.includes(token)) return send(401, { error: 'demo token required' }); }
-    else if (!originOk) return send(403, { error: 'allowed browser origin required' });
-    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
-    const caller = TOKENS.length ? 't:' + sha(token) : 'ip:' + sha(ip);
-    const verdict = take(caller);
-    if (!verdict.ok) return send(verdict.reason === 'storage' ? 503 : 429, { error: verdict.reason === 'daily' ? 'daily demo budget exhausted' : verdict.reason === 'storage' ? 'budget unavailable' : 'hourly limit reached for this caller', budget: verdict });
-
-    let raw = ''; req.on('data', c => { raw += c; if (raw.length > 120000) req.destroy(); });
-    req.on('end', async () => {
+    if (url.pathname === '/chat' && req.method === 'POST') {
+      if (!rd.ready) return send(503, { error: 'proxy not ready', missing: rd.missing });
+      const token = req.headers['x-demo-token'] || '';
+      if (TOKENS.length) { if (!TOKENS.includes(token)) return send(401, { error: 'demo token required' }); }
+      else if (!originOk) return send(403, { error: 'allowed browser origin required' });
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+      const caller = TOKENS.length ? 't:' + sha(token) : 'ip:' + sha(ip);
+      const raw = await readBody(req);
       let body; try { body = JSON.parse(raw); } catch (e) { return send(400, { error: 'invalid JSON' }); }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return send(400, { error: 'messages required' });
       const messages = Array.isArray(body.messages) ? body.messages.slice(-8) : null;
-      if (!messages || !messages.every(m => m && typeof m.content === 'string' && ['system', 'user', 'assistant'].includes(m.role))) return send(400, { error: 'messages required' });
+      if (!messages || !messages.length || !messages.every(m => m && typeof m.content === 'string' && ['system', 'user', 'assistant'].includes(m.role))) return send(400, { error: 'messages required' });
       if (messages.reduce((n, m) => n + m.content.length, 0) > 40000) return send(413, { error: 'request too large' });
+      if (res.destroyed) return;
+      const verdict = take(caller);
+      if (!verdict.ok) return send(verdict.reason === 'storage' ? 503 : 429, { error: verdict.reason === 'daily' ? 'daily demo budget exhausted' : verdict.reason === 'storage' ? 'budget unavailable' : 'hourly limit reached for this caller', budget: verdict });
+
       const maxTokens = Math.min(Math.max(1, parseInt(body.max_tokens, 10) || cfg.maxTokens), cfg.maxTokens);
       const headers = Object.assign({ 'Content-Type': 'application/json', 'User-Agent': 'arbre-de-parcours-proxy/1.1' }, cfg.extraHeaders || {});
       headers[cfg.authHeader || 'Authorization'] = (cfg.authPrefix === undefined ? 'Bearer ' : cfg.authPrefix) + KEY;
       let up, text;
+      const controller = new AbortController();
+      const timeout = Number.isFinite(cfg.upstreamTimeoutMs) && cfg.upstreamTimeoutMs > 0 ? cfg.upstreamTimeoutMs : 55000;
+      let timedOut = false;
+      const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeout);
+      const onClose = () => { if (!res.writableEnded) controller.abort(); };
+      res.once('close', onClose);
       try {
-        up = await fetch(cfg.upstreamBase.replace(/\/$/, '') + '/chat/completions', { method: 'POST', headers, body: JSON.stringify({ model: cfg.upstreamModel, messages, max_tokens: maxTokens, temperature: typeof body.temperature === 'number' ? Math.min(Math.max(body.temperature, 0), 1) : 0.2 }) });
+        up = await fetch(cfg.upstreamBase.replace(/\/$/, '') + '/chat/completions', { method: 'POST', headers, signal: controller.signal, body: JSON.stringify({ model: cfg.upstreamModel, messages, max_tokens: maxTokens, temperature: typeof body.temperature === 'number' ? Math.min(Math.max(body.temperature, 0), 1) : 0.2 }) });
         text = await up.text();
-      } catch (e) { return send(502, { error: 'upstream unreachable' }); }
+      } catch (e) { return send(timedOut ? 504 : 502, { error: timedOut ? 'upstream timed out' : 'upstream unreachable' }); }
+      finally { clearTimeout(timer); res.removeListener('close', onClose); }
       if (!up.ok) return send(up.status === 429 ? 429 : 502, { error: 'upstream ' + up.status, detail: text.slice(0, 300) });
       let data; try { data = JSON.parse(text); } catch (e) { return send(502, { error: 'upstream returned non-JSON' }); }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return send(502, { error: 'upstream returned invalid response' });
       data.provenance = { provider: providerName(cfg.provider), model: data.model || cfg.upstreamModel, requestedModel: cfg.upstreamModel };
       data.budget = { used: verdict.used, limit: verdict.limit, remaining: verdict.remaining };
       return send(200, data);
-    });
-    return;
-  }
-  send(404, { error: 'not found' });
+    }
+    send(404, { error: 'not found' });
+  } catch (e) { send(e.status || 500, { error: e.status ? e.message : 'proxy request failed' }); }
 });
 
 server.listen(PORT, () => {
   const rd = readiness();
-  console.log('Apertus proxy listening on port ' + PORT + ' — provider ' + providerName(cfg.provider) + ', model ' + (cfg.upstreamModel || '(missing)'));
+  console.log('Apertus proxy listening on port ' + server.address().port + ' — provider ' + providerName(cfg.provider) + ', model ' + (cfg.upstreamModel || '(missing)'));
   console.log(rd.ready ? 'ready: yes' : 'ready: NO — missing ' + rd.missing.join(', '));
   console.log('tokens configured: ' + TOKENS.length + ' · daily budget ' + cfg.dailyBudget + ' · allowed origins: ' + (cfg.allowedOrigins.join(', ') || '(none)'));
 });
