@@ -111,6 +111,9 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
  await test('Failed language generation restores the saved language preference',async()=>{
    const h=harness(),a=saved(h);h.queue([new Error('offline')]);await a.setLang('fr');assert.equal(h.context.document.documentElement.lang,'en');assert.equal(h.storage.get('public-ai-commune.lang'),'en');
  });
+ await test('Resizing an empty map cannot replace the initial situation form while typing',async()=>{
+   const h=harness();h.element('tree-host').innerHTML='a form containing an unsent draft';h.windowEvents.get('resize')();await new Promise(resolve=>setTimeout(resolve,180));assert.equal(h.element('tree-host').innerHTML,'a form containing an unsent draft');
+ });
  if(process.env.REVIEW_OUTPUT){const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');fs.mkdirSync(process.env.REVIEW_OUTPUT,{recursive:true});fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-desktop.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map"[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));h.context.window.innerWidth=390;a.render();fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-mobile.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));}
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -1035,7 +1035,7 @@
   document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree || state.loading || state.mode === 'explore') return; set({ mode: 'explore', pending: null, sel: null, exploreStory: state.story, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree, exploreAnswers: Object.assign({}, state.answers), exploreQtexts: Object.assign({}, state.qtexts), exploreQuestionDefs: Object.assign({}, state.questionDefs), exploreTurns: [] }); });
   document.getElementById('clear-btn').addEventListener('click', reset);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (state.loading) { cancelRequests(); set({ loading: '' }); } else set({ sel: null }); } });
-  let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => renderTree(derive()), 150); });
+  let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); if (!state.tree) return; resizeTimer = setTimeout(() => renderTree(derive()), 150); });
   document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
   document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; renderConn(); });
