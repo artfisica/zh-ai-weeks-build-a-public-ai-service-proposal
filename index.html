@@ -583,7 +583,7 @@
 ];
   // END GENERATED CATALOGUE
   const catalogById = id => CATALOG.find(c => c.id === id) || null;
-  const catalogForPrompt = (selection = CATALOG) => selection.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.filter(k => usableClaim(k)).map(k => k.id + ': ' + k.text).join(' ; ') : '')).join('\n');
+  const catalogForPrompt = (selection = CATALOG) => selection.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.filter(k => usableClaim(k)).map(k => k.id + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text)).join(' ; ') : '')).join('\n');
   const usableClaim = k => (k.status === 'draft' || (k.status === 'reviewed' && k.recheckOn >= new Date().toISOString().slice(0,10))) && k.kind !== 'community';
   const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid && usableClaim(k)) || null : null; };
   // A conservative scope guard for named places in the demo. This does not verify the claim itself.
@@ -1165,9 +1165,9 @@
     refs.forEach(r => {
       const exact = r.cat.exact;
       html += '<div class="ref"><a class="source" href="' + esc(r.cat.url) + '" target="_blank" rel="noopener">' + draftBadge(r.cat.level) + '<span class="link">' + esc(r.cat.title) + '</span></a>';
-      if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending') + '</div>';
+      if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + (r.claim.status === 'reviewed' ? t('Note du catalogue relue · correspondance avec cette étape générée non relue', 'Reviewed catalogue note · match to this generated step unreviewed') : t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending')) + '</div>';
       else html += '<div class="checked">' + (exact ? t('Page choisie par le modèle ; aucune note du catalogue reliée à cette étape. Vérifiez sur la page.', 'Model-selected page; no catalogue note linked to this step. Check the page.') : t('Site d’entrée ; page précise encore à relier.', 'Entry site; exact page still to be linked.')) + '</div>';
-      html += '<div class="checked">' + esc(r.cat.pack + ' v' + r.cat.packVersion) + (r.claim ? ' · ' + esc(r.claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(r.claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '</div></div>';
+      html += '<div class="checked">' + esc(r.cat.pack + ' v' + r.cat.packVersion) + (r.claim ? ' · ' + esc(r.claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(r.claim.sourceCheckedOn || t('non renseigné', 'not recorded')) + (r.claim.reviewer ? ' · ' + esc(r.claim.reviewer) + ' · ' + esc(r.claim.reviewedOn) : '') : '') + '</div></div>';
     });
     if (st.confirm_with) html += '<div class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(st.confirm_with) + '</b></div>';
     return gaps + html + '</div>';
