@@ -64,9 +64,9 @@ It is not reviewed content. No commune has read any step or signed a catalogue n
 
 ```
 index.html                         the whole page: interface, catalogue, prompts, tree drawing (no build, no dependencies)
-proxy/server.js                    the proxy (Node 20, no dependencies): holds the key, forwards to the model, keeps a budget
+proxy/server.js                    the proxy (Node 24 LTS, no dependencies): holds the key, forwards to the model, keeps a budget
 proxy/proxy.config.json            allowed origins, budget, token cap; no secrets
-proxy/start.sh                     runs at Codespace start: starts the proxy, makes the port public, publishes proxy-url.json
+proxy/start.sh                     starts this checkout; explicit opt-in publishes a public demo URL
 .devcontainer/devcontainer.json    Codespace definition; lists the secrets the proxy needs
 SPEC.md                            interaction and data model
 DEMO.md                            demo run and fallbacks
@@ -86,6 +86,8 @@ LICENSE / NOTICE                   Apache 2.0 code license and attribution note
 
 GitHub Pages is static and cannot hold a secret. The proxy runs in a GitHub Codespace, and the Swisscom key is a Codespaces secret injected as an environment variable. It never enters the repository or the page. The page finds the proxy through `proxy-url.json`, which the Codespace writes and pushes itself.
 
+Operational setup, durable budget recovery, restricted-pilot tokens, the container deployment contract and startup changes are in [OPERATIONS.md](docs/OPERATIONS.md).
+
 The proxy pins one provider and one model, checks the page's origin for browser requests, caps each answer at 3500 tokens, holds the configured daily budget (600 requests in this package) and a per-caller hourly limit, and returns the provider and model with every answer so the page can display them. The origin check is not authentication; the budget bounds use of a public demo key. Processing location appears only if the operator has independently verified and explicitly configured it with `UPSTREAM_PROCESSING`.
 
 ## Deploy: three secrets, one Codespace
@@ -95,7 +97,7 @@ The proxy pins one provider and one model, checks the page's origin for browser 
    - `APERTUS_API_KEY`: the key from the Swiss {ai} Weeks Keymaker (Swisscom)
    - `UPSTREAM_BASE`: `https://api.swisscom.com/products/swiss-ai-weeks/apertus-1.5-70b/v1`
    - `UPSTREAM_MODEL`: `swiss-ai/Apertus-v1.5-70B`
-3. Codespace: repo → Code → Codespaces → Create codespace on main. `proxy/start.sh` runs, prints `ready: yes`, `port 8787: public` and the proxy URL, and pushes `proxy-url.json`. Two minutes later the page connects on its own.
+3. Codespace: repo → Code → Codespaces → Create codespace on main. The Codespaces start hook explicitly runs `AUTO_UPDATE=1 PUBLISH_PROXY_URL=1 bash proxy/start.sh`: it fast-forwards a clean checkout, starts the checked-out proxy, checks readiness, makes the demo port public and updates discovery when needed. Opening the existing Codespace retains this automatic demo setup. For a manual restart without publication, use `bash proxy/start.sh`. Two minutes later the page connects on its own.
 
 Set Settings → Codespaces → Default idle timeout to 240 minutes.
 

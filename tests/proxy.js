@@ -20,7 +20,7 @@ async function promptly(promise) {
   let timer;
   try {
     await Promise.race([promise, new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Upstream was not cancelled promptly')), 1500);
+      timer = setTimeout(() => reject(new Error('Upstream was not cancelled promptly')), 5000);
     })]);
   } finally { clearTimeout(timer); }
 }
@@ -36,6 +36,8 @@ async function fixture(t, options = {}) {
     if (state.mode === 'hang') return;
     if (state.mode === 'body-hang') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.write('{'); return; }
     if (state.mode === 'null') return res.end('null');
+    if (state.mode === 'error') { res.statusCode = 500; return res.end('upstream-fixture-key sensitive provider diagnostics'); }
+    if (state.mode === 'oversized') return res.end('x'.repeat(1048577));
     if (state.mode === 'bad-json') return res.end('{');
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ choices: [{ message: { content: 'fixture reply' } }] }));
@@ -51,10 +53,11 @@ async function fixture(t, options = {}) {
   const root = path.join(__dirname, '..');
   await fs.mkdir(path.join(directory, 'proxy'));
   await fs.copyFile(path.join(root, 'proxy/server.js'), path.join(directory, 'proxy/server.js'));
+  await fs.copyFile(path.join(root, 'proxy/budget.js'), path.join(directory, 'proxy/budget.js'));
   await fs.copyFile(path.join(root, 'server.js'), path.join(directory, 'server.js'));
   await fs.writeFile(path.join(directory, 'proxy/proxy.config.json'), JSON.stringify({
     allowedOrigins: [origin], dailyBudget: options.dailyBudget || 30, hourlyPerCaller: 30,
-    upstreamTimeoutMs: options.upstreamTimeoutMs || 1000
+    upstreamTimeoutMs: options.upstreamTimeoutMs || 1000, maxConcurrent: options.maxConcurrent || 4
   }));
   // An obsolete root config must not be loaded by the compatibility entry point.
   await fs.writeFile(path.join(directory, 'proxy.config.json'), 'obsolete configuration');
@@ -79,7 +82,7 @@ async function fixture(t, options = {}) {
     body: typeof body === 'string' ? body : JSON.stringify(body)
   });
   const health = async () => (await fetch(url + '/health', { headers: { Origin: origin } })).json();
-  return { state, url, chat, health, child };
+  return { state, url, chat, health, child, directory };
 }
 
 test('Request validation preserves the budget and the process remains available', { timeout: 15000 }, async t => {
@@ -147,4 +150,28 @@ test('Malformed upstream responses return 502 without terminating the proxy', { 
   }
   f.state.mode = 'ok';
   assert.equal((await f.chat()).status, 200);
+});
+
+test('Provider diagnostics are withheld and oversized responses are bounded', { timeout: 15000 }, async t => {
+  const f = await fixture(t);
+  for (const mode of ['error','oversized']) {
+    f.state.mode = mode;
+    const response = await f.chat(); assert.equal(response.status, 502);
+    assert.doesNotMatch(await response.text(), /upstream-fixture-key|sensitive provider/);
+  }
+  f.state.mode = 'ok'; assert.equal((await f.chat()).status, 200);
+});
+test('Concurrency rejection does not charge budget', { timeout: 15000 }, async t => {
+  const f = await fixture(t, { maxConcurrent: 1, upstreamTimeoutMs: 10000 }); f.state.mode = 'hang';
+  const controller = new AbortController();
+  const pending = fetch(f.url + '/chat', { method: 'POST', signal: controller.signal, headers: { Origin: origin }, body: JSON.stringify(validBody) });
+  const rejected = assert.rejects(pending, { name: 'AbortError' });
+  await f.state.started.promise;
+  assert.equal((await f.chat()).status, 429); assert.equal((await f.health()).budget.used, 1);
+  controller.abort(); await rejected; await promptly(f.state.closed.promise);
+});
+
+test('Invalid port values stop startup instead of silently selecting another port',()=>{
+  const {spawnSync}=require('node:child_process');
+  for(const port of ['8787oops','-1','65536']){const child=spawnSync(process.execPath,[path.join(__dirname,'../proxy/server.js')],{env:{PATH:process.env.PATH,PORT:port},encoding:'utf8'});assert.notEqual(child.status,0);assert.match(child.stderr,/PORT must be an integer/);}
 });

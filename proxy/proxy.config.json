@@ -12,5 +12,7 @@
   "upstreamTimeoutMs": 55000,
   "authHeader": "Authorization",
   "authPrefix": "Bearer ",
-  "extraHeaders": {}
+  "extraHeaders": {},
+  "maxConcurrent": 4,
+  "maxUpstreamBytes": 1048576
 }

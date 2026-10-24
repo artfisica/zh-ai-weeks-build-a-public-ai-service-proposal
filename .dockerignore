@@ -1,0 +1,8 @@
+.git
+node_modules
+**/.budget.json*
+**/.proxy.pid
+**/.start-lock
+**/*.log
+.env*
+.dev.vars

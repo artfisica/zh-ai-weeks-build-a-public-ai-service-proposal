@@ -1,0 +1,23 @@
+name: Proxy container checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t commune-proxy-ci .
+      - name: Check unprivileged startup with fixture configuration
+        run: |
+          docker run -d --name commune-proxy-check -e APERTUS_API_KEY=fixture -e UPSTREAM_BASE=https://example.invalid/v1 -e UPSTREAM_MODEL=fixture-model commune-proxy-ci
+          test "$(docker exec commune-proxy-check id -u)" != 0
+          for attempt in $(seq 1 15); do
+            if docker exec commune-proxy-check node -e "fetch('http://127.0.0.1:8787/health').then(async r=>{const h=await r.json();if(!r.ok||!h.ready||h.model!=='fixture-model')process.exit(1)}).catch(()=>process.exit(1))"; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Remove test container
+        if: always()
+        run: docker rm -f commune-proxy-check || true
