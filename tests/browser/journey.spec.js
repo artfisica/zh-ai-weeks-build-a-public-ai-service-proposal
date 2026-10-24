@@ -23,12 +23,12 @@ test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',a
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 test('Answer, Explore, reload and completion stay isolated',async({page})=>{
-  await draw(page);await page.locator('[data-sel="0|departure|0"]').first().click();await page.locator('[data-done="departure"]').click();await page.locator('[data-action="close-detail"]').click();await page.locator('[data-q="nationality"]').click();await page.getByRole('button',{name:'EU/EFTA',exact:true}).click();
+  await draw(page);await page.getByRole('button',{name:'Announce your departure from Nyon',exact:true}).press('Enter');await page.locator('[data-done="departure"]').click();await page.locator('[data-action="close-detail"]').click();await page.locator('[data-q="nationality"]').click();await page.getByRole('button',{name:'EU/EFTA',exact:true}).click();
   await page.locator('#mode-explore').click();await alternativeInExplore(page);
   await page.locator('#mode-situation').click();await expect(page.locator('.sentence')).toContainText('Saint-Cergue');
   await expect(page.locator('[data-answered="nationality"]')).toContainText('EU/EFTA');
   await page.reload();await expect(page.locator('.sentence')).toContainText('Saint-Cergue');
-  await page.locator('[data-sel="0|departure|0"]').first().click();await expect(page.locator('[data-done="departure"]')).toContainText('Done');
+  await page.getByRole('button',{name:'Announce your departure from Nyon',exact:true}).press('Enter');await expect(page.locator('[data-done="departure"]')).toContainText('Done');
   await expect(page.locator('[data-answered="nationality"]')).toContainText('EU/EFTA');
 });
 async function alternativeInExplore(page){await page.locator('[data-var="destination"]').click();await page.locator('[data-propose="destination"][data-value="Gland"]').click();await expect(page.locator('.sentence')).toContainText('Gland');}

@@ -1,8 +1,8 @@
+playwright-report/
+test-results/
 node_modules/
 .wrangler/
 .dev.vars
 *.log
 .DS_Store
 .budget.json
-playwright-report/
-test-results/
