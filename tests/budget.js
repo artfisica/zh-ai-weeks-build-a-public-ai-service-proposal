@@ -20,7 +20,7 @@ test('Corrupt and malformed budgets fail closed rather than resetting allowance'
   }
 });
 test('A failed persistence attempt blocks subsequent calls',t=>{
-  const file=fixture(t),store=new BudgetStore(file,3,1);fs.mkdirSync(file+'.tmp');
+  const file=fixture(t),store=new BudgetStore(file,3,1);assert.equal(new BudgetStore(path.join(file,'missing'),3,1).take('one').reason,'storage');fs.mkdirSync(file+'.tmp');
   assert.equal(store.take('one').reason,'storage');fs.rmdirSync(file+'.tmp');assert.equal(store.take('two').reason,'storage');assert.equal(store.peek().used,0);
 });
 test('UTC hour and day rollover reset only their own limits',t=>{

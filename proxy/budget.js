@@ -7,6 +7,7 @@ class BudgetStore {
   constructor(file, dailyLimit, hourlyLimit, now = () => new Date()) {
     this.file = file; this.dailyLimit = dailyLimit; this.hourlyLimit = hourlyLimit; this.now = now;
     this.state = { day: '', used: 0, callers: {} }; this.error = false;
+    try { fs.accessSync(path.dirname(file), fs.constants.W_OK); } catch (_) { this.error = true; return; }
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (!saved || !/^\d{4}-\d{2}-\d{2}$/.test(saved.day) || !Number.isSafeInteger(saved.used) || saved.used < 0 || !saved.callers || Array.isArray(saved.callers) || typeof saved.callers !== 'object' || Object.values(saved.callers).some(n => !Number.isSafeInteger(n) || n < 0)) throw new Error('invalid budget');
