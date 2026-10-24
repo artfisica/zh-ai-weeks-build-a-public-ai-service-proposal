@@ -144,6 +144,6 @@ Adding a page is one catalogue entry; the model can use it on the next map. Befo
 - One live public-data integration: an NStCM journey from the Swiss Open Journey Planner next to the official link.
 - German and Italian: the interface strings and prompts are already switchable by language.
 
-## Consultant delivery
+## Public AI follow-up
 
-See [the consultant handover and acceptance gates](docs/CONSULTANT-HANDOVER.md) for real-browser checks, the bounded ten-case live-evaluation runner, required client owners and the distinction between technical evidence and content approval.
+See [the prototype rehearsal checklist](docs/PUBLIC-AI-FOLLOWUP.md) for the improvements, real-browser checks and live-model rehearsal to prepare before replying to Public AI.
