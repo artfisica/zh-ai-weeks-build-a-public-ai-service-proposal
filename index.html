@@ -785,7 +785,7 @@
     const fontSize = Number((attrs.match(/font-size="([0-9.]+)"/) || [])[1]) || 12;
     const lines = mapLabelLines(value, maxChars, maxLines, fontSize);
     return '<text x="' + x + '" y="' + y + '" ' + attrs + ' aria-label="' + esc(value) + '">' +
-      lines.map((line, i) => '<tspan x="' + x + '" dy="' + (i ? lineHeight : 0) + '">' + esc(line) + '</tspan>').join('') + '</text>';
+      lines.map((line, i) => '<tspan x="' + x + '" dy="' + (i ? lineHeight : 0) + '">' + esc(line) + '</tspan>').join(' ') + '</text> ';
   }
   function renderTree(d) {
     const host = document.getElementById('tree-host'), s = state;
@@ -939,14 +939,14 @@
       const q = d.tree.questions.find(x => x.id === s.sel.q) || ((d.qtexts || {})[s.sel.q] ? { id: s.sel.q, text: d.qtexts[s.sel.q], why: t('Vous pouvez corriger cette réponse ; la carte sera recalculée.', 'You can correct this answer; the map will be recalculated.'), type: 'text', options: [] } : null);
       if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div></div>';
         if (q.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
-        else if (q.type === 'choice') html += '<div class="row">' + q.options.map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
+        else if (q.type === 'choice' && q.options.some(o => o.trim())) html += '<div class="row">' + q.options.filter(o => o.trim()).map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
         else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" aria-label="' + esc(q.text) + '" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
         document.getElementById('detail').innerHTML = html + foot; return; }
     }
     if (s.sel && s.sel.aq) {
       const qid = s.sel.aq, qq = d.tree.questions.find(q => q.id === qid) || (s.mode === 'explore' ? s.exploreQuestionDefs : s.questionDefs)[qid], cur = d.answers[qid];
       const options = qq && qq.type === 'yesno' ? [t('oui','yes'),t('non','no')] : (qq && qq.options || []);
-      html = '<div class="eyebrow">' + esc((qq || {}).text || d.qtexts[qid] || qid) + '</div><h2>' + t('Et si votre réponse changeait ?', 'What if your answer changed?') + '</h2><p class="lead">' + t('Votre réponse actuelle : ', 'Your current answer: ') + esc(cur) + '</p><div class="row">' + options.filter(o => o !== cur).map(o => '<button class="btn" data-propose-answer="' + esc(qid) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div><form data-propose-answer-form="' + esc(qid) + '"><input name="value" aria-label="' + t('Autre réponse', 'Alternative answer') + '" placeholder="' + t('Ou une autre réponse…', 'Or another answer…') + '"><button class="btn primary" type="submit">' + t('Comparer cette réponse', 'Compare this answer') + '</button></form>';
+      html = '<div class="eyebrow">' + esc((qq || {}).text || d.qtexts[qid] || qid) + '</div><h2>' + t('Et si votre réponse changeait ?', 'What if your answer changed?') + '</h2><p class="lead">' + t('Votre réponse actuelle : ', 'Your current answer: ') + esc(cur) + '</p><div class="row">' + options.filter(o => o.trim() && o !== cur).map(o => '<button class="btn" data-propose-answer="' + esc(qid) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div><form data-propose-answer-form="' + esc(qid) + '"><input name="value" aria-label="' + t('Autre réponse', 'Alternative answer') + '" placeholder="' + t('Ou une autre réponse…', 'Or another answer…') + '"><button class="btn primary" type="submit">' + t('Comparer cette réponse', 'Compare this answer') + '</button></form>';
       document.getElementById('detail').innerHTML = html + foot; return;
     }
     if (s.sel && s.sel.v) {
