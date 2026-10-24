@@ -97,7 +97,7 @@ The proxy pins one provider and one model, checks the page's origin for browser 
    - `APERTUS_API_KEY`: the key from the Swiss {ai} Weeks Keymaker (Swisscom)
    - `UPSTREAM_BASE`: `https://api.swisscom.com/products/swiss-ai-weeks/apertus-1.5-70b/v1`
    - `UPSTREAM_MODEL`: `swiss-ai/Apertus-v1.5-70B`
-3. Codespace: repo → Code → Codespaces → Create codespace on main. The Codespaces start hook explicitly runs `PUBLISH_PROXY_URL=1 bash proxy/start.sh`: it starts the checked-out proxy, checks readiness, makes the demo port public and updates discovery when needed. Opening the existing Codespace retains this automatic demo setup. For a manual restart without publication, use `bash proxy/start.sh`. Two minutes later the page connects on its own.
+3. Codespace: repo → Code → Codespaces → Create codespace on main. The Codespaces start hook explicitly runs `AUTO_UPDATE=1 PUBLISH_PROXY_URL=1 bash proxy/start.sh`: it fast-forwards a clean checkout, starts the checked-out proxy, checks readiness, makes the demo port public and updates discovery when needed. Opening the existing Codespace retains this automatic demo setup. For a manual restart without publication, use `bash proxy/start.sh`. Two minutes later the page connects on its own.
 
 Set Settings → Codespaces → Default idle timeout to 240 minutes.
 

@@ -37,8 +37,16 @@ test('Codespace hook explicitly preserves automatic public-port and discovery se
   const f=await fixture(t),bin=path.join(f.dir,'bin'),log=path.join(f.dir,'commands');await fs.mkdir(bin);
   const fake='#!/usr/bin/env node\nconst fs=require("fs"),args=process.argv.slice(2);fs.appendFileSync(process.env.COMMAND_LOG,require("path").basename(process.argv[1])+" "+args.join(" ")+"\\n");if(args[0]==="diff"&&args.includes("proxy-url.json"))process.exit(1);\n';
   for(const command of ['git','gh']){await fs.writeFile(path.join(bin,command),fake);await fs.chmod(path.join(bin,command),0o755);}
-  await f.run({PATH:bin+path.delimiter+process.env.PATH,COMMAND_LOG:log,PUBLISH_PROXY_URL:'1',CODESPACE_NAME:'fixture-space',GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:'example.invalid'});
-  const commands=await fs.readFile(log,'utf8');assert.match(commands,/gh codespace ports visibility \d+:public -c fixture-space/);assert.match(commands,/--only -- proxy-url.json/);assert.match(commands,/git push/);
+  await f.run({PATH:bin+path.delimiter+process.env.PATH,COMMAND_LOG:log,AUTO_UPDATE:'1',PUBLISH_PROXY_URL:'1',CODESPACE_NAME:'fixture-space',GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:'example.invalid'});
+  const commands=await fs.readFile(log,'utf8');assert.match(commands,/gh codespace ports visibility \d+:public -c fixture-space/);assert.match(commands,/--only -- proxy-url.json/);assert.match(commands,/git push/);assert.match(commands,/pull --ff-only --quiet/);
   assert.equal(JSON.parse(await fs.readFile(path.join(f.dir,'proxy-url.json'),'utf8')).url,`https://fixture-space-${f.port}.example.invalid`);
-  const config=JSON.parse(await fs.readFile(path.join(__dirname,'../.devcontainer/devcontainer.json'),'utf8'));assert.match(config.postStartCommand,/PUBLISH_PROXY_URL=1/);
+  const config=JSON.parse(await fs.readFile(path.join(__dirname,'../.devcontainer/devcontainer.json'),'utf8'));assert.match(config.postStartCommand,/PUBLISH_PROXY_URL=1/);assert.match(config.postStartCommand,/AUTO_UPDATE=1/);
+});
+
+test('Local edits prevent automatic pulls and discovery commits without stopping the demo',{timeout:30000},async t=>{
+  const f=await fixture(t),bin=path.join(f.dir,'bin'),log=path.join(f.dir,'commands');await fs.mkdir(bin);
+  const fake='#!/usr/bin/env node\nconst fs=require("fs"),args=process.argv.slice(2);fs.appendFileSync(process.env.COMMAND_LOG,require("path").basename(process.argv[1])+" "+args.join(" ")+"\\n");if(args[0]==="diff")process.exit(1);\n';
+  for(const command of ['git','gh']){await fs.writeFile(path.join(bin,command),fake);await fs.chmod(path.join(bin,command),0o755);}
+  const result=await f.run({PATH:bin+path.delimiter+process.env.PATH,COMMAND_LOG:log,AUTO_UPDATE:'1',PUBLISH_PROXY_URL:'1',CODESPACE_NAME:'fixture-space',GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:'example.invalid'});
+  const commands=await fs.readFile(log,'utf8');assert.doesNotMatch(commands,/pull|commit|push/);assert.match(commands,/gh codespace ports visibility/);assert.equal((await f.health()).ready,true);assert.match(result.stdout,/Local edits present/);assert.equal(JSON.parse(await fs.readFile(path.join(f.dir,'proxy-url.json'),'utf8')).url,'https://old.invalid');
 });

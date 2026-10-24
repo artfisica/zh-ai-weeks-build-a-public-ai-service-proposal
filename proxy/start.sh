@@ -4,6 +4,18 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 PORT="${PORT:-8787}"
+if [ "${AUTO_UPDATE:-0}" = 1 ]; then
+  if git diff --quiet && git diff --cached --quiet; then
+    BEFORE="$(git rev-parse HEAD)"
+    if GIT_TERMINAL_PROMPT=0 git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=15 pull --ff-only --quiet; then
+      AFTER="$(git rev-parse HEAD)"
+      if [ "$BEFORE" != "$AFTER" ]; then
+        # Restart the script from its new contents, before acquiring the process lock.
+        exec env AUTO_UPDATE=0 bash "$ROOT/proxy/start.sh"
+      fi
+    else echo 'Repository update skipped; starting the checked-out version.'; fi
+  else echo 'Local edits present; starting without an automatic pull.'; fi
+fi
 LOG="${TMPDIR:-/tmp}/public-ai-commune-proxy.log"
 PID_FILE="$ROOT/proxy/.proxy.pid"
 LOCK="$ROOT/proxy/.start-lock"
