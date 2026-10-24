@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "id": "ch",
+  "version": 1,
+  "entries": [
+    {
+      "id": "ch-move",
+      "level": "confederation",
+      "url": "https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/",
+      "title": "ch.ch — Annoncer son départ et son arrivée",
+      "covers": "moving between communes in Switzerland: deregister, register; check the local deadline",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "For a move between communes, announce departure to the old commune and arrival to the new one.",
+          "fr": "Lors d’un déménagement entre communes, annoncez le départ à l’ancienne commune et l’arrivée à la nouvelle.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": null,
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "ch-move-checklist",
+      "level": "confederation",
+      "url": "https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/",
+      "title": "ch.ch — Aide-mémoire déménagement",
+      "covers": "moving checklist: lease notice, new lease, address changes, insurance, utilities",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "A practical moving checklist includes address changes and arrangements around the lease and utilities.",
+          "fr": "L’aide-mémoire comprend les changements d’adresse et les démarches liées au bail et aux services du logement.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": null,
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "sem-b-eu",
+      "level": "confederation",
+      "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html",
+      "title": "SEM — Permis B UE/AELE",
+      "covers": "B permit for EU/EFTA nationals: validity 5 years, conditions",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "The SEM describes a five-year B permit for EU/EFTA nationals; eligibility conditions include employment or sufficient means for a non-working person.",
+          "fr": "Le SEM décrit le permis B UE/AELE de cinq ans ; les conditions concernent notamment l’emploi ou les moyens suffisants d’une personne sans activité lucrative.",
+          "kind": "regulation",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": null,
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "sem-third",
+      "level": "confederation",
+      "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
+      "title": "SEM — Permis de séjour, ressortissants d’États tiers",
+      "covers": "permits for non-EU nationals: B (1 year renewable), C, L; family reunification",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "For non-EU/EFTA nationals, residence conditions depend on the permit and personal situation; consult the SEM page.",
+          "fr": "Pour les ressortissants d’États tiers, les conditions de séjour dépendent du permis et de la situation personnelle ; consultez la page du SEM.",
+          "kind": "regulation",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": null,
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "ch-root",
+      "level": "confederation",
+      "url": "https://www.ch.ch",
+      "title": "ch.ch — Les autorités suisses en ligne",
+      "covers": "any federal topic not listed above: work, family, health insurance, taxes; site root",
+      "claims": [],
+      "jurisdiction": {
+        "canton": null,
+        "commune": null
+      },
+      "exact": false
+    }
+  ]
+}

@@ -211,37 +211,381 @@
   const draftBadge = level => '<span class="badge draft">' + t('Brouillon · ', 'Draft · ') + esc((LV()[level] || LV().other).name) + '</span>';
 
   // ---- The only place a link can come from. Apertus picks by id; anything else is shown as "no linked page yet". ----
+  // BEGIN GENERATED CATALOGUE
+  // Edit packs/*.json and run node tools/catalogue.js --write.
+  const CATALOG_VERSION = "938b9f80d9533ae4";
   const CATALOG = [
-    { id: 'ch-move', level: 'confederation', url: 'https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/', title: 'ch.ch — Annoncer son départ et son arrivée', covers: 'moving between communes in Switzerland: deregister, register; check the local deadline',
-      claims: [{ id: 'c1', text: 'For a move between communes, announce departure to the old commune and arrival to the new one.', fr: 'Lors d’un déménagement entre communes, annoncez le départ à l’ancienne commune et l’arrivée à la nouvelle.' }] },
-    { id: 'ch-move-checklist', level: 'confederation', url: 'https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/', title: 'ch.ch — Aide-mémoire déménagement', covers: 'moving checklist: lease notice, new lease, address changes, insurance, utilities',
-      claims: [{ id: 'c1', text: 'A practical moving checklist includes address changes and arrangements around the lease and utilities.', fr: 'L’aide-mémoire comprend les changements d’adresse et les démarches liées au bail et aux services du logement.' }] },
-    { id: 'vd-address', level: 'canton', url: 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', title: 'État de Vaud — Annoncer son changement d’adresse (eDéménagement)', covers: 'Vaud: online change of address, conditions by permit type, list of connected communes',
-      claims: [{ id: 'c1', text: 'Vaud eDéménagement covers qualifying moves from participating communes; check whether both departure and arrival can be announced online.', fr: 'eDéménagement couvre certains départs de communes participantes ; vérifiez si le départ et l’arrivée peuvent tous deux être annoncés en ligne.' }, { id: 'c2', text: 'Online eligibility differs by nationality and permit type, and arrivals from abroad are excluded.', fr: 'L’accès à la démarche en ligne dépend notamment de la nationalité et du permis ; les arrivées de l’étranger en sont exclues.' }] },
-    { id: 'sem-b-eu', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', title: 'SEM — Permis B UE/AELE', covers: 'B permit for EU/EFTA nationals: validity 5 years, conditions',
-      claims: [{ id: 'c1', text: 'The SEM describes a five-year B permit for EU/EFTA nationals; eligibility conditions include employment or sufficient means for a non-working person.', fr: 'Le SEM décrit le permis B UE/AELE de cinq ans ; les conditions concernent notamment l’emploi ou les moyens suffisants d’une personne sans activité lucrative.' }] },
-    { id: 'sem-third', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', title: 'SEM — Permis de séjour, ressortissants d’États tiers', covers: 'permits for non-EU nationals: B (1 year renewable), C, L; family reunification',
-      claims: [{ id: 'c1', text: 'For non-EU/EFTA nationals, residence conditions depend on the permit and personal situation; consult the SEM page.', fr: 'Pour les ressortissants d’États tiers, les conditions de séjour dépendent du permis et de la situation personnelle ; consultez la page du SEM.' }] },
-    { id: 'nyon-cdh', level: 'commune', url: 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', title: 'Ville de Nyon — Contrôle des habitants', covers: 'Nyon residents registry: arrival, departure, address change',
-      claims: [{ id: 'c1', text: 'The Contrôle des habitants is the municipal point of contact for resident registration in Nyon.', fr: 'Le Contrôle des habitants est le point de contact communal pour l’enregistrement des résidents à Nyon.' }] },
-    { id: 'stcergue-arrival', level: 'commune', url: 'https://www.st-cergue.ch/prestations-communales/113320', title: 'Commune de Saint-Cergue — Arrivée à St-Cergue', covers: 'Saint-Cergue: registering on arrival, documents, deadline',
-      claims: [{ id: 'c1', text: 'Saint-Cergue asks new residents to present themselves at the counter after announcing departure from the previous commune; the documents depend on their situation.', fr: 'Saint-Cergue demande aux nouveaux résidents de se présenter au guichet après l’annonce de départ de l’ancienne commune ; les documents varient selon leur situation.' }] },
-    { id: 'vd-tax-communes', level: 'canton', url: 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', title: 'Statistique Vaud — Arrêtés d’imposition des communes', covers: 'communal tax coefficients of all Vaud communes, by year',
-      claims: [{ id: 'c1', text: 'The canton publishes information on communal finances and tax coefficients; check the relevant year and commune.', fr: 'Le canton publie des informations sur les finances et les coefficients fiscaux communaux ; vérifiez l’année et la commune concernées.' }] },
-    { id: 'vd-vote-directive', level: 'canton', url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf', title: 'État de Vaud — Directive droit de vote communal', covers: 'who may vote at communal level in Vaud, including foreign residents (conditions)',
-      claims: [{ id: 'c1', text: 'The canton sets conditions for foreign residents to vote at communal level; read the directive for the qualifying residence periods.', fr: 'Le canton fixe les conditions du droit de vote communal des résidents étrangers ; consultez la directive pour les durées de résidence requises.' }] },
-    { id: 'otd', level: 'other', url: 'https://opentransportdata.swiss', title: 'Plateforme open data mobilité suisse', covers: 'public transport timetables and stops as open data (not loaded by this page)',
-      claims: [{ id: 'c1', text: 'Swiss public transport timetable data is available through the open transport data platform; this prototype does not load it.', fr: 'Les données d’horaires des transports publics suisses sont disponibles sur la plateforme open data ; ce prototype ne les charge pas.' }] },
-    { id: 'mobilis', level: 'other', url: 'https://www.mobilis-vaud.ch', title: 'Mobilis — Communauté tarifaire vaudoise', covers: 'Vaud public transport fare zones and passes (site root)',
-      claims: [{ id: 'c1', text: 'Mobilis provides fare information for public transport in Vaud; check current zones and prices there.', fr: 'Mobilis fournit les informations tarifaires des transports publics vaudois ; vérifiez les zones et les prix en vigueur.' }] },
-    { id: 'jestime', level: 'other', url: 'https://jestime.ch', title: 'jestime.ch — Estimation anonyme des prestations sociales (HES-SO)', covers: 'anonymous estimate of means-tested social benefits and where to claim them; Vaud now, Geneva from 2027; not an official page',
-      claims: [{ id: 'c1', text: 'An independent tool for exploring potential social benefits in Vaud; this is an estimate, not an eligibility decision.', fr: 'Un outil indépendant pour estimer les prestations sociales possibles dans le canton de Vaud ; il ne décide pas de l’éligibilité.' }] },
-    { id: 'vd-root', level: 'canton', url: 'https://www.vd.ch', title: 'État de Vaud (site officiel)', covers: 'any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked', claims: [] },
-    { id: 'ch-root', level: 'confederation', url: 'https://www.ch.ch', title: 'ch.ch — Les autorités suisses en ligne', covers: 'any federal topic not listed above: work, family, health insurance, taxes; site root', claims: [] }
-  ];
+  {
+    "id": "nyon-cdh",
+    "level": "commune",
+    "url": "https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382",
+    "title": "Ville de Nyon — Contrôle des habitants",
+    "covers": "Nyon residents registry: arrival, departure, address change",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The Contrôle des habitants is the municipal point of contact for resident registration in Nyon.",
+        "fr": "Le Contrôle des habitants est le point de contact communal pour l’enregistrement des résidents à Nyon.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": "nyon"
+    },
+    "exact": true,
+    "pack": "VD-nyon",
+    "packVersion": 1
+  },
+  {
+    "id": "stcergue-arrival",
+    "level": "commune",
+    "url": "https://www.st-cergue.ch/prestations-communales/113320",
+    "title": "Commune de Saint-Cergue — Arrivée à St-Cergue",
+    "covers": "Saint-Cergue: registering on arrival, documents, deadline",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Saint-Cergue asks new residents to present themselves at the counter after announcing departure from the previous commune; the documents depend on their situation.",
+        "fr": "Saint-Cergue demande aux nouveaux résidents de se présenter au guichet après l’annonce de départ de l’ancienne commune ; les documents varient selon leur situation.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": "saint-cergue"
+    },
+    "exact": true,
+    "pack": "VD-saint-cergue",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-address",
+    "level": "canton",
+    "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
+    "title": "État de Vaud — Annoncer son changement d’adresse (eDéménagement)",
+    "covers": "Vaud: online change of address, conditions by permit type, list of connected communes",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Vaud eDéménagement covers qualifying moves from participating communes; check whether both departure and arrival can be announced online.",
+        "fr": "eDéménagement couvre certains départs de communes participantes ; vérifiez si le départ et l’arrivée peuvent tous deux être annoncés en ligne.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      },
+      {
+        "id": "c2",
+        "text": "Online eligibility differs by nationality and permit type, and arrivals from abroad are excluded.",
+        "fr": "L’accès à la démarche en ligne dépend notamment de la nationalité et du permis ; les arrivées de l’étranger en sont exclues.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": true,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-tax-communes",
+    "level": "canton",
+    "url": "https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales",
+    "title": "Statistique Vaud — Arrêtés d’imposition des communes",
+    "covers": "communal tax coefficients of all Vaud communes, by year",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The canton publishes information on communal finances and tax coefficients; check the relevant year and commune.",
+        "fr": "Le canton publie des informations sur les finances et les coefficients fiscaux communaux ; vérifiez l’année et la commune concernées.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": true,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-vote-directive",
+    "level": "canton",
+    "url": "https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf",
+    "title": "État de Vaud — Directive droit de vote communal",
+    "covers": "who may vote at communal level in Vaud, including foreign residents (conditions)",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The canton sets conditions for foreign residents to vote at communal level; read the directive for the qualifying residence periods.",
+        "fr": "Le canton fixe les conditions du droit de vote communal des résidents étrangers ; consultez la directive pour les durées de résidence requises.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": true,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "mobilis",
+    "level": "other",
+    "url": "https://www.mobilis-vaud.ch",
+    "title": "Mobilis — Communauté tarifaire vaudoise",
+    "covers": "Vaud public transport fare zones and passes (site root)",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Mobilis provides fare information for public transport in Vaud; check current zones and prices there.",
+        "fr": "Mobilis fournit les informations tarifaires des transports publics vaudois ; vérifiez les zones et les prix en vigueur.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": false,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "jestime",
+    "level": "other",
+    "url": "https://jestime.ch",
+    "title": "jestime.ch — Estimation anonyme des prestations sociales (HES-SO)",
+    "covers": "anonymous estimate of means-tested social benefits and where to claim them; Vaud now, Geneva from 2027; not an official page",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "An independent tool for exploring potential social benefits in Vaud; this is an estimate, not an eligibility decision.",
+        "fr": "Un outil indépendant pour estimer les prestations sociales possibles dans le canton de Vaud ; il ne décide pas de l’éligibilité.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": false,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-root",
+    "level": "canton",
+    "url": "https://www.vd.ch",
+    "title": "État de Vaud (site officiel)",
+    "covers": "any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked",
+    "claims": [],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": false,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "ch-move",
+    "level": "confederation",
+    "url": "https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/",
+    "title": "ch.ch — Annoncer son départ et son arrivée",
+    "covers": "moving between communes in Switzerland: deregister, register; check the local deadline",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "For a move between communes, announce departure to the old commune and arrival to the new one.",
+        "fr": "Lors d’un déménagement entre communes, annoncez le départ à l’ancienne commune et l’arrivée à la nouvelle.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "ch-move-checklist",
+    "level": "confederation",
+    "url": "https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/",
+    "title": "ch.ch — Aide-mémoire déménagement",
+    "covers": "moving checklist: lease notice, new lease, address changes, insurance, utilities",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "A practical moving checklist includes address changes and arrangements around the lease and utilities.",
+        "fr": "L’aide-mémoire comprend les changements d’adresse et les démarches liées au bail et aux services du logement.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "sem-b-eu",
+    "level": "confederation",
+    "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html",
+    "title": "SEM — Permis B UE/AELE",
+    "covers": "B permit for EU/EFTA nationals: validity 5 years, conditions",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The SEM describes a five-year B permit for EU/EFTA nationals; eligibility conditions include employment or sufficient means for a non-working person.",
+        "fr": "Le SEM décrit le permis B UE/AELE de cinq ans ; les conditions concernent notamment l’emploi ou les moyens suffisants d’une personne sans activité lucrative.",
+        "kind": "regulation",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "sem-third",
+    "level": "confederation",
+    "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
+    "title": "SEM — Permis de séjour, ressortissants d’États tiers",
+    "covers": "permits for non-EU nationals: B (1 year renewable), C, L; family reunification",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "For non-EU/EFTA nationals, residence conditions depend on the permit and personal situation; consult the SEM page.",
+        "fr": "Pour les ressortissants d’États tiers, les conditions de séjour dépendent du permis et de la situation personnelle ; consultez la page du SEM.",
+        "kind": "regulation",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "ch-root",
+    "level": "confederation",
+    "url": "https://www.ch.ch",
+    "title": "ch.ch — Les autorités suisses en ligne",
+    "covers": "any federal topic not listed above: work, family, health insurance, taxes; site root",
+    "claims": [],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": false,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "otd",
+    "level": "other",
+    "url": "https://opentransportdata.swiss",
+    "title": "Plateforme open data mobilité suisse",
+    "covers": "public transport timetables and stops as open data (not loaded by this page)",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Swiss public transport timetable data is available through the open transport data platform; this prototype does not load it.",
+        "fr": "Les données d’horaires des transports publics suisses sont disponibles sur la plateforme open data ; ce prototype ne les charge pas.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": false,
+    "pack": "other",
+    "packVersion": 1
+  }
+];
+  // END GENERATED CATALOGUE
   const catalogById = id => CATALOG.find(c => c.id === id) || null;
-  const catalogForPrompt = () => CATALOG.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.map(k => k.id + ': ' + k.text).join(' ; ') : '')).join('\n');
-  const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid) || null : null; };
+  const catalogForPrompt = (selection = CATALOG) => selection.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.filter(k => usableClaim(k)).map(k => k.id + ': ' + k.text).join(' ; ') : '')).join('\n');
+  const usableClaim = k => (k.status === 'draft' || (k.status === 'reviewed' && k.recheckOn >= new Date().toISOString().slice(0,10))) && k.kind !== 'community';
+  const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid && usableClaim(k)) || null : null; };
   // A conservative scope guard for named places in the demo. This does not verify the claim itself.
   const PLACES = [
     { names: ['nyon'], commune: 'nyon', canton: 'VD' }, { names: ['saint-cergue','st-cergue','saint cergue'], commune: 'saint-cergue', canton: 'VD' },
@@ -249,8 +593,12 @@
     { names: ['la cure'], commune: 'saint-cergue', canton: 'VD' }, { names: ['geneva','genève','geneve'], commune: 'geneva', canton: 'GE' },
     { names: ['lugano'], commune: 'lugano', canton: 'TI' }, { names: ['zurich','zürich'], commune: 'zurich', canton: 'ZH' }
   ];
-  const pageScope = id => id === 'nyon-cdh' ? { commune: 'nyon' } : id === 'stcergue-arrival' ? { commune: 'saint-cergue' } : (id.startsWith('vd-') || ['mobilis','jestime'].includes(id)) ? { canton: 'VD' } : null;
+  const pageScope = id => { const c = catalogById(id); return c ? c.jurisdiction : null; };
   function mentionedPlaces(text) { return PLACES.filter(p => p.names.some(name => new RegExp('(?<![\\p{L}\\p{N}])' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])','iu').test(text))); }
+  function selectCatalog(story, vars = [], answers = {}) {
+    const places = mentionedPlaces([story, ...vars.map(v => v.value), ...Object.values(answers)].join(' '));
+    return CATALOG.filter(c => (!c.claims.length || c.claims.some(usableClaim)) && ((!c.jurisdiction.canton && !c.jurisdiction.commune) || places.some(p => (!c.jurisdiction.canton || p.canton === c.jurisdiction.canton) && (!c.jurisdiction.commune || p.commune === c.jurisdiction.commune))));
+  }
   function constrainSources(tree) {
     tree.branches.forEach(b => b.steps.forEach(st => {
       let places = mentionedPlaces(st.title + ' ' + st.short + ' ' + (st.confirm_with || ''));
@@ -261,7 +609,7 @@
     }));
     return tree;
   }
-  function claimId(id, value) { const cat = catalogById(id); if (!cat || !value) return null; const exact = cat.claims.find(k => k.id === value || k.text === value || k.fr === value || id + '/' + k.id === value || id + '#' + k.id === value); return exact ? exact.id : null; }
+  function claimId(id, value) { const cat = catalogById(id); if (!cat || !value) return null; const exact = cat.claims.filter(k => usableClaim(k)).find(k => k.id === value || k.text === value || k.fr === value || id + '/' + k.id === value || id + '#' + k.id === value); return exact ? exact.id : null; }
 
 
   // ---- State ----
@@ -326,12 +674,12 @@
 
   // ---- Asking Apertus for the map ----
   const SCHEMA = '{"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence or empty","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":["only for choice"]}],"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one or two sentences","depends_on":["variable or question ids"],"sources":[{"id":"catalog id","claim":"claim id that supports this step, or null"}],"authority":"confederation|canton|commune","confirm_with":"office name or null"}]}],"note":"one sentence to the person"}';
-  function systemPrompt() {
+  function systemPrompt(selection = CATALOG) {
     return (LANG === 'en'
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, in a sensible chronological order, with the office that handles them. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers the general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s office page for Gland or a Vaud page for a Geneva-only action. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt() +
+      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, in a sensible chronological order, with the office that handles them. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers the general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s office page for Gland or a Vaud page for a Geneva-only action. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt(selection) +
       '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. claim is the short note ID (for example "c1"), not the note text. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same branch ids AND step ids for matching paths and actions in the previous map. Copy every field of an unchanged step exactly, including why, sources and confirm_with. Do not ask again about a fact in the sentence or answered questions. Current values override any older wording in the previous map. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -342,7 +690,7 @@
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: s.sources, authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
-  function validate(j, story, confirmedAnswers = {}) {
+  function validate(j, story, confirmedAnswers = {}, allowedIds = null) {
     const snake = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x';
     const vars = (Array.isArray(j.variables) ? j.variables : []).slice(0, 8).map(v => ({ id: snake(v.id), label: String(v.label || v.id || ''), value: String(v.value || ''), span: String(v.span || ''), alternatives: (Array.isArray(v.alternatives) ? v.alternatives : []).map(String).filter(a => a && a !== v.value).slice(0, 3) })).filter(v => v.value);
     const said = String(story || '').toLowerCase();
@@ -356,7 +704,7 @@
     const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => ({
       id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
-      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id)).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
+      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id) && (!allowedIds || allowedIds.has(r.id))).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
       authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : 'other',
       confirm_with: s.confirm_with ? String(s.confirm_with) : null
     })).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
@@ -398,9 +746,10 @@
     if (!lastValid) throw new Error(t('réponse coupée avant une étape complète', 'answer cut off before a complete step'));
     return { text: lastValid, truncated: true };
   }
-  const treeKey = (story, vars, answers) => hash('review8-continuity1|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
+  const treeKey = (story, vars, answers) => hash('review8-continuity1|' + CATALOG_VERSION + '|' + new Date().toISOString().slice(0,10) + '|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
     const effectiveStory = change && prev ? storyWithVars(story, vars, prev.variables) : story;
+    const selection = selectCatalog(effectiveStory, vars, answers), allowedIds = new Set(selection.map(c => c.id));
     const key = treeKey(effectiveStory, vars, answers);
     const generation = requestId;
     if (state.trees[key]) return state.trees[key];
@@ -409,21 +758,22 @@
     for (let attempt = 0; attempt < 2; attempt++) {
       if (generation !== requestId) throw new Error('cancelled');
       const retry = attempt ? '\nRepair the previous response: ' + (retryReason || 'it was not parseable as a complete map') + '. Return the FULL map, retaining every existing branch and action not affected by the changed input. Keep their original branch ids and step ids, not just their titles. Do not move an action into a different branch. Include all required fields; use short explanations and no text outside JSON.' : '';
-      const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + retry }], 3000);
+      const res = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + retry }], 3000);
       try {
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
-        let tree = reconcileIds(validate(JSON.parse(ex.text), effectiveStory, answers), prev, effectiveStory);
+        let tree = reconcileIds(validate(JSON.parse(ex.text), effectiveStory, answers, allowedIds), prev, effectiveStory);
         const gaps = comparisonGaps(tree, prev, change);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
         const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
         if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
           try {
-            const reviewed = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
+            const reviewed = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
             const reviewJSON = extractJSON(reviewed.text.replace(/```json|```/g, '').trim());
-            if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers), tree, effectiveStory); res.prov = reviewed.prov; }
+            if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers, allowedIds), tree, effectiveStory); res.prov = reviewed.prov; }
           } catch (e) { /* the first complete map remains usable */ }
         }
+        tree.catalogueVersion = CATALOG_VERSION; tree.sourceSelection = selection.map(c => c.id);
         tree.incomplete = ex.truncated;
         tree.prov = res.prov; tree.key = key;
         // An incomplete map must be fetched again when the person presses Redraw.
@@ -813,11 +1163,11 @@
     if (!refs.length) return gaps + '<div class="zone soft"><div class="zone-title">' + t('Aucune page du catalogue reliée pour cette étape', 'No catalogue page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune n’a été sélectionnée pour cette étape. À vérifier auprès de : ', 'The guide links only catalogue pages; none was selected for this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
     let html = '<div class="zone draft-zone"><div class="zone-title"><span class="draft-title">' + t('Non relu', 'Unreviewed') + '</span> · ' + (refs.length > 1 ? t('Pages proposées du catalogue', 'Suggested catalogue pages') : t('Page proposée du catalogue', 'Suggested catalogue page')) + '</div>';
     refs.forEach(r => {
-      const exact = r.cat.url.split('/').filter(Boolean).length > 2;
+      const exact = r.cat.exact;
       html += '<div class="ref"><a class="source" href="' + esc(r.cat.url) + '" target="_blank" rel="noopener">' + draftBadge(r.cat.level) + '<span class="link">' + esc(r.cat.title) + '</span></a>';
       if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending') + '</div>';
       else html += '<div class="checked">' + (exact ? t('Page choisie par le modèle ; aucune note du catalogue reliée à cette étape. Vérifiez sur la page.', 'Model-selected page; no catalogue note linked to this step. Check the page.') : t('Site d’entrée ; page précise encore à relier.', 'Entry site; exact page still to be linked.')) + '</div>';
-      html += '</div>';
+      html += '<div class="checked">' + esc(r.cat.pack + ' v' + r.cat.packVersion) + (r.claim ? ' · ' + esc(r.claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(r.claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '</div></div>';
     });
     if (st.confirm_with) html += '<div class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(st.confirm_with) + '</b></div>';
     return gaps + html + '</div>';
@@ -835,7 +1185,7 @@
   }
   function printPlan(d) {
     if (!d.tree) return;
-    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p><div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const cat = catalogById(r.id), claim = claimOf(r.id, r.claim); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a>' + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
+    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p><div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const cat = catalogById(r.id), claim = claimOf(r.id, r.claim); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a><br>' + esc(cat.pack + ' v' + cat.packVersion) + ' · ' + (claim ? esc(claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
     const visual = (document.getElementById('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/) || [''])[0];
     const date = new Date().toLocaleString(LANG === 'fr' ? 'fr-CH' : 'en-GB');
     document.getElementById('print-plan').innerHTML = '<h1>' + t('Mon parcours · document de préparation', 'My journey · preparation document') + '</h1><p>' + esc(viewedStory()) + '</p><p class="print-meta">' + esc(date) + ' · ' + esc(provLabel(d.tree.prov)) + ' · ' + t('Version de la carte : ', 'Map version: ') + esc(d.tree.key || hash(JSON.stringify(d.tree.branches))) + '</p><p><b>' + t('Étapes proposées par un modèle, non relues par une commune. Ce document prépare vos questions pour le service ou le professionnel compétent ; il ne confirme aucune décision.', 'Model-proposed steps, unreviewed by a commune. This document prepares your questions for the competent office or professional; it confirms no decision.') + '</b></p>' + (visual ? '<p class="print-meta">' + t('Vue de la carte affichée ; toutes les étapes sont détaillées ci-dessous.', 'View of the displayed map; all steps are detailed below.') + '</p>' + visual : '') + treeHTML(d.tree, d.answers || {}, d.qtexts || {}, d.exploreOn) + (d.previewOn ? '<div class="print-alternative"><p>' + esc(state.pending.story) + '</p>' + treeHTML(state.pending.tree, state.pending.answers || {}, state.pending.qtexts || {}, true) + '</div>' : '') + '<h2>' + t('À compléter avec votre interlocuteur', 'Complete with your adviser') + '</h2><p>' + t('Questions, corrections, documents à apporter :', 'Questions, corrections, documents to bring:') + '</p><br><br><br>';

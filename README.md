@@ -50,7 +50,7 @@ It is not reviewed content. No commune has read any step or signed a catalogue n
 
 ## How the honesty rules are enforced
 
-- Links come only from `CATALOG` in `index.html`: id, publisher level, URL, and a draft description of what the page covers. The model is given the ids and descriptions and must choose or return `null`. Any other value is discarded before rendering. A catalogue match is a suggestion, not a verified citation.
+- Links come only from the generated `CATALOG` in `index.html` (maintained in `packs/*.json`; see [source governance](docs/SOURCE-GOVERNANCE.md)): id, publisher level, URL, and a draft description of what the page covers. The model is given the ids and descriptions and must choose or return `null`. Any other value is discarded before rendering. A catalogue match is a suggestion, not a verified citation.
 - A step without a catalogue page is shown as "No catalogue page linked for this step. Check with: [office]", never with a guessed link.
 - Pages that are a site root rather than an exact page are labelled "entry site, exact page still to be linked".
 - Every explanation shows its model provider and model name when returned by the proxy; draft catalogue notes carry their own pending-review label.
@@ -135,11 +135,11 @@ Proxy tests start temporary localhost servers, use fixture credentials and an is
 
 ch.ch: moving between communes; moving checklist; site root. State of Vaud: change of address (eDéménagement, conditions by permit); communal finances (Statistique Vaud); directive on communal voting rights; site root. SEM: permit B EU/EFTA; permits for third-country nationals. Ville de Nyon: Contrôle des habitants. Commune de Saint-Cergue: arrival. Mobilis (fare zones, site root). opentransportdata.swiss (timetables as open data, not loaded by this page). jestime.ch: independent benefits estimate, not an official decision.
 
-Adding a page is one catalogue entry; the model can use it on the next map. Before a source note earns a reviewer and date, a person must open the exact page, check its wording and scope, and record that review.
+Add pages in the appropriate JSON pack, increase its version, and run `node tools/catalogue.js --write`. CI validates the packs and generated page; request-specific jurisdiction filtering limits which entries the model may cite. Before a source note earns a reviewer and date, a person must open the exact page, check its wording and scope, and record that review.
 
 ## Next steps
 
-- Let communes own their entries: a catalogue file per commune, versioned, with a reviewer field, so "commune review pending" can become a name and a date.
+- Have content owners review the versioned JSON packs. Review fields and CI checks now exist; all imported notes still await approval.
 - Grow the catalogue beyond Vaud with the cantonal and communal pages the maps keep asking for; the "no linked page" panel is the backlog.
 - One live public-data integration: an NStCM journey from the Swiss Open Journey Planner next to the official link.
 - German and Italian: the interface strings and prompts are already switchable by language.

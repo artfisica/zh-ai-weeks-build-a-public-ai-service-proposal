@@ -1,6 +1,6 @@
 # Catalogue, packs and retrieval — technical specification
 
-Status: proposal, October 2026. Today the catalogue is a constant `CATALOG` in `index.html` with 14 entries sent whole in every prompt. This document specifies how it grows to all cantons without growing the prompt, and how it becomes the first version of the retriever named in [ARCHITECTURE-TARGET.md](ARCHITECTURE-TARGET.md).
+Status: target proposal, October 2026. A limited pilot implementation now uses JSON packs, a generated static catalogue, jurisdiction selection and revisioned cache keys; see [SOURCE-GOVERNANCE.md](SOURCE-GOVERNANCE.md). The national gazetteer, topic retriever and evidence snapshots below remain proposed. This document specifies how it grows to all cantons without growing the prompt, and how it becomes the first version of the retriever named in [ARCHITECTURE-TARGET.md](ARCHITECTURE-TARGET.md).
 
 ## 1. Entry schema
 
