@@ -81,6 +81,36 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
    h.context.fetch=async()=>({ok:false,status:401,json:async()=>({error:'demo token required'})});
    await a.stageStory(story.replace('Saint-Cergue','Gland'));assert.equal(JSON.stringify(a.state.tree),before);assert.equal(a.conn.status,'error');assert.equal(h.element('conn-panel').hidden,false);assert.match(a.state.error,/token missing or incorrect/);
  });
+ await test('Simultaneous edits cannot cascade into each other or replace substrings',()=>{
+   const a=harness().app;
+   const original=[{id:'a',value:'Nyon'},{id:'b',value:'Gland'}],next=[{id:'a',value:'Gland'},{id:'b',value:'Geneva'}];
+   assert.equal(a.storyWithVars('Nyon to Gland',next,original),'Gland to Geneva');
+   assert.equal(a.storyWithVars('I visit Nyonnais and Nyon',next,original),'I visit Nyonnais and Gland');
+ });
+ await test('Unknown completion dependencies conservatively include the full situation',()=>{
+   const h=harness(),a=saved(h);a.state.tree.branches[0].steps[0].depends_on=['unknown'];const key=a.doneKey('departure');a.state.vars[0].value='Lausanne';assert.notEqual(a.doneKey('departure'),key);
+ });
+ await test('Corrupt stored maps recover without a half-loaded situation',()=>{
+   for(const value of ['{',JSON.stringify({story:'A corrupt story',vars:[],tree:{branches:[null],questions:[],variables:[]}}),JSON.stringify({story,vars:map().variables,tree:map(),turns:[null]})]){
+     const h=harness({storage:[['public-ai-commune.v5',value]]});assert.equal(h.app.state.story,'');assert.equal(h.app.state.tree,null);assert.match(h.element('tree-host').innerHTML,/saved map could not be loaded/);assert.equal(h.element('clear-btn').hidden,false);
+   }
+ });
+ await test('A storage quota failure is visible while the in-memory map remains usable',async()=>{
+   const h=harness(),a=saved(h);h.context.localStorage.setItem=()=>{throw new Error('quota')};h.click('[data-done]',{done:'departure'});assert.ok(a.state.tree);assert.match(h.element('story').innerHTML,/browser cannot save/);assert.equal(a.isDone('departure'),true);
+ });
+ await test('Device persistence can be disabled before generation and re-enabled without changing the map',async()=>{
+   const h=harness(),a=saved(h);h.click('[data-done]',{done:'departure'});assert.ok(h.storage.has('public-ai-commune.v5'));
+   h.click('[data-action]',{action:'toggle-remember'});assert.equal(h.storage.has('public-ai-commune.v5'),false);assert.equal(h.storage.get('public-ai-commune.v5.remember'),'no');
+   h.click('[data-done]',{done:'arrival'});assert.equal(h.storage.has('public-ai-commune.v5'),false);assert.ok(a.state.tree);
+   h.click('[data-action]',{action:'toggle-remember'});assert.ok(h.storage.has('public-ai-commune.v5'));
+ });
+ await test('A stale health check cannot overwrite a newer proxy connection',async()=>{
+   const h=harness(),a=h.app;const pending=[];h.context.fetch=async()=>new Promise(resolve=>pending.push(resolve));a.conn.proxyUrl='https://old.invalid';const old=a.connect();a.conn.proxyUrl='https://new.invalid';const current=a.connect();
+   const health=provider=>({ok:true,status:200,json:async()=>({ready:true,maxTokens:3500,provider,model:'fixture'})});pending[1](health('new'));await current;pending[0](health('old'));await old;assert.equal(a.conn.prov.provider,'new');assert.equal(a.conn.proxyUrl,'https://new.invalid');
+ });
+ await test('Failed language generation restores the saved language preference',async()=>{
+   const h=harness(),a=saved(h);h.queue([new Error('offline')]);await a.setLang('fr');assert.equal(h.context.document.documentElement.lang,'en');assert.equal(h.storage.get('public-ai-commune.lang'),'en');
+ });
  if(process.env.REVIEW_OUTPUT){const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');fs.mkdirSync(process.env.REVIEW_OUTPUT,{recursive:true});fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-desktop.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map"[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));h.context.window.innerWidth=390;a.render();fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-mobile.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));}
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

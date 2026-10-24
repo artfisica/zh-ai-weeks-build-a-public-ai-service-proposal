@@ -40,7 +40,7 @@ Each step can point to a catalogue page, or says plainly that none is linked yet
 - FR / EN in the header; the current situation or hypothesis is redrawn in the chosen language.
 - Inspect a step or open My plan when needed; details do not permanently occupy a third of the screen. Fit / zoom controls and pixel-aware label wrapping keep the desktop map legible.
 
-The saved map and sentence live in that browser's local storage. To draw or discuss a map, the sentence and relevant map context are sent through the Codespaces proxy to the configured model provider. The proxy writes a request counter to its local disk and does not deliberately retain the message text; the provider's processing and retention follow its own terms. Avoid entering sensitive personal identifiers in this public prototype.
+The saved map and sentence live in that browser's local storage when ‘Save on this device’ is on. Turning it off removes the saved situation and keeps subsequent work in this tab; see [device data and recovery](docs/DEVICE-DATA.md). To draw or discuss a map, the sentence and relevant map context are sent through the Codespaces proxy to the configured model provider. The proxy writes a request counter to its local disk and does not deliberately retain the message text; the provider's processing and retention follow its own terms. Avoid entering sensitive personal identifiers in this public prototype.
 
 ## What it is, and what it is not
 
@@ -75,7 +75,7 @@ PILOT.md                           six-week discovery pilot proposal
 docs/architecture-one-slide.svg    readable presentation overview
 docs/architecture-detailed.svg     dated engineering and trust-boundary diagram
 tests/check-inline.js              inline script syntax check
-tests/smoke.js                     47 state, source, path-change and failure regressions
+tests/smoke.js                     54 state, source, path-change and failure regressions
 tests/proxy.js                     6 local HTTP integration tests; no provider calls
 tests/harness.js / fixtures.js      isolated test harness and fictional cases
 .github/workflows/check.yml        syntax, smoke and proxy checks on push and PR
