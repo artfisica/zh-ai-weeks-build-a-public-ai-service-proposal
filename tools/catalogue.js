@@ -3,24 +3,27 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const root = path.join(__dirname,'..');
-const date = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(value).toISOString().slice(0,10) === value;
+const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+const date = value => { const d=new Date(value); return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(d.getTime()) && d.toISOString().slice(0,10) === value; };
 function validatePacks(packs) {
   const ids=new Set(), packIds=new Set();
   for(const pack of packs){
-    if(pack.schemaVersion!==1 || typeof pack.id!=='string' || packIds.has(pack.id) || !Number.isSafeInteger(pack.version) || pack.version<1 || !Array.isArray(pack.entries))throw new Error('Invalid or duplicate pack');
+    if(pack.schemaVersion!==1 || !nonempty(pack.id) || packIds.has(pack.id) || !Number.isSafeInteger(pack.version) || pack.version<1 || !Array.isArray(pack.entries))throw new Error('Invalid or duplicate pack');
     packIds.add(pack.id);
     for(const c of pack.entries){
       if(!c || !/^[a-z][a-z0-9-]+$/.test(c.id) || ids.has(c.id))throw new Error('Invalid or duplicate source id');ids.add(c.id);
       if(!['confederation','canton','commune','other'].includes(c.level) || typeof c.exact!=='boolean' || !c.jurisdiction || (c.jurisdiction.canton!==null && !/^[A-Z]{2}$/.test(c.jurisdiction.canton)))throw new Error('Invalid jurisdiction: '+c.id);
       if(c.level==='commune' && (!c.jurisdiction.commune || !c.jurisdiction.canton))throw new Error('Municipal scope required: '+c.id);
+      if((c.jurisdiction.commune!==null && (!nonempty(c.jurisdiction.commune) || !/^[a-z0-9-]+$/.test(c.jurisdiction.commune))) || (c.level==='confederation' && (c.jurisdiction.canton || c.jurisdiction.commune)) || (c.level==='canton' && (!c.jurisdiction.canton || c.jurisdiction.commune)))throw new Error('Inconsistent jurisdiction: '+c.id);
+      if(!nonempty(c.url))throw new Error('Missing URL');
       const url=new URL(c.url);if(url.protocol!=='https:' || url.username || url.password)throw new Error('HTTPS source URL required: '+c.id);
-      if(!c.title || !c.covers || !Array.isArray(c.claims))throw new Error('Missing source fields: '+c.id);
+      if(!nonempty(c.title) || !nonempty(c.covers) || !Array.isArray(c.claims))throw new Error('Missing source fields: '+c.id);
       const notes=new Set();for(const k of c.claims){
-        if(!k || !/^c\d+$/.test(k.id) || notes.has(k.id) || !k.text || !k.fr)throw new Error('Invalid note: '+c.id);notes.add(k.id);
+        if(!k || !/^c\d+$/.test(k.id) || notes.has(k.id) || !nonempty(k.text) || !nonempty(k.fr))throw new Error('Invalid note: '+c.id);notes.add(k.id);
         if(!['regulation','practice','community'].includes(k.kind) || !['draft','reviewed','disputed','retired'].includes(k.status))throw new Error('Invalid note status: '+c.id);
-        if(k.status==='reviewed' && (!k.reviewer || !date(k.reviewedOn) || !date(k.sourceCheckedOn) || !date(k.recheckOn) || k.sourceCheckedOn>k.reviewedOn || k.recheckOn<k.reviewedOn))throw new Error('Reviewed note requires reviewer and coherent check/review/recheck dates: '+c.id);
-        if(k.kind==='community' && !k.attribution)throw new Error('Community note requires attribution: '+c.id);
-        if(k.status==='disputed' && !k.dispute)throw new Error('Disputed note requires conflict: '+c.id);
+        if(k.status==='reviewed' && (!nonempty(k.reviewer) || !date(k.reviewedOn) || !date(k.sourceCheckedOn) || !date(k.recheckOn) || k.sourceCheckedOn>k.reviewedOn || k.recheckOn<k.reviewedOn))throw new Error('Reviewed note requires reviewer and coherent check/review/recheck dates: '+c.id);
+        if(k.kind==='community' && !nonempty(k.attribution))throw new Error('Community note requires attribution: '+c.id);
+        if(k.status==='disputed' && !nonempty(k.dispute))throw new Error('Disputed note requires conflict: '+c.id);
       }
     }
   }

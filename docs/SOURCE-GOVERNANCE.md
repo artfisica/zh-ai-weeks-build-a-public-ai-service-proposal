@@ -21,3 +21,9 @@ No new rights to third-party text are asserted by extracting these existing repo
 `node tools/check-source-links.js /tmp/source-links.json` checks HTTP HEAD availability with bounded concurrency and timeouts. Redirects, non-200 statuses and network failures require inspection; a server can reject HEAD while its page still works. The report does not update review dates, verify facts or approve a generated step. This optional network check is separate from deterministic CI so third-party outages do not silently alter packs.
 
 The [24 October availability report](evidence/source-links-2026-10-24.json) recorded HTTP 200 for all fourteen existing URLs. The transport-data root redirected to its German entry page; this remains an entry site, not a computed timetable or an exact procedure. These results do not change any note's draft status or check date.
+
+## Saved-plan provenance
+
+New maps retain a validated record of each selected page and note, stamped from the catalogue after model validation. Source details and print output use that record instead of silently replacing it with later wording. The model cannot provide archive records, and restored records cannot introduce script URLs or a different publisher. Archived versions are labelled; stale notes are withheld from follow-up guidance. A catalogue-update comparison is a proposal with Keep/Adopt/Undo, so refreshing cannot silently replace the saved map. Older maps without records show that their original source version was not recorded.
+
+Archive metadata is stripped from subsequent model prompts, avoiding prompt growth as plans are revisited. The place list recognises explicit canton names and common Saint-Cergue spellings, but remains deliberately limited rather than guessing a jurisdiction for every Swiss place.

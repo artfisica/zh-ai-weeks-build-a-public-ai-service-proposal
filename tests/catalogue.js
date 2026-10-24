@@ -13,3 +13,28 @@ test('Changed reviewed wording requires a new approval date and pack version',()
   const after=JSON.parse(JSON.stringify(before)),next=after.find(p=>p.id===pack.id);next.entries.find(c=>c.claims.length).claims[0].text+=' changed';assert.throws(()=>validateReviewedChanges(before,after),/new version|later review date/);
   next.version++;next.entries.find(c=>c.claims.length).claims[0].reviewedOn='2026-01-03';assert.doesNotThrow(()=>validateReviewedChanges(before,after));
 });
+async function generated(){const h=harness(),a=h.app;a.conn.status='ok';a.conn.proxyUrl='https://fixture.invalid';h.queue([map()]);await a.startStory(require('./fixtures').story);return h;}
+test('Saved maps and PDFs keep their original notes and pack versions after a catalogue update',async()=>{
+  const h=await generated(),old=h.app.state.tree.branches[0].steps[0].sources[0].record.note.text;
+  const data=JSON.parse(h.storage.get('public-ai-commune.v5'));data.tree.catalogueVersion='0000000000000000';data.tree.branches.forEach(b=>b.steps.forEach(s=>s.sources.forEach(r=>{r.record.revision='0000000000000000'})));
+  const loaded=harness({storage:[['public-ai-commune.v5',JSON.stringify(data)]],beforeLoad:a=>{const c=a.catalogById('ch-move');c.claims[0].text='A replacement catalogue note';c.packVersion=2;}}),a=loaded.app;
+  assert.ok(a.sourceBlock(a.state.tree.branches[0].steps[0]).includes(old));assert.doesNotMatch(a.sourceBlock(a.state.tree.branches[0].steps[0]),/replacement catalogue note/);
+  a.printPlan(a.derive());assert.ok(loaded.element('print-plan').innerHTML.includes(old));assert.match(loaded.element('print-plan').innerHTML,/ch v1/);assert.match(loaded.element('tree-host').innerHTML,/Compare current sources/);
+});
+test('Model-supplied source records are replaced by catalogue-stamped metadata',async()=>{
+  const h=harness(),a=h.app;a.conn.status='ok';a.conn.proxyUrl='https://fixture.invalid';const raw=map();raw.branches[0].steps[0].sources[0].record={source:{url:'javascript:alert(1)'},note:{text:'A forged official claim'}};h.queue([raw]);await a.startStory(require('./fixtures').story);
+  assert.equal(a.state.tree.branches[0].steps[0].sources[0].record.source.url,a.catalogById('ch-move').url);assert.doesNotMatch(a.sourceBlock(a.state.tree.branches[0].steps[0]),/forged official|javascript:/);
+});
+test('Source records cannot inject active or foreign-publisher links from local storage',async()=>{
+  const h=await generated(),st=h.app.state.tree.branches[0].steps[0];for(const url of ['javascript:alert(1)','https://unrelated.invalid/phishing']){st.sources[0].record.source.url=url;assert.doesNotMatch(h.app.sourceBlock(st),/javascript:|unrelated.invalid/);}
+});
+test('Refreshing sources is reversible and does not send archive payloads to the model',async()=>{
+  const h=await generated(),a=h.app,before=JSON.stringify(a.state.tree);const calls=h.queue([map()]);await a.refreshSources();assert.equal(JSON.stringify(a.state.tree),before);assert.equal(a.state.pending.kind,'refresh');assert.equal(calls.length,1);assert.doesNotMatch(calls[0].messages[1].content,/"record":/);a.adopt();assert.ok(a.state.tree.catalogueVersion);a.undo();assert.equal(JSON.stringify(a.state.tree),before);
+});
+test('Explicit canton names and common Saint-Cergue spellings retain relevant references',()=>{
+  const a=harness().app;const vaud=a.selectCatalog('Je vis dans le canton de Vaud.').map(c=>c.id);assert.ok(vaud.includes('vd-address'));assert.ok(!vaud.includes('nyon-cdh'));assert.ok(!vaud.includes('stcergue-arrival'));
+  assert.ok(a.selectCatalog('I live in St. Cergue').some(c=>c.id==='stcergue-arrival'));
+});
+test('Catalogue text and jurisdiction types cannot silently coerce into misleading notes',()=>{
+  for(const mutate of [p=>{p[0].entries[0].title={unexpected:'object'}},p=>{p[0].entries[0].claims[0].text=['not text']},p=>{p[0].entries[0].jurisdiction.commune={unexpected:'object'}}]){const p=packs();mutate(p);assert.throws(()=>validatePacks(p));}
+});
