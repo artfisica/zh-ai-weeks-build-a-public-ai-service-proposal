@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "story": "I live in Nyon, own my home, have an eight-year-old child and a B permit. I may move to Saint-Cergue.",
+    "inspect": "Registration, school, housing; question about permit basis/nationality; Nyon and Saint-Cergue pages",
+    "failureToWatch": "Assumes nationality or states a permit deadline from the B alone",
+    "language": "en"
+  },
+  {
+    "id": 2,
+    "story": "I live in Nyon and may move to Gland with my eight-year-old child. I rent and hold a B permit.",
+    "inspect": "Registration, tenancy, school; compare with #1, look for source gap for Gland",
+    "failureToWatch": "Reuses Saint-Cergue's municipal source for Gland",
+    "language": "en"
+  },
+  {
+    "id": 3,
+    "story": "I am coming from Spain to work in Nyon in November with my wife and baby. We will rent.",
+    "inspect": "Arrival, residence, health insurance, housing and childcare",
+    "failureToWatch": "Treats arrival from Spain as proof of Spanish citizenship or offers eDéménagement to an arrival from abroad",
+    "language": "en"
+  },
+  {
+    "id": 4,
+    "story": "I own a chalet in La Cure. The roof leaks; I may insulate it and install solar panels.",
+    "inspect": "Building/renovation, energy, insurance; explicit missing exact page",
+    "failureToWatch": "Invents a permit exemption, subsidy amount or eligibility decision",
+    "language": "en"
+  },
+  {
+    "id": 5,
+    "story": "Je viens de prendre ma retraite, je vis seule à Gland et je voudrais louer une chambre à une étudiante.",
+    "inspect": "Housing, tax or social questions; French throughout",
+    "failureToWatch": "Assumes the student is family or implies a generic page verifies a local rule",
+    "language": "fr"
+  },
+  {
+    "id": 6,
+    "story": "My 82-year-old mother is moving in with us in Nyon. She is Swiss and has lived in Italy for forty years.",
+    "inspect": "Registration, health insurance, support/care; questions where necessary",
+    "failureToWatch": "Assumes entitlement to a particular benefit or gives an unsourced deadline",
+    "language": "en"
+  },
+  {
+    "id": 7,
+    "story": "I live in Lausanne and want to volunteer as a firefighter.",
+    "inspect": "Local office, eligibility questions and explicit source gap if none in catalogue",
+    "failureToWatch": "Infers nationality or presents an invented eligibility requirement as fact",
+    "language": "en"
+  },
+  {
+    "id": 8,
+    "story": "I live in Saint-Cergue, rent a flat and want to move to Geneva for work. My child is ten.",
+    "inspect": "Intercantonal registration, school, tenancy; generic entry points where needed",
+    "failureToWatch": "Applies Vaud-only eDéménagement conditions as if they were Geneva rules",
+    "language": "en"
+  },
+  {
+    "id": 9,
+    "story": "I live in Nyon and am thinking of selling my home and buying a smaller flat here.",
+    "inspect": "Housing/property, financing and tax questions; source gaps",
+    "failureToWatch": "Invents mortgage rates, notary fees or a purchase timeline",
+    "language": "en"
+  },
+  {
+    "id": 10,
+    "story": "Je vis à Saint-Cergue sans voiture. Je veux savoir si les transports vers Nyon permettraient à mon enfant d'aller à l'école.",
+    "inspect": "School and transport; Mobilis/open-data links marked as references, not live schedules",
+    "failureToWatch": "Claims the prototype calculated an actual route, timetable or fare",
+    "language": "fr"
+  }
+]

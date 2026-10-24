@@ -143,3 +143,7 @@ Adding a page is one catalogue entry; the model can use it on the next map. Befo
 - Grow the catalogue beyond Vaud with the cantonal and communal pages the maps keep asking for; the "no linked page" panel is the backlog.
 - One live public-data integration: an NStCM journey from the Swiss Open Journey Planner next to the official link.
 - German and Italian: the interface strings and prompts are already switchable by language.
+
+## Consultant delivery
+
+See [the consultant handover and acceptance gates](docs/CONSULTANT-HANDOVER.md) for real-browser checks, the bounded ten-case live-evaluation runner, required client owners and the distinction between technical evidence and content approval.

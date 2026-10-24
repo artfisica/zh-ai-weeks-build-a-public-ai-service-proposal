@@ -1,0 +1,12 @@
+{
+  "name": "public-ai-commune-checks",
+  "private": true,
+  "scripts": {
+    "test": "node tests/check-inline.js && node tests/smoke.js && node --test tests/proxy.js",
+    "test:browser": "playwright test",
+    "evaluate": "node tools/evaluate.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}
