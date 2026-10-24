@@ -992,6 +992,7 @@
     document.getElementById('clear-btn').textContent = state.story || storageWarning ? t('Recommencer', 'Start over') : '';
     document.getElementById('mode-situation').textContent = t('Ma situation', 'My situation'); document.getElementById('mode-explore').textContent = t('Explorer', 'Explore');
     document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr')); document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
+    for (const id of ['lang-fr','lang-en']) { const button=document.getElementById(id); button.disabled=!!state.loading || !!state.pending; button.title=state.pending ? t('Gardez ou adoptez cette comparaison avant de changer de langue.','Keep or adopt this comparison before changing language.') : ''; }
   }
   function render() {
     const focused = document.activeElement, focusId = focused && focused.id, focusNode = focused && focused.dataset && focused.dataset.sel, caret = focused && typeof focused.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
@@ -1007,7 +1008,7 @@
     document.getElementById('announcer').textContent = state.loading || state.error || (conn.status === 'error' ? conn.error : '') || (d.previewOn ? t('Le chemin alternatif est prêt. Rien n’est appliqué.', 'The alternative path is ready. Nothing is applied.') : '');
   }
   async function setLang(l) {
-    if (state.loading || LANG === l) return; const old = LANG, exploring = state.mode === 'explore'; LANG = l;
+    if (state.loading || state.pending || LANG === l) return; const old = LANG, exploring = state.mode === 'explore'; LANG = l;
     try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render();
     if (!state.tree || !live()) return;
     const id = beginRequest(t('Apertus traduit la carte…', 'Apertus is translating the map…'));
