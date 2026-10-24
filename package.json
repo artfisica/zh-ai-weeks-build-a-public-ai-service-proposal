@@ -1,0 +1,14 @@
+{
+  "name": "public-ai-commune-checks",
+  "private": true,
+  "scripts": {
+    "test": "node tools/check.js",
+    "test:browser": "playwright test",
+    "evaluate": "node tools/evaluate.js",
+    "test:all": "npm test && npm run test:browser"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1"
+  }
+}

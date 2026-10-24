@@ -145,3 +145,9 @@ Add pages in the appropriate JSON pack, increase its version, and run `node tool
 - Grow the catalogue beyond Vaud with the cantonal and communal pages the maps keep asking for; the "no linked page" panel is the backlog.
 - One live public-data integration: an NStCM journey from the Swiss Open Journey Planner next to the official link.
 - German and Italian: the interface strings and prompts are already switchable by language.
+
+## Public AI follow-up
+
+See [the prototype rehearsal checklist](docs/PUBLIC-AI-FOLLOWUP.md) for the improvements, real-browser checks and live-model rehearsal to prepare before replying to Public AI.
+
+The [25 October deep review](docs/REVIEW-2026-10-25.md) records the reproduced failures, corrections, cross-browser/accessibility evidence and remaining limits.
