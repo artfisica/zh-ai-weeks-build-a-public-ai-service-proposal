@@ -114,6 +114,32 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
  await test('Resizing an empty map cannot replace the initial situation form while typing',async()=>{
    const h=harness();h.element('tree-host').innerHTML='a form containing an unsent draft';h.windowEvents.get('resize')();await new Promise(resolve=>setTimeout(resolve,180));assert.equal(h.element('tree-host').innerHTML,'a form containing an unsent draft');
  });
+ await test('A short-hash collision cannot return a map for another situation',async()=>{
+   const h=harness(),a=saved(h),one=map(),two=map();one.note='first';two.note='second';const calls=h.queue([one,two]);
+   const first=await a.fetchTree('Ask Aa',[],{},null,null),second=await a.fetchTree('Ask BB',[],{},null,null);assert.equal(first.key,second.key);assert.equal(calls.length,2);assert.equal(second.note,'second');
+ });
+ await test('Identical situation text with different previous maps is not a cache hit',async()=>{
+   const h=harness(),a=saved(h),previous=clone(a.state.tree);h.queue([map(),map()]);await a.fetchTree(story,[],{},previous,null);previous.branches[0].steps[0].title='A different starting action';const calls=h.queue([map()]);await a.fetchTree(story,[],{},previous,null);assert.equal(calls.length,1);
+ });
+ await test('Reserved and duplicate model input ids are rejected for bounded repair',()=>{
+   const a=harness().app,bad=map();bad.questions[0].id='constructor';assert.throws(()=>a.validate(bad,story),/Reserved/);
+   const repeated=map();repeated.variables.push(clone(repeated.variables[0]));assert.throws(()=>a.validate(repeated,story),/Duplicate/);
+ });
+ await test('Scenario and completion identities cannot inherit a short-hash collision',()=>{
+   const h=harness(),a=saved(h);assert.notEqual(a.scenarioKey([{id:'x',value:'Aa'}]),a.scenarioKey([{id:'x',value:'BB'}]));
+   a.state.tree.branches[0].steps[0].depends_on=['x'];a.state.vars=[{id:'x',value:'Aa'}];const key=a.doneKey('departure');a.state.vars=[{id:'x',value:'BB'}];assert.notEqual(a.doneKey('departure'),key);
+ });
+ await test('Legacy v2 completion marks migrate with their accepted map and Undo snapshots',()=>{
+   const h=harness(),a=saved(h),key=a.doneKey('departure'),context=key.slice(key.indexOf('|v3|')+4);let hash=0;for(const c of context)hash=(hash*31+c.charCodeAt(0))|0;
+   const old='departure|v2|'+(hash>>>0).toString(36),snapshot={story,vars:a.state.vars,tree:a.state.tree,answers:{},done:[old]};const loaded=harness({storage:[['public-ai-commune.v5',JSON.stringify({...snapshot,history:[snapshot]})]]}).app;assert.equal(loaded.isDone('departure'),true);loaded.undo();assert.equal(loaded.isDone('departure'),true);
+ });
+ await test('Corrupt archived question definitions recover before any state is installed',()=>{
+   const raw=map();raw.questions=[];const d={story,vars:raw.variables,tree:raw,answers:{nationality:'EU/EFTA'},qtexts:{nationality:'Nationality?'},questionDefs:{nationality:{id:'nationality',text:'Nationality?',type:'choice',why:'A question',options:'invalid'}}};
+   const h=harness({storage:[['public-ai-commune.v5',JSON.stringify(d)]]});assert.equal(h.app.state.tree,null);assert.match(h.element('tree-host').innerHTML,/could not be loaded/);
+ });
+ await test('Disabling saving in another tab prevents this tab from recreating the stored plan',()=>{
+   const h=harness(),a=saved(h);h.storage.set('public-ai-commune.v5.remember','no');h.storage.delete('public-ai-commune.v5');h.click('[data-done]',{done:'departure'});assert.equal(h.storage.has('public-ai-commune.v5'),false);assert.match(h.element('story').innerHTML,/Save on this device: off/);
+ });
  if(process.env.REVIEW_OUTPUT){const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');fs.mkdirSync(process.env.REVIEW_OUTPUT,{recursive:true});fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-desktop.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map"[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));h.context.window.innerWidth=390;a.render();fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-mobile.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));}
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

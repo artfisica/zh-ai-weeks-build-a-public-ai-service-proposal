@@ -266,7 +266,7 @@
 
 
   // ---- State ----
-  const scenarioKey = vars => hash(JSON.stringify((vars || []).map(v => [v.id, v.value])));
+  const scenarioKey = vars => JSON.stringify((vars || []).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0])));
   const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
@@ -295,11 +295,14 @@
       b.steps.forEach(st => {
         if (!st || ['id','short','title','why'].some(k => typeof st[k] !== 'string') || !Array.isArray(st.depends_on)) throw new Error('Invalid saved step');
         if (!Array.isArray(st.sources)) st.sources = st.source ? [{ id: st.source, claim: null }] : [];
-        st.sources = st.sources.filter(r => r && catalogById(r.id)).map(r => ({ id:r.id, claim:claimId(r.id,r.claim) }));
+        st.sources = st.sources.filter(r => r && catalogById(r.id)).map(r => ({ ...r, id:r.id, claim:r.record && typeof r.claim === 'string' && r.record.claim === r.claim ? r.claim : claimId(r.id,r.claim) }));
       });
     });
-    if (tree.questions.some(q => !q || typeof q.id !== 'string' || typeof q.text !== 'string' || !Array.isArray(q.options)) || tree.variables.some(v => !v || typeof v.id !== 'string' || typeof v.value !== 'string' || !Array.isArray(v.alternatives) || v.alternatives.some(a => typeof a !== 'string') || (v.span != null && typeof v.span !== 'string'))) throw new Error('Invalid saved inputs');
+    if (tree.questions.some(q => !validQuestion(q)) || tree.variables.some(v => !v || typeof v.id !== 'string' || typeof v.value !== 'string' || !Array.isArray(v.alternatives) || v.alternatives.some(a => typeof a !== 'string') || (v.span != null && typeof v.span !== 'string'))) throw new Error('Invalid saved inputs');
     return constrainSources(tree);
+  }
+  function validQuestion(q) {
+    return q && typeof q.id === 'string' && !Object.prototype.hasOwnProperty.call(Object.prototype,q.id) && typeof q.text === 'string' && typeof q.why === 'string' && ['yesno','choice','text'].includes(q.type) && Array.isArray(q.options) && q.options.every(o => typeof o === 'string');
   }
   function savedSnapshot(d) {
     if (!d || typeof d.story !== 'string' || !Array.isArray(d.vars) || d.vars.some(v => !v || typeof v.id !== 'string' || typeof v.value !== 'string' || !Array.isArray(v.alternatives) || v.alternatives.some(a => typeof a !== 'string') || (v.span != null && typeof v.span !== 'string'))) throw new Error('Invalid saved situation');
@@ -308,7 +311,10 @@
     if ((d.turns || []).some(u => !u || typeof u.role !== 'string' || typeof u.text !== 'string' || (u.steps && (!Array.isArray(u.steps) || u.steps.some(x => !x || !Number.isInteger(x.li) || typeof x.id !== 'string'))))) throw new Error('Invalid saved conversation');
     for (const key of ['answers','qtexts']) if (Object.values(d[key] || {}).some(v => typeof v !== 'string')) throw new Error('Invalid saved answer value');
     for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); }
-    return Object.assign({}, d, { tree:normalizeTree(d.tree) });
+    if (Object.values(d.questionDefs || {}).some(q => !validQuestion(q))) throw new Error('Invalid saved question definition');
+    const tree = normalizeTree(d.tree);
+    const done = (d.done || []).map(String).map(key => { const id=key.split('|')[0]; return key === completionKey(tree,d.vars,d.answers || {},id,true) ? completionKey(tree,d.vars,d.answers || {},id) : key; });
+    return Object.assign({}, d, { tree, done });
   }
   function load() {
     try {
@@ -319,12 +325,13 @@
       const history = (d.history || []).slice(-5).map(savedSnapshot);
       Object.assign(state, { story:d.story, vars:d.vars, answers:d.answers || {}, qtexts:d.qtexts || {}, questionDefs:d.questionDefs || Object.fromEntries(d.tree.questions.map(q => [q.id,q])), answerSets:d.answerSets || {}, turns:d.turns || [], history, tree:d.tree, done:d.done || [], trees:{} });
       const legacyScope = hash(JSON.stringify(state.vars.map(v => [v.id,v.value])) + JSON.stringify(state.answers));
-      state.done = state.done.map(x => { x=String(x); if(x.includes('|v2|'))return x;const [id,scope]=x.split('|');return !scope || scope===legacyScope ? doneKey(id) : x; });
+      state.done = state.done.map(x => { x=String(x); if(x.includes('|v2|') || x.includes('|v3|'))return x;const [id,scope]=x.split('|');return !scope || scope===legacyScope ? doneKey(id) : x; });
     } catch (e) { storageWarning = t('La carte enregistrée ne peut pas être chargée. Recommencez pour effacer ces données et créer une nouvelle carte.', 'The saved map could not be loaded. Start over to clear this data and create a new map.'); }
   }
   function persist() {
     if (!rememberOnDevice) return;
     try {
+      if (localStorage.getItem(STORE_KEY + '.remember') === 'no') { rememberOnDevice=false; return; }
       localStorage.setItem(STORE_KEY, JSON.stringify({ story:state.story, vars:state.vars, answers:state.answers, qtexts:state.qtexts, questionDefs:state.questionDefs, answerSets:state.answerSets, tree:state.tree, done:state.done, turns:state.turns, history:state.history }));
       storageWarning = '';
     } catch (e) { storageWarning = t('La carte reste dans cet onglet, mais le navigateur ne peut pas l’enregistrer. Imprimez le plan avant de fermer.', 'Your map remains in this tab, but the browser cannot save it. Print the plan before closing.'); }
@@ -412,7 +419,8 @@
     return u;
   }
   function validate(j, story, confirmedAnswers = {}) {
-    const snake = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x';
+    if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('Invalid map object');
+    const snake = s => { const id=String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x'; if (Object.prototype.hasOwnProperty.call(Object.prototype,id)) throw new Error('Reserved map id: '+id); return id; };
     const vars = (Array.isArray(j.variables) ? j.variables : []).slice(0, 8).map(v => ({ id: snake(v.id), label: String(v.label || v.id || ''), value: String(v.value || ''), span: String(v.span || ''), alternatives: (Array.isArray(v.alternatives) ? v.alternatives : []).map(String).filter(a => a && a !== v.value).slice(0, 3) })).filter(v => v.value);
     const said = String(story || '').toLowerCase();
     const containsFact = (text, value) => { if (!value) return false; const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'iu').test(text); };
@@ -431,6 +439,7 @@
     })).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
     const seenBranches = new Set(), seenSteps = new Set();
     branches.forEach(b => { const original = b.id; let i = 2; while (seenBranches.has(b.id)) b.id = original + '_' + i++; seenBranches.add(b.id); b.steps.forEach(st => { const originalId = st.id; let n = 2; while (seenSteps.has(st.id)) st.id = b.id + '_' + originalId + '_' + n++; seenSteps.add(st.id); }); });
+    for (const values of [vars.filter(grounded).map(v=>v.id), questions.map(q=>q.id)]) if (new Set(values).size !== values.length) throw new Error('Duplicate fact or question ids');
     if (!branches.length) throw new Error(t('aucune piste exploitable dans la réponse', 'no usable branch in the answer'));
     return constrainSources({ variables: vars.filter(grounded), questions: questions.slice(0, 6), branches, note: String(j.note || '') });
   }
@@ -472,7 +481,9 @@
     const effectiveStory = change && prev ? storyWithVars(story, vars, prev.variables) : story;
     const key = treeKey(effectiveStory, vars, answers);
     const generation = requestId;
-    if (state.trees[key]) return state.trees[key];
+    const fingerprint = JSON.stringify({ story:effectiveStory, values:vars.map(v=>[v.id,v.value]), answers, previous:prev ? {branches:prev.branches,variables:prev.variables,questions:prev.questions} : null, change, language:LANG, provider:conn.prov });
+    const cached = state.trees[key];
+    if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change).length === 0) return cached.tree; }
     const prompt = userPrompt(effectiveStory, vars, answers, prev, change);
     let retryReason = "";
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -496,7 +507,7 @@
         tree.incomplete = ex.truncated;
         tree.prov = res.prov; tree.key = key;
         // An incomplete map must be fetched again when the person presses Redraw.
-        if (!ex.truncated && generation === requestId) { state.trees[key] = tree; const keys = Object.keys(state.trees); if (keys.length > 20) delete state.trees[keys[0]]; }
+        if (!ex.truncated && generation === requestId) { state.trees[key] = { tree, fingerprint }; const keys = Object.keys(state.trees); if (keys.length > 20) delete state.trees[keys[0]]; }
         return tree;
       } catch (e) {
         retryReason = e.message || String(e);
@@ -682,16 +693,17 @@
     else rows = tree.branches.map(b => ({ id: b.id, name: b.name, cmp: b.steps.map(st => ({ id: st.id, a: st, b: null, kind: 'same' })) }));
     return { exploreOn, tree, rows, previewOn, answers: exploreOn ? s.exploreAnswers : s.answers, qtexts: exploreOn ? s.exploreQtexts : s.qtexts };
   }
-  function doneKey(id, vars = currentVars(), answers = vars === state.exploreVars ? state.exploreAnswers : answersFor(vars)) {
-    const tree = state.mode === 'explore' ? state.exploreTree : state.tree;
+  function completionKey(tree, vars, answers, id, legacy = false) {
     const step = tree && tree.branches.flatMap(b => b.steps).find(s => s.id === id);
     const known = new Set([...(vars || []).map(v => v.id), ...Object.keys(answers || {})]);
     const dependencies = step && step.depends_on && step.depends_on.length && step.depends_on.every(id => known.has(id)) ? step.depends_on : null;
     const facts = (vars || []).filter(v => !dependencies || dependencies.includes(v.id)).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0]));
     const responses = Object.keys(answers || {}).filter(k => !dependencies || dependencies.includes(k)).sort().map(k => [k, answers[k]]);
-    const meaning = step ? [step.title,step.why,step.authority,step.confirm_with,step.sources,step.sourceGaps || []] : [];
-    return id + '|v2|' + hash(JSON.stringify([facts,responses,meaning]));
+    const meaning = step ? [step.title,step.why,step.authority,step.confirm_with,(step.sources || []).map(({id,claim}) => ({id,claim})),step.sourceGaps || []] : [];
+    const context = JSON.stringify([facts,responses,meaning]);
+    return id + (legacy ? '|v2|' + hash(context) : '|v3|' + context);
   }
+  function doneKey(id, vars = currentVars(), answers = vars === state.exploreVars ? state.exploreAnswers : answersFor(vars)) { return completionKey(state.mode === 'explore' ? state.exploreTree : state.tree, vars, answers, id); }
   const isDone = id => state.done.includes(doneKey(id));
   let lastDrawn = null;
 
@@ -1035,6 +1047,7 @@
   document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree || state.loading || state.mode === 'explore') return; set({ mode: 'explore', pending: null, sel: null, exploreStory: state.story, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree, exploreAnswers: Object.assign({}, state.answers), exploreQtexts: Object.assign({}, state.qtexts), exploreQuestionDefs: Object.assign({}, state.questionDefs), exploreTurns: [] }); });
   document.getElementById('clear-btn').addEventListener('click', reset);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (state.loading) { cancelRequests(); set({ loading: '' }); } else set({ sel: null }); } });
+  window.addEventListener('storage', e => { if (e.key === STORE_KEY + '.remember' || e.key === null) { try { rememberOnDevice = localStorage.getItem(STORE_KEY + '.remember') !== 'no'; } catch (_) {} render(); } });
   let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); if (!state.tree) return; resizeTimer = setTimeout(() => renderTree(derive()), 150); });
   document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
