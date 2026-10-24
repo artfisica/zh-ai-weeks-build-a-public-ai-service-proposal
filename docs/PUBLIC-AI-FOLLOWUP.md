@@ -6,7 +6,7 @@ The goal is to improve this personal project before Monday's reply to the Public
 
 The changes address concrete prototype problems: malformed proxy requests, budget persistence, missing rehearsal-token support, lost hypothetical answers, corrupt browser data, stale connection checks, simultaneous sentence edits and mobile draft loss. The source catalogue now has editable versioned packs and limits which references a particular request may cite. All existing civic notes remain drafts.
 
-Real Chromium checks exercise the desktop and mobile journeys, including Keep/Adopt/Undo, Explore, reload and PDF export. The combined changes passed 83 automated tests. Those fixture tests establish application behaviour; they do not establish live model quality or the accuracy of civic advice.
+Real Chromium checks exercise the desktop and mobile journeys, including Keep/Adopt/Undo, Explore, reload and PDF export. The combined changes passed the initial 83 automated tests; the deeper review expands coverage to 141. Those fixture tests establish application behaviour; they do not establish live model quality or the accuracy of civic advice.
 
 ## Before replying on Monday
 
@@ -27,4 +27,4 @@ EVAL_ORIGIN=https://artfisica.github.io node tools/evaluate.js \
 
 Set `EVAL_DEMO_TOKEN` in the environment if rehearsal access requires one. The runner saves raw fictional responses, model identity, durations and normalized maps after each case. A technical result always leaves content review pending. A failed or incomplete requested selection exits nonzero; a successful subset exits zero while `completeSet` remains false. `--cases 1,2,3,7` intentionally records a partial rehearsal rather than a completed ten-case evaluation.
 
-For browser checks: `npm ci --ignore-scripts`, `npx playwright install chromium`, then `npm run test:browser`. Screenshots, PDFs and reports are retained as CI artifacts. A broader hosting migration, municipal content approval or resident study can be discussed later; none is a prerequisite for an honest reply about this prototype on Monday.
+For browser checks: `npm ci --ignore-scripts`, `npx playwright install chromium firefox webkit`, then `npm run test:browser`. Screenshots, PDFs and reports are retained as CI artifacts. A broader hosting migration, municipal content approval or resident study can be discussed later; none is a prerequisite for an honest reply about this prototype on Monday.

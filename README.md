@@ -147,3 +147,5 @@ Adding a page is one catalogue entry; the model can use it on the next map. Befo
 ## Public AI follow-up
 
 See [the prototype rehearsal checklist](docs/PUBLIC-AI-FOLLOWUP.md) for the improvements, real-browser checks and live-model rehearsal to prepare before replying to Public AI.
+
+The [25 October deep review](docs/REVIEW-2026-10-25.md) records the reproduced failures, corrections, cross-browser/accessibility evidence and remaining limits.
