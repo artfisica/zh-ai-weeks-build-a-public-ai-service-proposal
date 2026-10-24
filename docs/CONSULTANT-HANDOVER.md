@@ -1,6 +1,6 @@
 # Consultant handover and pilot acceptance
 
-Baseline: PR #1 is merged. The follow-on PRs separate proxy operations, device/state recovery, source-pack governance, and browser/evaluation evidence. They prepare a bounded pilot; they do not establish an operating municipal service or an approved knowledge base.
+Baseline: PR #1 is merged. The follow-on PRs separate proxy operations, device/state recovery, source-pack governance, and browser/evaluation evidence. The browser/evaluation PR depends on the state-recovery PR so it tests the mobile resize fix. They prepare a bounded pilot; they do not establish an operating municipal service or an approved knowledge base.
 
 ## Evidence to hand to the client
 

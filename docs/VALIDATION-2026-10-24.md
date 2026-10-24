@@ -4,7 +4,7 @@ The four pilot PR branches were combined in a temporary local checkout, separate
 
 | Check | Result |
 | --- | --- |
-| Application/state/source regressions | 54 passed |
+| Application/state/source regressions | 55 passed |
 | Real HTTP proxy integration | 8 passed |
 | Budget persistence/corruption/rollover | 4 passed |
 | Source-pack schema/selection/review changes | 6 passed |
@@ -12,7 +12,7 @@ The four pilot PR branches were combined in a temporary local checkout, separate
 | Desktop/mobile Chromium journeys | 8 passed |
 | Inline JavaScript, catalogue regeneration, shell syntax, diff whitespace | Passed |
 
-Total: 82 automated tests passed on the combined software. Tests use fictional situations and fixture credentials. Browser evidence includes initial desktop/mobile screenshots, actual generated PDFs and failure traces when applicable. The desktop screenshot and PDF text were inspected locally; this does not constitute resident or accessibility acceptance. Browser CI repeats the journeys on Linux with Node 24 and retains artifacts for fourteen days. The container workflow builds and checks an unprivileged image with fixture configuration; no live provider call or deployment is part of that check.
+Total: 83 automated tests passed on the combined software. Tests use fictional situations and fixture credentials. Browser evidence includes initial desktop/mobile screenshots, actual generated PDFs and failure traces when applicable. The desktop screenshot and PDF text were inspected locally; this does not constitute resident or accessibility acceptance. Browser CI repeats the journeys on Linux with Node 24 and retains artifacts for fourteen days. The container workflow builds and checks an unprivileged image with fixture configuration; no live provider call or deployment is part of that check.
 
 The link-availability check recorded HTTP 200 at all fourteen source URLs, with one transport-data language redirect. No note was promoted to reviewed. Availability cannot establish that a page supports a model-generated step.
 
