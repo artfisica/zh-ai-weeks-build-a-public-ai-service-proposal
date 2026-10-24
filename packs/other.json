@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "other",
+  "version": 1,
+  "entries": [
+    {
+      "id": "otd",
+      "level": "other",
+      "url": "https://opentransportdata.swiss",
+      "title": "Plateforme open data mobilité suisse",
+      "covers": "public transport timetables and stops as open data (not loaded by this page)",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "Swiss public transport timetable data is available through the open transport data platform; this prototype does not load it.",
+          "fr": "Les données d’horaires des transports publics suisses sont disponibles sur la plateforme open data ; ce prototype ne les charge pas.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": null,
+        "commune": null
+      },
+      "exact": false
+    }
+  ]
+}

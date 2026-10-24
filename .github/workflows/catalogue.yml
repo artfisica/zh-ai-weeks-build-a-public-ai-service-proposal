@@ -1,0 +1,21 @@
+name: Source pack checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  catalogue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tools/catalogue.js
+      - run: node --test tests/catalogue.js
+      - name: Protect reviewed notes
+        if: github.event_name == 'pull_request'
+        env:
+          CATALOGUE_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node tools/check-review-changes.js

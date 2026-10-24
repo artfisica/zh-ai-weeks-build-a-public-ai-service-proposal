@@ -1,0 +1,104 @@
+{
+  "checkedAt": "2026-10-24T21:05:21.667Z",
+  "scope": "HTTP availability only; content and source/step matches unreviewed",
+  "sources": [
+    {
+      "id": "ch-move",
+      "url": "https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/",
+      "status": 200,
+      "finalUrl": "https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/",
+      "redirected": false
+    },
+    {
+      "id": "ch-move-checklist",
+      "url": "https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/",
+      "status": 200,
+      "finalUrl": "https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/",
+      "redirected": false
+    },
+    {
+      "id": "ch-root",
+      "url": "https://www.ch.ch",
+      "status": 200,
+      "finalUrl": "https://www.ch.ch/",
+      "redirected": false
+    },
+    {
+      "id": "jestime",
+      "url": "https://jestime.ch",
+      "status": 200,
+      "finalUrl": "https://jestime.ch/",
+      "redirected": false
+    },
+    {
+      "id": "mobilis",
+      "url": "https://www.mobilis-vaud.ch",
+      "status": 200,
+      "finalUrl": "https://www.mobilis-vaud.ch/",
+      "redirected": false
+    },
+    {
+      "id": "nyon-cdh",
+      "url": "https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382",
+      "status": 200,
+      "finalUrl": "https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382",
+      "redirected": false
+    },
+    {
+      "id": "otd",
+      "url": "https://opentransportdata.swiss",
+      "status": 200,
+      "finalUrl": "https://opentransportdata.swiss/de/",
+      "redirected": true
+    },
+    {
+      "id": "sem-b-eu",
+      "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html",
+      "status": 200,
+      "finalUrl": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html",
+      "redirected": false
+    },
+    {
+      "id": "sem-third",
+      "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
+      "status": 200,
+      "finalUrl": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
+      "redirected": false
+    },
+    {
+      "id": "stcergue-arrival",
+      "url": "https://www.st-cergue.ch/prestations-communales/113320",
+      "status": 200,
+      "finalUrl": "https://www.st-cergue.ch/prestations-communales/113320",
+      "redirected": false
+    },
+    {
+      "id": "vd-address",
+      "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
+      "status": 200,
+      "finalUrl": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
+      "redirected": false
+    },
+    {
+      "id": "vd-root",
+      "url": "https://www.vd.ch",
+      "status": 200,
+      "finalUrl": "https://www.vd.ch/",
+      "redirected": false
+    },
+    {
+      "id": "vd-tax-communes",
+      "url": "https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales",
+      "status": 200,
+      "finalUrl": "https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales",
+      "redirected": false
+    },
+    {
+      "id": "vd-vote-directive",
+      "url": "https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf",
+      "status": 200,
+      "finalUrl": "https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf",
+      "redirected": false
+    }
+  ]
+}

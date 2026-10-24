@@ -98,6 +98,7 @@
   .map-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .map-actions button,.lane-tabs button{border:1px solid var(--line);background:var(--white);padding:7px 11px;border-radius:8px;color:var(--ink)}
   .map-actions button[aria-pressed="true"],.lane-tabs button[aria-pressed="true"]{background:var(--accent);color:white;border-color:var(--accent)}
+  .catalogue-update{margin-bottom:12px;padding:12px;border:1px dashed var(--accent);border-radius:12px}
   .map-comparison{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px dashed var(--accent);background:var(--accent-soft);padding:12px 14px;border-radius:12px;font-size:13px;margin-bottom:12px}
   .map-comparison span{flex:1;min-width:160px}
   .map-comparison button{border:1px solid var(--accent);border-radius:8px;padding:7px 12px;background:white;color:var(--accent)}
@@ -212,46 +213,394 @@
   const draftBadge = level => '<span class="badge draft">' + t('Brouillon · ', 'Draft · ') + esc((LV()[level] || LV().other).name) + '</span>';
 
   // ---- The only place a link can come from. Apertus picks by id; anything else is shown as "no linked page yet". ----
+  // BEGIN GENERATED CATALOGUE
+  // Edit packs/*.json and run node tools/catalogue.js --write.
+  const CATALOG_VERSION = "938b9f80d9533ae4";
   const CATALOG = [
-    { id: 'ch-move', level: 'confederation', url: 'https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/', title: 'ch.ch — Annoncer son départ et son arrivée', covers: 'moving between communes in Switzerland: deregister, register; check the local deadline',
-      claims: [{ id: 'c1', text: 'For a move between communes, announce departure to the old commune and arrival to the new one.', fr: 'Lors d’un déménagement entre communes, annoncez le départ à l’ancienne commune et l’arrivée à la nouvelle.' }] },
-    { id: 'ch-move-checklist', level: 'confederation', url: 'https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/', title: 'ch.ch — Aide-mémoire déménagement', covers: 'moving checklist: lease notice, new lease, address changes, insurance, utilities',
-      claims: [{ id: 'c1', text: 'A practical moving checklist includes address changes and arrangements around the lease and utilities.', fr: 'L’aide-mémoire comprend les changements d’adresse et les démarches liées au bail et aux services du logement.' }] },
-    { id: 'vd-address', level: 'canton', url: 'https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants', title: 'État de Vaud — Annoncer son changement d’adresse (eDéménagement)', covers: 'Vaud: online change of address, conditions by permit type, list of connected communes',
-      claims: [{ id: 'c1', text: 'Vaud eDéménagement covers qualifying moves from participating communes; check whether both departure and arrival can be announced online.', fr: 'eDéménagement couvre certains départs de communes participantes ; vérifiez si le départ et l’arrivée peuvent tous deux être annoncés en ligne.' }, { id: 'c2', text: 'Online eligibility differs by nationality and permit type, and arrivals from abroad are excluded.', fr: 'L’accès à la démarche en ligne dépend notamment de la nationalité et du permis ; les arrivées de l’étranger en sont exclues.' }] },
-    { id: 'sem-b-eu', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html', title: 'SEM — Permis B UE/AELE', covers: 'B permit for EU/EFTA nationals: validity 5 years, conditions',
-      claims: [{ id: 'c1', text: 'The SEM describes a five-year B permit for EU/EFTA nationals; eligibility conditions include employment or sufficient means for a non-working person.', fr: 'Le SEM décrit le permis B UE/AELE de cinq ans ; les conditions concernent notamment l’emploi ou les moyens suffisants d’une personne sans activité lucrative.' }] },
-    { id: 'sem-third', level: 'confederation', url: 'https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html', title: 'SEM — Permis de séjour, ressortissants d’États tiers', covers: 'permits for non-EU nationals: B (1 year renewable), C, L; family reunification',
-      claims: [{ id: 'c1', text: 'For non-EU/EFTA nationals, residence conditions depend on the permit and personal situation; consult the SEM page.', fr: 'Pour les ressortissants d’États tiers, les conditions de séjour dépendent du permis et de la situation personnelle ; consultez la page du SEM.' }] },
-    { id: 'nyon-cdh', level: 'commune', url: 'https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382', title: 'Ville de Nyon — Contrôle des habitants', covers: 'Nyon residents registry: arrival, departure, address change',
-      claims: [{ id: 'c1', text: 'The Contrôle des habitants is the municipal point of contact for resident registration in Nyon.', fr: 'Le Contrôle des habitants est le point de contact communal pour l’enregistrement des résidents à Nyon.' }] },
-    { id: 'stcergue-arrival', level: 'commune', url: 'https://www.st-cergue.ch/prestations-communales/113320', title: 'Commune de Saint-Cergue — Arrivée à St-Cergue', covers: 'Saint-Cergue: registering on arrival, documents, deadline',
-      claims: [{ id: 'c1', text: 'Saint-Cergue asks new residents to present themselves at the counter after announcing departure from the previous commune; the documents depend on their situation.', fr: 'Saint-Cergue demande aux nouveaux résidents de se présenter au guichet après l’annonce de départ de l’ancienne commune ; les documents varient selon leur situation.' }] },
-    { id: 'vd-tax-communes', level: 'canton', url: 'https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales', title: 'Statistique Vaud — Arrêtés d’imposition des communes', covers: 'communal tax coefficients of all Vaud communes, by year',
-      claims: [{ id: 'c1', text: 'The canton publishes information on communal finances and tax coefficients; check the relevant year and commune.', fr: 'Le canton publie des informations sur les finances et les coefficients fiscaux communaux ; vérifiez l’année et la commune concernées.' }] },
-    { id: 'vd-vote-directive', level: 'canton', url: 'https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf', title: 'État de Vaud — Directive droit de vote communal', covers: 'who may vote at communal level in Vaud, including foreign residents (conditions)',
-      claims: [{ id: 'c1', text: 'The canton sets conditions for foreign residents to vote at communal level; read the directive for the qualifying residence periods.', fr: 'Le canton fixe les conditions du droit de vote communal des résidents étrangers ; consultez la directive pour les durées de résidence requises.' }] },
-    { id: 'otd', level: 'other', url: 'https://opentransportdata.swiss', title: 'Plateforme open data mobilité suisse', covers: 'public transport timetables and stops as open data (not loaded by this page)',
-      claims: [{ id: 'c1', text: 'Swiss public transport timetable data is available through the open transport data platform; this prototype does not load it.', fr: 'Les données d’horaires des transports publics suisses sont disponibles sur la plateforme open data ; ce prototype ne les charge pas.' }] },
-    { id: 'mobilis', level: 'other', url: 'https://www.mobilis-vaud.ch', title: 'Mobilis — Communauté tarifaire vaudoise', covers: 'Vaud public transport fare zones and passes (site root)',
-      claims: [{ id: 'c1', text: 'Mobilis provides fare information for public transport in Vaud; check current zones and prices there.', fr: 'Mobilis fournit les informations tarifaires des transports publics vaudois ; vérifiez les zones et les prix en vigueur.' }] },
-    { id: 'jestime', level: 'other', url: 'https://jestime.ch', title: 'jestime.ch — Estimation anonyme des prestations sociales (HES-SO)', covers: 'anonymous estimate of means-tested social benefits and where to claim them; Vaud now, Geneva from 2027; not an official page',
-      claims: [{ id: 'c1', text: 'An independent tool for exploring potential social benefits in Vaud; this is an estimate, not an eligibility decision.', fr: 'Un outil indépendant pour estimer les prestations sociales possibles dans le canton de Vaud ; il ne décide pas de l’éligibilité.' }] },
-    { id: 'vd-root', level: 'canton', url: 'https://www.vd.ch', title: 'État de Vaud (site officiel)', covers: 'any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked', claims: [] },
-    { id: 'ch-root', level: 'confederation', url: 'https://www.ch.ch', title: 'ch.ch — Les autorités suisses en ligne', covers: 'any federal topic not listed above: work, family, health insurance, taxes; site root', claims: [] }
-  ];
+  {
+    "id": "nyon-cdh",
+    "level": "commune",
+    "url": "https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382",
+    "title": "Ville de Nyon — Contrôle des habitants",
+    "covers": "Nyon residents registry: arrival, departure, address change",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The Contrôle des habitants is the municipal point of contact for resident registration in Nyon.",
+        "fr": "Le Contrôle des habitants est le point de contact communal pour l’enregistrement des résidents à Nyon.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": "nyon"
+    },
+    "exact": true,
+    "pack": "VD-nyon",
+    "packVersion": 1
+  },
+  {
+    "id": "stcergue-arrival",
+    "level": "commune",
+    "url": "https://www.st-cergue.ch/prestations-communales/113320",
+    "title": "Commune de Saint-Cergue — Arrivée à St-Cergue",
+    "covers": "Saint-Cergue: registering on arrival, documents, deadline",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Saint-Cergue asks new residents to present themselves at the counter after announcing departure from the previous commune; the documents depend on their situation.",
+        "fr": "Saint-Cergue demande aux nouveaux résidents de se présenter au guichet après l’annonce de départ de l’ancienne commune ; les documents varient selon leur situation.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": "saint-cergue"
+    },
+    "exact": true,
+    "pack": "VD-saint-cergue",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-address",
+    "level": "canton",
+    "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
+    "title": "État de Vaud — Annoncer son changement d’adresse (eDéménagement)",
+    "covers": "Vaud: online change of address, conditions by permit type, list of connected communes",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Vaud eDéménagement covers qualifying moves from participating communes; check whether both departure and arrival can be announced online.",
+        "fr": "eDéménagement couvre certains départs de communes participantes ; vérifiez si le départ et l’arrivée peuvent tous deux être annoncés en ligne.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      },
+      {
+        "id": "c2",
+        "text": "Online eligibility differs by nationality and permit type, and arrivals from abroad are excluded.",
+        "fr": "L’accès à la démarche en ligne dépend notamment de la nationalité et du permis ; les arrivées de l’étranger en sont exclues.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": true,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-tax-communes",
+    "level": "canton",
+    "url": "https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales",
+    "title": "Statistique Vaud — Arrêtés d’imposition des communes",
+    "covers": "communal tax coefficients of all Vaud communes, by year",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The canton publishes information on communal finances and tax coefficients; check the relevant year and commune.",
+        "fr": "Le canton publie des informations sur les finances et les coefficients fiscaux communaux ; vérifiez l’année et la commune concernées.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": true,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-vote-directive",
+    "level": "canton",
+    "url": "https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf",
+    "title": "État de Vaud — Directive droit de vote communal",
+    "covers": "who may vote at communal level in Vaud, including foreign residents (conditions)",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The canton sets conditions for foreign residents to vote at communal level; read the directive for the qualifying residence periods.",
+        "fr": "Le canton fixe les conditions du droit de vote communal des résidents étrangers ; consultez la directive pour les durées de résidence requises.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": true,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "mobilis",
+    "level": "other",
+    "url": "https://www.mobilis-vaud.ch",
+    "title": "Mobilis — Communauté tarifaire vaudoise",
+    "covers": "Vaud public transport fare zones and passes (site root)",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Mobilis provides fare information for public transport in Vaud; check current zones and prices there.",
+        "fr": "Mobilis fournit les informations tarifaires des transports publics vaudois ; vérifiez les zones et les prix en vigueur.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": false,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "jestime",
+    "level": "other",
+    "url": "https://jestime.ch",
+    "title": "jestime.ch — Estimation anonyme des prestations sociales (HES-SO)",
+    "covers": "anonymous estimate of means-tested social benefits and where to claim them; Vaud now, Geneva from 2027; not an official page",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "An independent tool for exploring potential social benefits in Vaud; this is an estimate, not an eligibility decision.",
+        "fr": "Un outil indépendant pour estimer les prestations sociales possibles dans le canton de Vaud ; il ne décide pas de l’éligibilité.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": false,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "vd-root",
+    "level": "canton",
+    "url": "https://www.vd.ch",
+    "title": "État de Vaud (site officiel)",
+    "covers": "any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked",
+    "claims": [],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": null
+    },
+    "exact": false,
+    "pack": "VD",
+    "packVersion": 1
+  },
+  {
+    "id": "ch-move",
+    "level": "confederation",
+    "url": "https://www.ch.ch/fr/logement/demenagement/annonce-de-depart-et-d-arrivee/",
+    "title": "ch.ch — Annoncer son départ et son arrivée",
+    "covers": "moving between communes in Switzerland: deregister, register; check the local deadline",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "For a move between communes, announce departure to the old commune and arrival to the new one.",
+        "fr": "Lors d’un déménagement entre communes, annoncez le départ à l’ancienne commune et l’arrivée à la nouvelle.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "ch-move-checklist",
+    "level": "confederation",
+    "url": "https://www.ch.ch/fr/logement/demenagement/aide-memoire-pour-un-demenagement-reussi/",
+    "title": "ch.ch — Aide-mémoire déménagement",
+    "covers": "moving checklist: lease notice, new lease, address changes, insurance, utilities",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "A practical moving checklist includes address changes and arrangements around the lease and utilities.",
+        "fr": "L’aide-mémoire comprend les changements d’adresse et les démarches liées au bail et aux services du logement.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "sem-b-eu",
+    "level": "confederation",
+    "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html",
+    "title": "SEM — Permis B UE/AELE",
+    "covers": "B permit for EU/EFTA nationals: validity 5 years, conditions",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The SEM describes a five-year B permit for EU/EFTA nationals; eligibility conditions include employment or sufficient means for a non-working person.",
+        "fr": "Le SEM décrit le permis B UE/AELE de cinq ans ; les conditions concernent notamment l’emploi ou les moyens suffisants d’une personne sans activité lucrative.",
+        "kind": "regulation",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "sem-third",
+    "level": "confederation",
+    "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
+    "title": "SEM — Permis de séjour, ressortissants d’États tiers",
+    "covers": "permits for non-EU nationals: B (1 year renewable), C, L; family reunification",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "For non-EU/EFTA nationals, residence conditions depend on the permit and personal situation; consult the SEM page.",
+        "fr": "Pour les ressortissants d’États tiers, les conditions de séjour dépendent du permis et de la situation personnelle ; consultez la page du SEM.",
+        "kind": "regulation",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": true,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "ch-root",
+    "level": "confederation",
+    "url": "https://www.ch.ch",
+    "title": "ch.ch — Les autorités suisses en ligne",
+    "covers": "any federal topic not listed above: work, family, health insurance, taxes; site root",
+    "claims": [],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": false,
+    "pack": "ch",
+    "packVersion": 1
+  },
+  {
+    "id": "otd",
+    "level": "other",
+    "url": "https://opentransportdata.swiss",
+    "title": "Plateforme open data mobilité suisse",
+    "covers": "public transport timetables and stops as open data (not loaded by this page)",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Swiss public transport timetable data is available through the open transport data platform; this prototype does not load it.",
+        "fr": "Les données d’horaires des transports publics suisses sont disponibles sur la plateforme open data ; ce prototype ne les charge pas.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": null,
+        "recheckOn": null
+      }
+    ],
+    "jurisdiction": {
+      "canton": null,
+      "commune": null
+    },
+    "exact": false,
+    "pack": "other",
+    "packVersion": 1
+  }
+];
+  // END GENERATED CATALOGUE
   const catalogById = id => CATALOG.find(c => c.id === id) || null;
-  const catalogForPrompt = () => CATALOG.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.map(k => k.id + ': ' + k.text).join(' ; ') : '')).join('\n');
-  const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid) || null : null; };
+  const catalogForPrompt = (selection = CATALOG) => selection.map(c => c.id + ' [' + c.level + '] ' + c.covers + (c.claims.length ? ' | claims: ' + c.claims.filter(k => usableClaim(k)).map(k => k.id + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text)).join(' ; ') : '')).join('\n');
+  const usableClaim = k => (k.status === 'draft' || (k.status === 'reviewed' && k.recheckOn >= new Date().toISOString().slice(0,10))) && k.kind !== 'community';
+  const claimOf = (sid, cid) => { const c = catalogById(sid); return c ? c.claims.find(k => k.id === cid && usableClaim(k)) || null : null; };
   // A conservative scope guard for named places in the demo. This does not verify the claim itself.
   const PLACES = [
-    { names: ['nyon'], commune: 'nyon', canton: 'VD' }, { names: ['saint-cergue','st-cergue','saint cergue'], commune: 'saint-cergue', canton: 'VD' },
+    { names: ['nyon'], commune: 'nyon', canton: 'VD' }, { names: ['saint-cergue','st-cergue','saint cergue','st cergue','st. cergue'], commune: 'saint-cergue', canton: 'VD' },
     { names: ['gland'], commune: 'gland', canton: 'VD' }, { names: ['lausanne'], commune: 'lausanne', canton: 'VD' },
     { names: ['la cure'], commune: 'saint-cergue', canton: 'VD' }, { names: ['geneva','genève','geneve'], commune: 'geneva', canton: 'GE' },
     { names: ['lugano'], commune: 'lugano', canton: 'TI' }, { names: ['zurich','zürich'], commune: 'zurich', canton: 'ZH' }
   ];
-  const pageScope = id => id === 'nyon-cdh' ? { commune: 'nyon' } : id === 'stcergue-arrival' ? { commune: 'saint-cergue' } : (id.startsWith('vd-') || ['mobilis','jestime'].includes(id)) ? { canton: 'VD' } : null;
-  function mentionedPlaces(text) { return PLACES.filter(p => p.names.some(name => new RegExp('(?<![\\p{L}\\p{N}])' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])','iu').test(text))); }
+  const pageScope = id => { const c = catalogById(id); return c ? c.jurisdiction : null; };
+  function mentionedPlaces(text) { return PLACES.concat([{names:['vaud','waadt','vd'],commune:null,canton:'VD'},{names:['canton of geneva','canton de genève','geneve','ge'],commune:null,canton:'GE'},{names:['ticino','tessin','ti'],commune:null,canton:'TI'},{names:['canton of zurich','kanton zürich','zh'],commune:null,canton:'ZH'}]).filter(p => p.names.some(name => new RegExp('(?<![\\p{L}\\p{N}])' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])','iu').test(text))); }
+  function selectCatalog(story, vars = [], answers = {}) {
+    const places = mentionedPlaces([story, ...vars.map(v => v.value), ...Object.values(answers)].join(' '));
+    return CATALOG.filter(c => (!c.claims.length || c.claims.some(usableClaim)) && ((!c.jurisdiction.canton && !c.jurisdiction.commune) || places.some(p => (!c.jurisdiction.canton || p.canton === c.jurisdiction.canton) && (!c.jurisdiction.commune || p.commune === c.jurisdiction.commune))));
+  }
   function constrainSources(tree) {
     tree.branches.forEach(b => b.steps.forEach(st => {
       let places = mentionedPlaces(st.title + ' ' + st.short + ' ' + (st.confirm_with || ''));
@@ -262,8 +611,38 @@
     }));
     return tree;
   }
-  function claimId(id, value) { const cat = catalogById(id); if (!cat || !value) return null; const exact = cat.claims.find(k => k.id === value || k.text === value || k.fr === value || id + '/' + k.id === value || id + '#' + k.id === value); return exact ? exact.id : null; }
+  function claimId(id, value) { const cat = catalogById(id); if (!cat || !value) return null; const exact = cat.claims.filter(k => usableClaim(k)).find(k => k.id === value || k.text === value || k.fr === value || id + '/' + k.id === value || id + '#' + k.id === value); return exact ? exact.id : null; }
 
+
+  // These records are stamped from the catalogue after model validation, never accepted from model JSON.
+  function recordSources(tree, selection) {
+    tree.branches.forEach(b => b.steps.forEach(st => st.sources.forEach(ref => {
+      const source = selection.find(c => c.id === ref.id), note = claimOf(ref.id,ref.claim);
+      ref.record = { schemaVersion:1, id:ref.id, claim:ref.claim, revision:CATALOG_VERSION,
+        source:{url:source.url,title:source.title,level:source.level,exact:source.exact,pack:source.pack,packVersion:source.packVersion},
+        note:note ? JSON.parse(JSON.stringify(note)) : null };
+    })));
+  }
+  function referenceOf(ref) {
+    const current = catalogById(ref.id); if (!current) return {cat:null,claim:null,archived:false,changed:false};
+    const record = ref.record;
+    try {
+      if (!record || record.schemaVersion !== 1 || record.id !== ref.id || record.claim !== ref.claim || !/^[a-f0-9]{16}$/.test(record.revision)) throw new Error('No valid source record');
+      const source = record.source, note = record.note;
+      const url = new URL(source.url), publisher = new URL(current.url);
+      if (url.protocol !== 'https:' || url.username || url.password || url.origin !== publisher.origin || typeof source.title !== 'string' || !['confederation','canton','commune','other'].includes(source.level) || typeof source.exact !== 'boolean' || typeof source.pack !== 'string' || !Number.isSafeInteger(source.packVersion) || source.packVersion < 1) throw new Error('Invalid source record');
+      if (note && (note.id !== ref.claim || typeof note.text !== 'string' || typeof note.fr !== 'string' || !['draft','reviewed'].includes(note.status) || !['regulation','practice'].includes(note.kind))) throw new Error('Invalid note record');
+      if (ref.claim && !note) throw new Error('Missing recorded note');
+      const changed = record.revision !== CATALOG_VERSION || (note && !claimOf(ref.id,ref.claim));
+      return {cat:{...current,...source},claim:note,archived:true,changed};
+    } catch (_) { return {cat:current,claim:claimOf(ref.id,ref.claim),archived:false,changed:false}; }
+  }
+  function guidanceClaim(ref) { const record=referenceOf(ref); return record.changed ? null : record.claim; }
+  const referencesForModel = refs => (refs || []).map(({id,claim}) => ({id,claim}));
+  const sourcesIdentity = refs => JSON.stringify((refs || []).map(ref => {
+    const {cat,claim} = referenceOf(ref);
+    return {id:ref.id,claim:ref.claim,source:cat ? {url:cat.url,title:cat.title,level:cat.level,exact:cat.exact,pack:cat.pack,packVersion:cat.packVersion} : null,note:claim};
+  }));
 
   // ---- State ----
   const scenarioKey = vars => JSON.stringify((vars || []).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0])));
@@ -402,12 +781,12 @@
 
   // ---- Asking Apertus for the map ----
   const SCHEMA = '{"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence or empty","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":["only for choice"]}],"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one or two sentences","depends_on":["variable or question ids"],"sources":[{"id":"catalog id","claim":"claim id that supports this step, or null"}],"authority":"confederation|canton|commune","confirm_with":"office name or null"}]}],"note":"one sentence to the person"}';
-  function systemPrompt() {
+  function systemPrompt(selection = CATALOG) {
     return (LANG === 'en'
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
       '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, in a sensible chronological order, with the office that handles them. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers the general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s office page for Gland or a Vaud page for a Geneva-only action. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt() +
+      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, in a sensible chronological order, with the office that handles them. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers the general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s office page for Gland or a Vaud page for a Geneva-only action. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt(selection) +
       '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. claim is the short note ID (for example "c1"), not the note text. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same branch ids AND step ids for matching paths and actions in the previous map. Copy every field of an unchanged step exactly, including why, sources and confirm_with. Do not ask again about a fact in the sentence or answered questions. Current values override any older wording in the previous map. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -415,10 +794,10 @@
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
-    if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: s.sources, authority: s.authority, confirm_with: s.confirm_with })) })) });
+    if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
-  function validate(j, story, confirmedAnswers = {}) {
+  function validate(j, story, confirmedAnswers = {}, allowedIds = null) {
     if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('Invalid map object');
     const snake = s => { const id=String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x'; if (Object.prototype.hasOwnProperty.call(Object.prototype,id)) throw new Error('Reserved map id: '+id); return id; };
     const vars = (Array.isArray(j.variables) ? j.variables : []).slice(0, 8).map(v => ({ id: snake(v.id), label: String(v.label || v.id || ''), value: String(v.value || ''), span: String(v.span || ''), alternatives: (Array.isArray(v.alternatives) ? v.alternatives : []).map(String).filter(a => a && a !== v.value).slice(0, 3) })).filter(v => v.value);
@@ -433,7 +812,7 @@
     const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => ({
       id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
-      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id)).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
+      sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id) && (!allowedIds || allowedIds.has(r.id))).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
       authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : 'other',
       confirm_with: s.confirm_with ? String(s.confirm_with) : null
     })).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
@@ -476,9 +855,10 @@
     if (!lastValid) throw new Error(t('réponse coupée avant une étape complète', 'answer cut off before a complete step'));
     return { text: lastValid, truncated: true };
   }
-  const treeKey = (story, vars, answers) => hash('review8-continuity1|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
+  const treeKey = (story, vars, answers) => hash('review8-continuity1|' + CATALOG_VERSION + '|' + new Date().toISOString().slice(0,10) + '|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
     const effectiveStory = change && prev ? storyWithVars(story, vars, prev.variables) : story;
+    const selection = selectCatalog(effectiveStory, vars, answers), allowedIds = new Set(selection.map(c => c.id));
     const key = treeKey(effectiveStory, vars, answers);
     const generation = requestId;
     const fingerprint = JSON.stringify({ story:effectiveStory, values:vars.map(v=>[v.id,v.value]), answers, previous:prev ? {branches:prev.branches,variables:prev.variables,questions:prev.questions} : null, change, language:LANG, provider:conn.prov });
@@ -489,21 +869,23 @@
     for (let attempt = 0; attempt < 2; attempt++) {
       if (generation !== requestId) throw new Error('cancelled');
       const retry = attempt ? '\nRepair the previous response: ' + (retryReason || 'it was not parseable as a complete map') + '. Return the FULL map, retaining every existing branch and action not affected by the changed input. Keep their original branch ids and step ids, not just their titles. Do not move an action into a different branch. Include all required fields; use short explanations and no text outside JSON.' : '';
-      const res = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + retry }], 3000);
+      const res = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + retry }], 3000);
       try {
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
-        let tree = reconcileIds(validate(JSON.parse(ex.text), effectiveStory, answers), prev, effectiveStory);
+        let tree = reconcileIds(validate(JSON.parse(ex.text), effectiveStory, answers, allowedIds), prev, effectiveStory);
         const gaps = comparisonGaps(tree, prev, change);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
         const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
         if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
           try {
-            const reviewed = await chat([{ role: 'system', content: systemPrompt() }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
+            const reviewed = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
             const reviewJSON = extractJSON(reviewed.text.replace(/```json|```/g, '').trim());
-            if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers), tree, effectiveStory); res.prov = reviewed.prov; }
+            if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers, allowedIds), tree, effectiveStory); res.prov = reviewed.prov; }
           } catch (e) { /* the first complete map remains usable */ }
         }
+        recordSources(tree, selection);
+        tree.catalogueVersion = CATALOG_VERSION; tree.sourceSelection = selection.map(c => c.id);
         tree.incomplete = ex.truncated;
         tree.prov = res.prov; tree.key = key;
         // An incomplete map must be fetched again when the person presses Redraw.
@@ -540,14 +922,14 @@
       const old = previous.branches.find(x => x.id === b.id) || previous.branches.find(x => x.name.toLowerCase() === b.name.toLowerCase());
       if (old && !usedBranches.has(old.id)) b.id = old.id;
       usedBranches.add(b.id);
-      b.steps.forEach(st => { const match = old && (old.steps.find(x => x.id === st.id) || old.steps.find(x => x.title === st.title && JSON.stringify(x.sources) === JSON.stringify(st.sources))); if (match && !usedSteps.has(match.id)) st.id = match.id; usedSteps.add(st.id); });
+      b.steps.forEach(st => { const match = old && (old.steps.find(x => x.id === st.id) || old.steps.find(x => x.title === st.title && JSON.stringify(referencesForModel(x.sources)) === JSON.stringify(referencesForModel(st.sources)))); if (match && !usedSteps.has(match.id)) st.id = match.id; usedSteps.add(st.id); });
     });
     return tree;
   }
 
   // ---- Conversation ----
   function mapForPrompt(tree, answers = viewedAnswers()) {
-    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = claimOf(r.id, r.claim); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => q.text) });
+    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = guidanceClaim(r); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => q.text) });
   }
   function followSystem() {
     return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
@@ -591,7 +973,7 @@
       if (looksLikeFact && newStory === baseStory && !['compare', 'question'].includes(j.kind)) newStory = baseStory + ' ' + text.replace(/\.?\s*$/, '.');
       const ids = (Array.isArray(j.steps) ? j.steps : []).map(String), found = [], selectedSteps = [];
       const rows = derive().rows; viewTree.branches.forEach(b => b.steps.forEach(st => { if (ids.some(id => id === st.id || id === b.id + '/' + st.id)) { found.push({ li: rows.findIndex(r => r.id === b.id), id: st.id }); selectedSteps.push(st); } }));
-      const notes = [], seenNotes = new Set(); selectedSteps.forEach(st => (st.sources || []).forEach(ref => { const claim = claimOf(ref.id,ref.claim), key = ref.id + '/' + ref.claim; if (claim && !seenNotes.has(key)) { seenNotes.add(key); notes.push(LANG === 'fr' ? claim.fr || claim.text : claim.text); } }));
+      const notes = [], seenNotes = new Set(); selectedSteps.forEach(st => (st.sources || []).forEach(ref => { const claim = guidanceClaim(ref), key = ref.id + '/' + ref.claim; if (claim && !seenNotes.has(key)) { seenNotes.add(key); notes.push(LANG === 'fr' ? claim.fr || claim.text : claim.text); } }));
       const comparing = ['compare','whatif'].includes(j.kind) || newStory !== baseStory;
       const safeText = notes.length ? t('Voici les notes non relues du catalogue liées aux étapes choisies : ', 'Here are the unreviewed catalogue notes linked to the selected steps: ') + notes.join(' ') : t('Le catalogue ne fournit pas de réponse établie à cette question. Ouvrez l’étape proposée et confirmez auprès de ', 'The catalogue does not establish an answer to this question. Open the proposed step and confirm with ') + (selectedSteps[0] && selectedSteps[0].confirm_with || t('l’autorité compétente', 'the competent authority')) + '.';
       const guide = !comparing && (answerText || j.kind === 'question' || found.length) ? [{ role: 'guide', text: safeText, steps: found, prov: res.prov, catalogueOnly: true, notCovered: !notes.length || !!j.not_covered }] : [];
@@ -646,6 +1028,16 @@
     const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
     set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: p.kind === 'story' ? {} : answerSets, questionDefs: p.kind === 'story' ? {} : state.questionDefs, done: p.kind === 'story' ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
   }
+  async function refreshSources() {
+    if (!state.tree || state.loading || !live()) return;
+    const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
+    const id = beginRequest(t('Apertus compare les sources actuelles…','Apertus is comparing current sources…'));
+    try {
+      const tree = await fetchTree(viewedStory(),currentVars(),viewedAnswers(),previous,null); if (!stillCurrent(id)) return;
+      if (exploring) set({exploreTree:tree,loading:'',sel:null});
+      else set({pending:{kind:'refresh',story:state.story,vars:state.vars,answers:state.answers,qtexts:state.qtexts,tree,from:t('ma carte','my map'),to:t('la carte actualisée','the refreshed map')},loading:'',sel:null});
+    } catch(e) { if(stillCurrent(id))set({loading:'',error:e.message}); }
+  }
   function keep() { set({ pending: null, sel: null }); }
   async function proposeAnswer(qid, to) {
     to = String(to || '').trim(); const cur = viewedAnswers(); if (!to || !(qid in cur) || cur[qid] === to || state.loading) return;
@@ -672,7 +1064,7 @@
   }
 
   // ---- Diff by id ----
-  const same = (a, b) => a.short === b.short && JSON.stringify(a.depends_on || []) === JSON.stringify(b.depends_on || []) && a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && JSON.stringify(a.sources || []) === JSON.stringify(b.sources || []) && JSON.stringify(a.sourceGaps || []) === JSON.stringify(b.sourceGaps || []);
+  const same = (a, b) => a.short === b.short && JSON.stringify(a.depends_on || []) === JSON.stringify(b.depends_on || []) && a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && sourcesIdentity(a.sources) === sourcesIdentity(b.sources) && JSON.stringify(a.sourceGaps || []) === JSON.stringify(b.sourceGaps || []);
   function diffBranches(A, B) {
     const ids = A.map(b => b.id); B.forEach((b, i) => { if (!ids.includes(b.id)) ids.splice(Math.min(i, ids.length), 0, b.id); });
     return ids.map(id => {
@@ -874,6 +1266,7 @@
   function mapToolbar(d, mobile) {
     const c = count(d), p = state.pending;
     let html = '<div class="map-tools"><div><div class="map-title">' + (d.exploreOn ? t('Explorer un autre chemin', 'Explore another path') : d.previewOn ? t('Votre chemin, et l’alternative', 'Your path, and the alternative') : t('Votre carte de parcours', 'Your journey map')) + '</div><div class="map-meta">' + d.rows.length + t(' pistes · étapes proposées par Apertus', ' paths · steps proposed by Apertus') + '</div></div><div class="map-actions">' + (!mobile ? '<button data-action="zoom-out" aria-label="' + t('Réduire', 'Zoom out') + '">−</button><button data-action="fit" aria-pressed="' + (state.mapZoom === 'fit') + '">' + t('Vue entière', 'Fit map') + '</button><button data-action="zoom-in" aria-label="' + t('Agrandir', 'Zoom in') + '">+</button>' : '') + '<button data-action="plan">' + t('Mon plan', 'My plan') + '</button>' + (state.history.length && !d.exploreOn ? '<button data-action="undo">' + t('Annuler le changement', 'Undo change') + '</button>' : '') + '</div></div>';
+    if (d.tree.catalogueVersion !== CATALOG_VERSION) html += '<div class="catalogue-update"><p>' + (d.tree.catalogueVersion ? t('Le catalogue a changé. Les notes conservées correspondent à la carte d’origine.', 'The catalogue has changed. Recorded notes belong to the original map.') : t('La version d’origine des sources n’a pas été enregistrée.', 'The original source version was not recorded.')) + '</p><button type="button" class="btn" data-action="refresh-sources"' + (live() && !state.loading ? '' : ' disabled') + '>' + t('Comparer avec les sources actuelles','Compare current sources') + '</button></div>';
     if (d.previewOn) html += '<div class="map-comparison"><span>' + c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') + c.same + t(' identiques. Rien n’est appliqué.', ' identical. Nothing is applied.') + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt">' + t('Adopter', 'Adopt') + '</button></div>';
     if (mobile) html += '<div class="lane-tabs" role="group" aria-label="' + t('Pistes', 'Paths') + '">' + d.rows.map(r => '<button data-lane-select="' + esc(r.id) + '" aria-pressed="' + (r.id === (state.activeLane && d.rows.some(x => x.id === state.activeLane) ? state.activeLane : d.rows[0].id)) + '">' + esc(r.name) + '</button>').join('') + '</div>';
     return html;
@@ -894,16 +1287,17 @@
   function fmtDate(d) { if (!d) return ''; const [y, m, dd] = d.split('-'); return LANG === 'en' ? Number(dd) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m) - 1] + ' ' + y : Number(dd) + ' ' + ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'][Number(m) - 1] + ' ' + y; }
   function sourceBlock(st) {
     const lv = LV()[st.authority] || LV().other;
-    const refs = (st.sources || []).map(r => ({ cat: catalogById(r.id), claim: claimOf(r.id, r.claim) })).filter(r => r.cat);
+    const refs = (st.sources || []).map(referenceOf).filter(r => r.cat);
     const gaps = (st.sourceGaps || []).map(g => '<div class="small cf">' + esc(g.reason) + '</div>').join('');
     if (!refs.length) return gaps + '<div class="zone soft"><div class="zone-title">' + t('Aucune page du catalogue reliée pour cette étape', 'No catalogue page linked for this step') + '</div><div class="small">' + t('Le guide ne relie que des pages de son catalogue ; aucune n’a été sélectionnée pour cette étape. À vérifier auprès de : ', 'The guide links only catalogue pages; none was selected for this step. Check with: ') + '<b>' + esc(st.confirm_with || lv.name) + '</b></div></div>';
     let html = '<div class="zone draft-zone"><div class="zone-title"><span class="draft-title">' + t('Non relu', 'Unreviewed') + '</span> · ' + (refs.length > 1 ? t('Pages proposées du catalogue', 'Suggested catalogue pages') : t('Page proposée du catalogue', 'Suggested catalogue page')) + '</div>';
     refs.forEach(r => {
-      const exact = r.cat.url.split('/').filter(Boolean).length > 2;
+      const exact = r.cat.exact;
+      html += '<div class="checked">' + (r.archived ? t('Source conservée avec cette carte.', 'Source recorded with this map.') : t('Catalogue actuel ; version d’origine non enregistrée.', 'Current catalogue; original source version was not recorded.')) + (r.changed ? ' ' + t('Le catalogue a changé : comparez une nouvelle carte avant de vous appuyer sur cette note.', 'The catalogue has changed: compare a refreshed map before relying on this note.') : '') + '</div>';
       html += '<div class="ref"><a class="source" href="' + esc(r.cat.url) + '" target="_blank" rel="noopener">' + draftBadge(r.cat.level) + '<span class="link">' + esc(r.cat.title) + '</span></a>';
-      if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending') + '</div>';
+      if (r.claim) html += '<div class="claim">' + esc(LANG === 'fr' ? r.claim.fr || r.claim.text : r.claim.text) + '</div><div class="checked">' + (r.claim.status === 'reviewed' ? t('Note du catalogue relue · correspondance avec cette étape générée non relue', 'Reviewed catalogue note · match to this generated step unreviewed') : t('Note préparée du catalogue · le modèle a choisi cette référence · correspondance avec cette étape et relecture communale en attente', 'Draft catalogue note · the model selected this reference · match to this step and commune review pending')) + '</div>';
       else html += '<div class="checked">' + (exact ? t('Page choisie par le modèle ; aucune note du catalogue reliée à cette étape. Vérifiez sur la page.', 'Model-selected page; no catalogue note linked to this step. Check the page.') : t('Site d’entrée ; page précise encore à relier.', 'Entry site; exact page still to be linked.')) + '</div>';
-      html += '</div>';
+      html += '<div class="checked">' + esc(r.cat.pack + ' v' + r.cat.packVersion) + (r.claim ? ' · ' + esc(r.claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(r.claim.sourceCheckedOn || t('non renseigné', 'not recorded')) + (r.claim.reviewer ? ' · ' + esc(r.claim.reviewer) + ' · ' + esc(r.claim.reviewedOn) : '') : '') + '</div></div>';
     });
     if (st.confirm_with) html += '<div class="cf">' + t('À confirmer : ', 'To confirm with: ') + '<b>' + esc(st.confirm_with) + '</b></div>';
     return gaps + html + '</div>';
@@ -912,7 +1306,7 @@
   function buildPlan(d) {
     const next = d.tree.branches.map(b => { const nx = b.steps.find(s => !isDone(s.id)); return { branch: b.name, title: nx ? nx.title : b.steps[b.steps.length - 1].title, done: !nx }; });
     const open = (d.tree.questions || []).filter(q => !(q.id in (d.answers || {}))).map(q => q.text);
-    const seen = {}, pages = []; d.tree.branches.forEach(b => b.steps.forEach(s => (s.sources || []).forEach(r => { const c = catalogById(r.id); if (c && !seen[c.id]) { seen[c.id] = 1; pages.push(c); } })));
+    const seen = {}, pages = []; d.tree.branches.forEach(b => b.steps.forEach(s => (s.sources || []).forEach(r => { const c = referenceOf(r).cat; if (c && !seen[c.id]) { seen[c.id] = 1; pages.push(c); } })));
     return { next, open, pages };
   }
   function planText(d) {
@@ -921,10 +1315,10 @@
   }
   function printPlan(d) {
     if (!d.tree) return;
-    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p><div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const cat = catalogById(r.id), claim = claimOf(r.id, r.claim); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a>' + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
+    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2><p class="print-meta">Catalogue ' + esc(tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p><div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const {cat,claim,archived,changed} = referenceOf(r); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a><br>' + esc(cat.pack + ' v' + cat.packVersion) + ' · ' + (claim ? esc(claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '<br>' + (archived ? t('Source conservée avec la carte.', 'Source recorded with the map.') : t('Catalogue actuel ; version d’origine non enregistrée.', 'Current catalogue; original source version not recorded.')) + (changed ? ' ' + t('Catalogue actualisé depuis : vérifiez à nouveau.', 'Catalogue updated since: check again.') : '') + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
     const visual = (document.getElementById('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/) || [''])[0];
     const date = new Date().toLocaleString(LANG === 'fr' ? 'fr-CH' : 'en-GB');
-    document.getElementById('print-plan').innerHTML = '<h1>' + t('Mon parcours · document de préparation', 'My journey · preparation document') + '</h1><p>' + esc(viewedStory()) + '</p><p class="print-meta">' + esc(date) + ' · ' + esc(provLabel(d.tree.prov)) + ' · ' + t('Version de la carte : ', 'Map version: ') + esc(d.tree.key || hash(JSON.stringify(d.tree.branches))) + '</p><p><b>' + t('Étapes proposées par un modèle, non relues par une commune. Ce document prépare vos questions pour le service ou le professionnel compétent ; il ne confirme aucune décision.', 'Model-proposed steps, unreviewed by a commune. This document prepares your questions for the competent office or professional; it confirms no decision.') + '</b></p>' + (visual ? '<p class="print-meta">' + t('Vue de la carte affichée ; toutes les étapes sont détaillées ci-dessous.', 'View of the displayed map; all steps are detailed below.') + '</p>' + visual : '') + treeHTML(d.tree, d.answers || {}, d.qtexts || {}, d.exploreOn) + (d.previewOn ? '<div class="print-alternative"><p>' + esc(state.pending.story) + '</p>' + treeHTML(state.pending.tree, state.pending.answers || {}, state.pending.qtexts || {}, true) + '</div>' : '') + '<h2>' + t('À compléter avec votre interlocuteur', 'Complete with your adviser') + '</h2><p>' + t('Questions, corrections, documents à apporter :', 'Questions, corrections, documents to bring:') + '</p><br><br><br>';
+    document.getElementById('print-plan').innerHTML = '<h1>' + t('Mon parcours · document de préparation', 'My journey · preparation document') + '</h1><p>' + esc(viewedStory()) + '</p><p class="print-meta">' + esc(date) + ' · ' + esc(provLabel(d.tree.prov)) + ' · ' + t('Version de la carte : ', 'Map version: ') + esc(d.tree.key || hash(JSON.stringify(d.tree.branches))) + ' · Catalogue ' + esc(d.tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p><p><b>' + t('Étapes proposées par un modèle, non relues par une commune. Ce document prépare vos questions pour le service ou le professionnel compétent ; il ne confirme aucune décision.', 'Model-proposed steps, unreviewed by a commune. This document prepares your questions for the competent office or professional; it confirms no decision.') + '</b></p>' + (visual ? '<p class="print-meta">' + t('Vue de la carte affichée ; toutes les étapes sont détaillées ci-dessous.', 'View of the displayed map; all steps are detailed below.') + '</p>' + visual : '') + treeHTML(d.tree, d.answers || {}, d.qtexts || {}, d.exploreOn) + (d.previewOn ? '<div class="print-alternative"><p>' + esc(state.pending.story) + '</p>' + treeHTML(state.pending.tree, state.pending.answers || {}, state.pending.qtexts || {}, true) + '</div>' : '') + '<h2>' + t('À compléter avec votre interlocuteur', 'Complete with your adviser') + '</h2><p>' + t('Questions, corrections, documents à apporter :', 'Questions, corrections, documents to bring:') + '</p><br><br><br>';
     window.print();
   }
   function renderDetail(d) {
@@ -1026,7 +1420,7 @@
     const pa = e.target.closest('[data-propose-answer]'); if (pa) { proposeAnswer(pa.dataset.proposeAnswer, pa.dataset.value); return; }
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'refresh-sources') { refreshSources(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
     const lane = e.target.closest('[data-lane-select]'); if (lane) { set({ activeLane: lane.dataset.laneSelect, sel: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }

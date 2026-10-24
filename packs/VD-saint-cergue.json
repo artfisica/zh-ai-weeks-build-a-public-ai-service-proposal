@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "VD-saint-cergue",
+  "version": 1,
+  "entries": [
+    {
+      "id": "stcergue-arrival",
+      "level": "commune",
+      "url": "https://www.st-cergue.ch/prestations-communales/113320",
+      "title": "Commune de Saint-Cergue — Arrivée à St-Cergue",
+      "covers": "Saint-Cergue: registering on arrival, documents, deadline",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "Saint-Cergue asks new residents to present themselves at the counter after announcing departure from the previous commune; the documents depend on their situation.",
+          "fr": "Saint-Cergue demande aux nouveaux résidents de se présenter au guichet après l’annonce de départ de l’ancienne commune ; les documents varient selon leur situation.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": "saint-cergue"
+      },
+      "exact": true
+    }
+  ]
+}

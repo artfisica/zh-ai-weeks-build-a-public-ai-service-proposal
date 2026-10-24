@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "VD-nyon",
+  "version": 1,
+  "entries": [
+    {
+      "id": "nyon-cdh",
+      "level": "commune",
+      "url": "https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382",
+      "title": "Ville de Nyon — Contrôle des habitants",
+      "covers": "Nyon residents registry: arrival, departure, address change",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "The Contrôle des habitants is the municipal point of contact for resident registration in Nyon.",
+          "fr": "Le Contrôle des habitants est le point de contact communal pour l’enregistrement des résidents à Nyon.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": "nyon"
+      },
+      "exact": true
+    }
+  ]
+}

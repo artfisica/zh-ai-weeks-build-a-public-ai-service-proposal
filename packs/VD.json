@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "id": "VD",
+  "version": 1,
+  "entries": [
+    {
+      "id": "vd-address",
+      "level": "canton",
+      "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
+      "title": "État de Vaud — Annoncer son changement d’adresse (eDéménagement)",
+      "covers": "Vaud: online change of address, conditions by permit type, list of connected communes",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "Vaud eDéménagement covers qualifying moves from participating communes; check whether both departure and arrival can be announced online.",
+          "fr": "eDéménagement couvre certains départs de communes participantes ; vérifiez si le départ et l’arrivée peuvent tous deux être annoncés en ligne.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        },
+        {
+          "id": "c2",
+          "text": "Online eligibility differs by nationality and permit type, and arrivals from abroad are excluded.",
+          "fr": "L’accès à la démarche en ligne dépend notamment de la nationalité et du permis ; les arrivées de l’étranger en sont exclues.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "vd-tax-communes",
+      "level": "canton",
+      "url": "https://www.vd.ch/etat-droit-finances/statistique/statistiques-par-domaine/18-finances-publiques-et-administration/finances-communales",
+      "title": "Statistique Vaud — Arrêtés d’imposition des communes",
+      "covers": "communal tax coefficients of all Vaud communes, by year",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "The canton publishes information on communal finances and tax coefficients; check the relevant year and commune.",
+          "fr": "Le canton publie des informations sur les finances et les coefficients fiscaux communaux ; vérifiez l’année et la commune concernées.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "vd-vote-directive",
+      "level": "canton",
+      "url": "https://www.vd.ch/fileadmin/user_upload/themes/etat_droit/votations_elections/fichiers_pdf/Directive_droit_de_vote_en_mati%C3%A8re_communale.pdf",
+      "title": "État de Vaud — Directive droit de vote communal",
+      "covers": "who may vote at communal level in Vaud, including foreign residents (conditions)",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "The canton sets conditions for foreign residents to vote at communal level; read the directive for the qualifying residence periods.",
+          "fr": "Le canton fixe les conditions du droit de vote communal des résidents étrangers ; consultez la directive pour les durées de résidence requises.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": null
+      },
+      "exact": true
+    },
+    {
+      "id": "mobilis",
+      "level": "other",
+      "url": "https://www.mobilis-vaud.ch",
+      "title": "Mobilis — Communauté tarifaire vaudoise",
+      "covers": "Vaud public transport fare zones and passes (site root)",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "Mobilis provides fare information for public transport in Vaud; check current zones and prices there.",
+          "fr": "Mobilis fournit les informations tarifaires des transports publics vaudois ; vérifiez les zones et les prix en vigueur.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": null
+      },
+      "exact": false
+    },
+    {
+      "id": "jestime",
+      "level": "other",
+      "url": "https://jestime.ch",
+      "title": "jestime.ch — Estimation anonyme des prestations sociales (HES-SO)",
+      "covers": "anonymous estimate of means-tested social benefits and where to claim them; Vaud now, Geneva from 2027; not an official page",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "An independent tool for exploring potential social benefits in Vaud; this is an estimate, not an eligibility decision.",
+          "fr": "Un outil indépendant pour estimer les prestations sociales possibles dans le canton de Vaud ; il ne décide pas de l’éligibilité.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": null,
+          "recheckOn": null
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": null
+      },
+      "exact": false
+    },
+    {
+      "id": "vd-root",
+      "level": "canton",
+      "url": "https://www.vd.ch",
+      "title": "État de Vaud (site officiel)",
+      "covers": "any Vaud cantonal service not listed above: schools (DGEO), taxes (ACI), health, family; site root, exact page to be linked",
+      "claims": [],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": null
+      },
+      "exact": false
+    }
+  ]
+}
