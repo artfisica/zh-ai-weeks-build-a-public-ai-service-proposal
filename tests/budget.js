@@ -15,7 +15,7 @@ test('Budget survives restart and enforces both limits', t => {
 });
 test('Corrupt and malformed budgets fail closed rather than resetting allowance', t => {
   const file=fixture(t);
-  for (const text of ['{','null','{}','{"day":"2026-10-24","used":-1,"callers":{}}','{"day":"2026-10-24","used":1,"callers":{"x":null}}']) {
+  for (const text of ['{','null','{}','{"day":"2026-99-99","used":1,"callers":{}}','{"day":"2026-10-24","used":-1,"callers":{}}','{"day":"2026-10-24","used":1,"callers":{"x":null}}']) {
     fs.writeFileSync(file,text);const store=new BudgetStore(file,3,1);assert.equal(store.take('one').reason,'storage');assert.equal(store.peek().remaining,0);assert.equal(fs.readFileSync(file,'utf8'),text);
   }
 });

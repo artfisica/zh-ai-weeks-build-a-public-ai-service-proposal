@@ -2,6 +2,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+function validDay(day) { const date = new Date(day); return typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(date.getTime()) && date.toISOString().slice(0,10) === day; }
+
 // One writer per budget file. Corruption or write failure blocks model calls until repaired.
 class BudgetStore {
   constructor(file, dailyLimit, hourlyLimit, now = () => new Date()) {
@@ -10,7 +12,7 @@ class BudgetStore {
     try { fs.accessSync(path.dirname(file), fs.constants.W_OK); } catch (_) { this.error = true; return; }
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (!saved || !/^\d{4}-\d{2}-\d{2}$/.test(saved.day) || !Number.isSafeInteger(saved.used) || saved.used < 0 || !saved.callers || Array.isArray(saved.callers) || typeof saved.callers !== 'object' || Object.values(saved.callers).some(n => !Number.isSafeInteger(n) || n < 0)) throw new Error('invalid budget');
+      if (!saved || !validDay(saved.day) || !Number.isSafeInteger(saved.used) || saved.used < 0 || !saved.callers || Array.isArray(saved.callers) || typeof saved.callers !== 'object' || Object.values(saved.callers).some(n => !Number.isSafeInteger(n) || n < 0)) throw new Error('invalid budget');
       this.state = saved;
     } catch (e) { if (e.code !== 'ENOENT') this.error = true; }
   }
