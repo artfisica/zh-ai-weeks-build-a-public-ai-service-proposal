@@ -75,7 +75,7 @@ PILOT.md                           six-week discovery pilot proposal
 docs/architecture-one-slide.svg    readable presentation overview
 docs/architecture-detailed.svg     dated engineering and trust-boundary diagram
 tests/check-inline.js              inline script syntax check
-tests/smoke.js                     64 state, source, path-change and failure regressions
+tests/smoke.js                     65 state, source, path-change and failure regressions
 tests/proxy.js                     6 local HTTP integration tests; no provider calls
 tests/harness.js / fixtures.js      isolated test harness and fictional cases
 .github/workflows/check.yml        syntax, smoke and proxy checks on push and PR
