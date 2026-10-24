@@ -25,6 +25,6 @@ EVAL_ORIGIN=https://artfisica.github.io node tools/evaluate.js \
   --proxy https://YOUR-PROXY --output /tmp/public-ai-rehearsal.json --max-calls 25
 ```
 
-Set `EVAL_DEMO_TOKEN` in the environment if rehearsal access requires one. The runner saves raw fictional responses, model identity, durations and normalized maps after each case. A technical result always leaves content review pending. A full failed or incomplete run exits nonzero; `--cases 1,2,3,7` intentionally records a partial rehearsal rather than a completed ten-case evaluation.
+Set `EVAL_DEMO_TOKEN` in the environment if rehearsal access requires one. The runner saves raw fictional responses, model identity, durations and normalized maps after each case. A technical result always leaves content review pending. A failed or incomplete requested selection exits nonzero; a successful subset exits zero while `completeSet` remains false. `--cases 1,2,3,7` intentionally records a partial rehearsal rather than a completed ten-case evaluation.
 
 For browser checks: `npm ci --ignore-scripts`, `npx playwright install chromium`, then `npm run test:browser`. Screenshots, PDFs and reports are retained as CI artifacts. A broader hosting migration, municipal content approval or resident study can be discussed later; none is a prerequisite for an honest reply about this prototype on Monday.
