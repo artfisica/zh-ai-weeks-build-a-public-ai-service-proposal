@@ -4,3 +4,7 @@ node_modules/
 *.log
 .DS_Store
 .budget.json
+
+.budget.json.tmp
+.proxy.pid
+.start-lock/
