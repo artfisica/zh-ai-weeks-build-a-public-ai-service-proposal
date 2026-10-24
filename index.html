@@ -202,6 +202,7 @@
   const PUBLIC_PROXY_URL = '';
   const LOCAL_DEV = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
   const ACCENT = '#1F4E8C', STORE_KEY = 'public-ai-commune.v5', CONN_KEY = 'public-ai-commune.conn.v5', LANG_KEY = 'public-ai-commune.lang';
+  let storageWarning = '', rememberOnDevice = true;
   let LANG = 'fr';
   try { LANG = localStorage.getItem(LANG_KEY) || ((navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'fr'); } catch (e) {}
   const t = (fr, en) => LANG === 'en' ? en : fr;
@@ -269,10 +270,74 @@
   const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
-  function storyWithVars(story, vars, original) { let result = story; (vars || []).forEach(v => { const was = (original || []).find(x => x.id === v.id); if (!was || was.value === v.value) return; const oldText = was.span || was.value, at = result.toLowerCase().indexOf(oldText.toLowerCase()); if (at >= 0) result = result.slice(0, at) + v.value + result.slice(at + oldText.length); }); return result; }
-  function normalizeTree(tree) { if (tree && Array.isArray(tree.branches)) tree.branches.forEach(b => (b.steps || []).forEach(s => { if (!Array.isArray(s.sources)) s.sources = s.source ? [{ id: s.source, claim: null }] : []; })); return tree && Array.isArray(tree.branches) ? constrainSources(tree) : tree; }
-  function load() { try { const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (d && d.story) { state.story = d.story; state.vars = d.vars || []; state.answers = d.answers || {}; state.qtexts = d.qtexts || {}; state.questionDefs = d.questionDefs || Object.fromEntries(((d.tree || {}).questions || []).map(q => [q.id, q])); state.answerSets = d.answerSets || {}; state.turns = d.turns || []; state.history = (d.history || []).slice(-5).map(h => Object.assign({}, h, { tree: normalizeTree(h.tree) })); state.trees = d.trees || {}; Object.keys(state.trees).forEach(k => normalizeTree(state.trees[k])); state.tree = normalizeTree(d.tree || null); const legacyScope = hash(JSON.stringify(state.vars.map(v => [v.id,v.value])) + JSON.stringify(state.answers)); state.done = (d.done || []).map(x => { x = String(x); if (x.includes('|v2|')) return x; const [id,scope] = x.split('|'); return !scope || scope === legacyScope ? doneKey(id) : x; }); } } catch (e) {} }
-  function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, questionDefs: state.questionDefs, answerSets: state.answerSets, trees: state.trees, tree: state.tree, done: state.done, turns: state.turns, history: state.history })); } catch (e) {} }
+  function storyWithVars(story, vars, original) {
+    const replacements = [];
+    for (const v of vars || []) {
+      const was = (original || []).find(x => x.id === v.id);
+      if (!was || was.value === v.value) continue;
+      const quote = was.span || was.value;
+      if (!quote) continue;
+      const escaped = quote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const matches = story.matchAll(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'));
+      for (const match of matches) {
+        const at = match.index, end = at + match[0].length;
+        if (!replacements.some(p => at < p.end && end > p.at)) { replacements.push({ at, end, value: v.value }); break; }
+      }
+    }
+    let result = story;
+    replacements.sort((a,b) => b.at-a.at).forEach(p => { result = result.slice(0,p.at) + p.value + result.slice(p.end); });
+    return result;
+  }
+  function normalizeTree(tree) {
+    if (!tree || !Array.isArray(tree.branches) || !Array.isArray(tree.questions) || !Array.isArray(tree.variables)) throw new Error('Invalid saved map');
+    tree.branches.forEach(b => {
+      if (!b || typeof b.id !== 'string' || typeof b.name !== 'string' || !Array.isArray(b.steps)) throw new Error('Invalid saved branch');
+      b.steps.forEach(st => {
+        if (!st || ['id','short','title','why'].some(k => typeof st[k] !== 'string') || !Array.isArray(st.depends_on)) throw new Error('Invalid saved step');
+        if (!Array.isArray(st.sources)) st.sources = st.source ? [{ id: st.source, claim: null }] : [];
+        st.sources = st.sources.filter(r => r && catalogById(r.id)).map(r => ({ id:r.id, claim:claimId(r.id,r.claim) }));
+      });
+    });
+    if (tree.questions.some(q => !q || typeof q.id !== 'string' || typeof q.text !== 'string' || !Array.isArray(q.options)) || tree.variables.some(v => !v || typeof v.id !== 'string' || typeof v.value !== 'string' || !Array.isArray(v.alternatives) || v.alternatives.some(a => typeof a !== 'string') || (v.span != null && typeof v.span !== 'string'))) throw new Error('Invalid saved inputs');
+    return constrainSources(tree);
+  }
+  function savedSnapshot(d) {
+    if (!d || typeof d.story !== 'string' || !Array.isArray(d.vars) || d.vars.some(v => !v || typeof v.id !== 'string' || typeof v.value !== 'string' || !Array.isArray(v.alternatives) || v.alternatives.some(a => typeof a !== 'string') || (v.span != null && typeof v.span !== 'string'))) throw new Error('Invalid saved situation');
+    for (const key of ['answers','qtexts','questionDefs','answerSets']) if (d[key] && (typeof d[key] !== 'object' || Array.isArray(d[key]))) throw new Error('Invalid saved answers');
+    for (const key of ['done','turns']) if (d[key] && !Array.isArray(d[key])) throw new Error('Invalid saved list');
+    if ((d.turns || []).some(u => !u || typeof u.role !== 'string' || typeof u.text !== 'string' || (u.steps && (!Array.isArray(u.steps) || u.steps.some(x => !x || !Number.isInteger(x.li) || typeof x.id !== 'string'))))) throw new Error('Invalid saved conversation');
+    for (const key of ['answers','qtexts']) if (Object.values(d[key] || {}).some(v => typeof v !== 'string')) throw new Error('Invalid saved answer value');
+    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); }
+    return Object.assign({}, d, { tree:normalizeTree(d.tree) });
+  }
+  function load() {
+    try {
+      rememberOnDevice = localStorage.getItem(STORE_KEY + '.remember') !== 'no';
+      if (!rememberOnDevice) return;
+      const raw = localStorage.getItem(STORE_KEY); if (!raw) return;
+      const d = savedSnapshot(JSON.parse(raw));
+      const history = (d.history || []).slice(-5).map(savedSnapshot);
+      Object.assign(state, { story:d.story, vars:d.vars, answers:d.answers || {}, qtexts:d.qtexts || {}, questionDefs:d.questionDefs || Object.fromEntries(d.tree.questions.map(q => [q.id,q])), answerSets:d.answerSets || {}, turns:d.turns || [], history, tree:d.tree, done:d.done || [], trees:{} });
+      const legacyScope = hash(JSON.stringify(state.vars.map(v => [v.id,v.value])) + JSON.stringify(state.answers));
+      state.done = state.done.map(x => { x=String(x); if(x.includes('|v2|'))return x;const [id,scope]=x.split('|');return !scope || scope===legacyScope ? doneKey(id) : x; });
+    } catch (e) { storageWarning = t('La carte enregistrée ne peut pas être chargée. Recommencez pour effacer ces données et créer une nouvelle carte.', 'The saved map could not be loaded. Start over to clear this data and create a new map.'); }
+  }
+  function persist() {
+    if (!rememberOnDevice) return;
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ story:state.story, vars:state.vars, answers:state.answers, qtexts:state.qtexts, questionDefs:state.questionDefs, answerSets:state.answerSets, tree:state.tree, done:state.done, turns:state.turns, history:state.history }));
+      storageWarning = '';
+    } catch (e) { storageWarning = t('La carte reste dans cet onglet, mais le navigateur ne peut pas l’enregistrer. Imprimez le plan avant de fermer.', 'Your map remains in this tab, but the browser cannot save it. Print the plan before closing.'); }
+  }
+  function toggleRemember() {
+    const next = !rememberOnDevice;
+    try {
+      if (!next) localStorage.removeItem(STORE_KEY);
+      localStorage.setItem(STORE_KEY + '.remember', next ? 'yes' : 'no');
+      rememberOnDevice = next; storageWarning = ''; if (next && state.tree) persist();
+    } catch (e) { storageWarning = t('Le navigateur ne peut pas modifier les données enregistrées. Effacez les données du site dans ses réglages.', 'The browser could not change saved data. Clear site data in browser settings.'); }
+    render();
+  }
   const set = (patch, save) => { Object.assign(state, patch); if (save) persist(); render(); };
 
 
@@ -284,7 +349,7 @@
   function snapshot() { return JSON.parse(JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, questionDefs: state.questionDefs, answerSets: state.answerSets, tree: state.tree, done: state.done, turns: state.turns, note: state.note })); }
   function remember() { if (state.tree) state.history = state.history.concat([snapshot()]).slice(-5); }
   function undo() { if (!state.history.length) return; cancelRequests(); const previous = state.history[state.history.length - 1], history = state.history.slice(0, -1); set(Object.assign({}, previous, { history, prevTree: null, pending: null, loading: '', error: '', sel: null, suggestedStory: '', mode: 'situation', exploreStory: null, exploreTree: null, exploreVars: null }), true); }
-  function reset() { cancelRequests(); lastDrawn = null; try { localStorage.removeItem(STORE_KEY); } catch (e) {} set({ story: '', draftStory: '', followDraft: '', editDraft: '', vars: [], answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, history: [], pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, error: '', loading: '', mode: 'situation', exploreVars: null, exploreTree: null, exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], turns: [], editing: false, activeLane: null }); }
+  function reset() { cancelRequests(); lastDrawn = null; try { localStorage.removeItem(STORE_KEY); storageWarning = ''; } catch (e) { storageWarning = t('Les données enregistrées n’ont pas pu être effacées. Utilisez les réglages du navigateur.', 'Saved data could not be removed. Use browser settings to clear site data.'); } set({ story: '', draftStory: '', followDraft: '', editDraft: '', vars: [], answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, history: [], pending: null, suggestedStory: '', prevTree: null, sel: null, done: [], note: null, error: '', loading: '', mode: 'situation', exploreVars: null, exploreTree: null, exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], turns: [], editing: false, activeLane: null }); }
   function viewedStory() { return state.mode === 'explore' ? (state.exploreStory || storyWithVars(state.story, state.exploreVars, state.vars)) : state.story; }
   function viewedAnswers() { return state.mode === 'explore' ? state.exploreAnswers : state.answers; }
   async function requestJSON(url, options, timeout, cancellable = true) {
@@ -307,11 +372,15 @@
     if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 429 ? t(' (limite atteinte)', ' (limit reached)') : ''));
     return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '', prov: j.provenance || { provider: 'proxy', model: '' } };
   }
+  let connectionId = 0;
   async function connect() {
+    const id = ++connectionId, proxyUrl = conn.proxyUrl;
+    cancelRequests(); state.loading = '';
     conn.status = 'testing'; conn.error = ''; conn.prov = null; saveConn(); renderConn();
     try {
       if (!conn.proxyUrl) throw new Error(t('adresse du proxy manquante', 'proxy address missing'));
-      const { response: r, data: h } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/health', {}, 12000, false);
+      const { response: r, data: h } = await requestJSON(proxyUrl.replace(/\/$/, '') + '/health', {}, 12000, false);
+      if (id !== connectionId) return;
       if (!h) throw new Error('HTTP ' + r.status);
       if (!h.ready) throw new Error(t('le proxy n’est pas prêt', 'the proxy is not ready') + (h.missing ? ' : ' + h.missing.join(', ') : ''));
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -320,7 +389,7 @@
       if (h.maxTokens === undefined) throw new Error(t('le proxy tourne avec un ancien serveur. Dans le Codespace : git pull ; pkill node ; bash proxy/start.sh', 'the proxy is running an old server. In the Codespace: git pull; pkill node; bash proxy/start.sh'));
       if (h.maxTokens && h.maxTokens < 2500) throw new Error(t('le proxy limite les réponses à ', 'the proxy caps answers at ') + h.maxTokens + t(' tokens ; une carte en demande 3000. Dans le Codespace : git pull, puis bash proxy/start.sh', ' tokens; a map needs 3000. In the Codespace: git pull, then bash proxy/start.sh'));
       conn.prov = { provider: h.provider || 'proxy', model: h.model || '', processing: h.processing || '' }; conn.status = 'ok';
-    } catch (e) { conn.status = 'error'; conn.error = (e && e.message) || 'failed'; }
+    } catch (e) { if (id !== connectionId) return; conn.status = 'error'; conn.error = (e && e.message) || 'failed'; }
     renderConn(); render();
   }
 
@@ -616,7 +685,8 @@
   function doneKey(id, vars = currentVars(), answers = vars === state.exploreVars ? state.exploreAnswers : answersFor(vars)) {
     const tree = state.mode === 'explore' ? state.exploreTree : state.tree;
     const step = tree && tree.branches.flatMap(b => b.steps).find(s => s.id === id);
-    const dependencies = step && step.depends_on && step.depends_on.length ? step.depends_on : null;
+    const known = new Set([...(vars || []).map(v => v.id), ...Object.keys(answers || {})]);
+    const dependencies = step && step.depends_on && step.depends_on.length && step.depends_on.every(id => known.has(id)) ? step.depends_on : null;
     const facts = (vars || []).filter(v => !dependencies || dependencies.includes(v.id)).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0]));
     const responses = Object.keys(answers || {}).filter(k => !dependencies || dependencies.includes(k)).sort().map(k => [k, answers[k]]);
     const meaning = step ? [step.title,step.why,step.authority,step.confirm_with,step.sources,step.sourceGaps || []] : [];
@@ -626,9 +696,12 @@
   let lastDrawn = null;
 
   // ---- Story panel ----
+  function privacyControls() {
+    return '<div class="hint">' + t('Votre phrase et la carte sont envoyées au fournisseur connecté. Évitez les identifiants personnels.', 'Your sentence and map are sent to the connected provider. Avoid personal identifiers.') + '</div><button type="button" class="link-btn" data-action="toggle-remember" aria-pressed="' + rememberOnDevice + '">' + (rememberOnDevice ? t('Enregistrer sur cet appareil : oui', 'Save on this device: on') : t('Enregistrer sur cet appareil : non', 'Save on this device: off')) + '</button>' + (storageWarning ? '<div class="err" role="alert">' + esc(storageWarning) + '</div>' : '');
+  }
   function renderStory(d) {
     const s = state, vars = currentVars();
-    let html = '';
+    let html = privacyControls();
     if (!s.story) {
       html += '<div class="eyebrow story-label">' + t('Votre situation', 'Your situation') + '</div><p class="hint">' + t('Écrivez-la dans la grande case. La carte se dessine à partir de vos mots.', 'Write it in the big box. The map is drawn from your words.') + '</p>';
       document.getElementById('story').className = 'story is-empty'; document.getElementById('story').innerHTML = html; return;
@@ -707,8 +780,8 @@
     let overlay = s.loading ? '<div class="loading" role="status"><span>' + esc(s.loading) + '</span><button type="button" data-action="cancel-request">' + t('Annuler · garder ma carte', 'Cancel · keep my map') + '</button></div>' : '';
     if (!d.tree) {
       const preview = '<svg class="preview" viewBox="0 0 640 200" aria-hidden="true"><path d="M 30 100 C 110 100, 110 40, 190 40 L 330 40 C 400 40, 420 40, 520 40" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1"/><path d="M 30 100 L 190 100 L 330 100 L 520 100" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1" style="animation-delay:.15s"/><path d="M 30 100 C 110 100, 110 160, 190 160 L 330 160 L 520 160" fill="none" stroke="#C9C2B2" stroke-width="2.5" pathLength="1" style="animation-delay:.3s"/><path d="M 190 100 C 240 100, 240 135, 330 135 L 520 135" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="6 6" pathLength="1" style="animation-delay:.9s"/><circle cx="30" cy="100" r="11" fill="#1B1A17"/><circle cx="30" cy="100" r="4" fill="#fff"/>' + [[190,40,'#9A452A'],[330,40,'#2E6A4B'],[520,40,'#2C3140'],[190,100,'#9A452A'],[330,100,'#9A452A'],[520,100,'#2E6A4B'],[190,160,'#2E6A4B'],[330,160,'#2C3140']].map(c => '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="8" fill="#fff" stroke="' + c[2] + '" stroke-width="2.5"/>').join('') + '<circle cx="330" cy="135" r="8" fill="#fff" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><circle cx="520" cy="135" r="8" fill="#fff" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/><text x="560" y="44" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('Permis', 'Permit') + '</text><text x="560" y="104" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('École', 'School') + '</text><text x="560" y="139" font-size="12" fill="' + ACCENT + '" font-family="Fraunces,serif">' + t('et si… ?', 'what if…?') + '</text><text x="560" y="164" font-size="13" fill="#3E3B35" font-family="Fraunces,serif" font-weight="600">' + t('Logement', 'Housing') + '</text></svg>';
-      host.innerHTML = overlay + '<div class="empty">' + (s.error ? '<div class="err" role="alert">' + esc(s.error) + '</div>' : '') + preview + '<h1>' + t('Qu’est-ce qui change dans votre vie ?', 'What is changing in your life?') + '</h1><p>' + t('Une ou deux phrases suffisent : où vous vivez, ce qui change, qui vit avec vous, votre permis si vous en avez un. Apertus ouvre les pistes ; chaque étape propose une page du catalogue où vérifier, ou signale qu’aucune page n’est reliée.', 'One or two sentences are enough: where you live, what is changing, who lives with you, your permit if you have one. Apertus opens the paths; each step suggests a catalogue page to check, or says none is linked.') + '</p>' +
-        '<form class="ask" data-start-form><textarea name="text" placeholder="' + t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.') + '"' + (live() && !s.loading ? '' : ' disabled') + '>' + esc(state.draftStory || '') + '</textarea><div class="field"><span class="spacer"></span><button type="submit"' + (live() && !s.loading ? '' : ' disabled') + '>' + t('Dessiner ma carte', 'Draw my map') + '</button></div></form>' +
+      host.innerHTML = overlay + '<div class="empty">' + (s.error ? '<div class="err" role="alert">' + esc(s.error) + '</div>' : '') + preview + privacyControls() + '<h1>' + t('Qu’est-ce qui change dans votre vie ?', 'What is changing in your life?') + '</h1><p>' + t('Une ou deux phrases suffisent : où vous vivez, ce qui change, qui vit avec vous, votre permis si vous en avez un. Apertus ouvre les pistes ; chaque étape propose une page du catalogue où vérifier, ou signale qu’aucune page n’est reliée.', 'One or two sentences are enough: where you live, what is changing, who lives with you, your permit if you have one. Apertus opens the paths; each step suggests a catalogue page to check, or says none is linked.') + '</p>' +
+        '<form class="ask" data-start-form><label class="sr-only" for="start-story">' + t('Votre situation', 'Your situation') + '</label><textarea id="start-story" name="text" placeholder="' + t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.') + '"' + (live() && !s.loading ? '' : ' disabled') + '>' + esc(state.draftStory || '') + '</textarea><div class="field"><span class="spacer"></span><button type="submit"' + (live() && !s.loading ? '' : ' disabled') + '>' + t('Dessiner ma carte', 'Draw my map') + '</button></div></form>' +
         '<div class="hint">' + t('Ou partez d’un exemple :', 'Or start from an example:') + '</div>' +
         '<button type="button" class="example" data-example="' + esc(t('J’habite à Nyon, je suis propriétaire, mon enfant a 8 ans et j’envisage de déménager à Saint-Cergue. J’ai un permis B.', 'I live in Nyon, I own my home, my child is 8 and I am thinking of moving to Saint-Cergue. I hold a B permit.')) + '">' + t('Une famille de Nyon pense à Saint-Cergue', 'A Nyon family thinks about Saint-Cergue') + '</button>' +
         '<button type="button" class="example" data-example="' + esc(t('Je suis propriétaire d’un chalet à La Cure, le toit fuit et je voudrais aussi isoler et poser des panneaux solaires. Je ne sais pas quels permis et quelles aides existent.', 'I own a chalet in La Cure, the roof leaks and I would also like to insulate and put solar panels. I do not know which permits and subsidies exist.')) + '">' + t('Un propriétaire, un toit qui fuit, des panneaux solaires', 'A homeowner, a leaking roof, solar panels') + '</button>' +
@@ -854,7 +927,7 @@
       if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div></div>';
         if (q.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
         else if (q.type === 'choice') html += '<div class="row">' + q.options.map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
-        else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
+        else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" aria-label="' + esc(q.text) + '" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
         document.getElementById('detail').innerHTML = html + foot; return; }
     }
     if (s.sel && s.sel.aq) {
@@ -865,7 +938,7 @@
     }
     if (s.sel && s.sel.v) {
       const v = currentVars().find(x => x.id === s.sel.v);
-      if (v) { html = '<div class="eyebrow">' + esc(v.label) + '</div><h2>' + t('Et si ce n’était pas « ', 'What if it were not “') + esc(v.value) + t(' » ?', '”?') + '</h2><p class="lead">' + t('Choisissez une autre valeur : la branche correspondante pousse en pointillé, rien n’est appliqué tant que vous ne décidez pas.', 'Pick another value: the matching branch grows dashed; nothing is applied until you decide.') + '</p><div class="row">' + v.alternatives.map(a => '<button type="button" class="btn primary" data-propose="' + esc(v.id) + '" data-value="' + esc(a) + '">' + esc(a) + '</button>').join('') + '</div><form data-propose-form="' + esc(v.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="value" type="text" placeholder="' + t('Ou une autre valeur…', 'Or another value…') + '"><button type="submit" class="btn">' + t('Proposer', 'Propose') + '</button></form>';
+      if (v) { html = '<div class="eyebrow">' + esc(v.label) + '</div><h2>' + t('Et si ce n’était pas « ', 'What if it were not “') + esc(v.value) + t(' » ?', '”?') + '</h2><p class="lead">' + t('Choisissez une autre valeur : la branche correspondante pousse en pointillé, rien n’est appliqué tant que vous ne décidez pas.', 'Pick another value: the matching branch grows dashed; nothing is applied until you decide.') + '</p><div class="row">' + v.alternatives.map(a => '<button type="button" class="btn primary" data-propose="' + esc(v.id) + '" data-value="' + esc(a) + '">' + esc(a) + '</button>').join('') + '</div><form data-propose-form="' + esc(v.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="value" aria-label="' + t('Autre valeur', 'Alternative value') + '" type="text" placeholder="' + t('Ou une autre valeur…', 'Or another value…') + '"><button type="submit" class="btn">' + t('Proposer', 'Propose') + '</button></form>';
         document.getElementById('detail').innerHTML = html + foot; return; }
     }
     const row = s.sel && d.rows[s.sel.li], cmp = row && row.cmp.find(c => c.id === s.sel.id);
@@ -902,8 +975,8 @@
   function renderChrome() {
     document.documentElement.lang = LANG; document.title = t('Public AI pour chaque commune', 'Public AI for every commune');
     document.getElementById('brand-text').textContent = t('Public AI pour chaque commune', 'Public AI for every commune');
-    document.getElementById('clear-btn').hidden = !state.story;
-    document.getElementById('clear-btn').textContent = state.story ? t('Recommencer', 'Start over') : '';
+    document.getElementById('clear-btn').hidden = !state.story && !storageWarning;
+    document.getElementById('clear-btn').textContent = state.story || storageWarning ? t('Recommencer', 'Start over') : '';
     document.getElementById('mode-situation').textContent = t('Ma situation', 'My situation'); document.getElementById('mode-explore').textContent = t('Explorer', 'Explore');
     document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr')); document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
   }
@@ -926,7 +999,7 @@
     if (!state.tree || !live()) return;
     const id = beginRequest(t('Apertus traduit la carte…', 'Apertus is translating the map…'));
     try { const tree = await fetchTree(viewedStory(), currentVars(), viewedAnswers(), exploring ? state.exploreTree : state.tree, null); if (!stillCurrent(id)) return; set(exploring ? { exploreTree: tree, loading: '' } : { tree, prevTree: null, pending: null, sel: null, loading: '', note: { text: tree.note, prov: tree.prov } }, !exploring); }
-    catch (e) { if (stillCurrent(id)) { LANG = old; set({ loading: '', error: e.message }); } }
+    catch (e) { if (stillCurrent(id)) { LANG = old; try { localStorage.setItem(LANG_KEY, old); } catch (_) {} renderConn(); set({ loading: '', error: e.message }); } }
   }
   function leaveExplore() { cancelRequests(); set({ mode: 'situation', loading: '', error: '', sel: null, exploreVars: null, exploreTree: null, exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreTurns: [] }); }
 
@@ -939,7 +1012,7 @@
     const pa = e.target.closest('[data-propose-answer]'); if (pa) { proposeAnswer(pa.dataset.proposeAnswer, pa.dataset.value); return; }
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
     const lane = e.target.closest('[data-lane-select]'); if (lane) { set({ activeLane: lane.dataset.laneSelect, sel: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }
@@ -962,14 +1035,15 @@
   document.getElementById('mode-explore').addEventListener('click', () => { if (!state.tree || state.loading || state.mode === 'explore') return; set({ mode: 'explore', pending: null, sel: null, exploreStory: state.story, exploreVars: state.vars.map(v => Object.assign({}, v)), exploreTree: state.tree, exploreAnswers: Object.assign({}, state.answers), exploreQtexts: Object.assign({}, state.qtexts), exploreQuestionDefs: Object.assign({}, state.questionDefs), exploreTurns: [] }); });
   document.getElementById('clear-btn').addEventListener('click', reset);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (state.loading) { cancelRequests(); set({ loading: '' }); } else set({ sel: null }); } });
-  let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => renderTree(derive()), 150); });
+  let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); if (!state.tree) return; resizeTimer = setTimeout(() => renderTree(derive()), 150); });
   document.getElementById('lang-fr').addEventListener('click', () => setLang('fr'));
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
   document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; renderConn(); });
 
   load(); renderConn(); render();
   if (PUBLIC_PROXY_URL) connect();
-  else fetch('proxy-url.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.url) { conn.proxyUrl = j.url; connect(); } }).catch(() => {});
+  else if (conn.proxyUrl) connect();
+  else fetch('proxy-url.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.url && !conn.proxyUrl) { conn.proxyUrl = j.url; connect(); } }).catch(() => {});
 })();
 </script>
 </body>
