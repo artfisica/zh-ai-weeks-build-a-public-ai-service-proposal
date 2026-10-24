@@ -27,6 +27,6 @@
       "description": "Optional. Leave unset for a public demo."
     }
   },
-  "postStartCommand": "bash proxy/start.sh",
+  "postStartCommand": "PUBLISH_PROXY_URL=1 bash proxy/start.sh",
   "postAttachCommand": "cat /tmp/public-ai-commune-proxy.log"
 }

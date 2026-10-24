@@ -9,6 +9,8 @@ PID_FILE="$ROOT/proxy/.proxy.pid"
 LOCK="$ROOT/proxy/.start-lock"
 mkdir "$LOCK" 2>/dev/null || { echo 'Another startup is in progress; inspect proxy/.start-lock if stale.' >&2; exit 1; }
 trap 'rmdir "$LOCK"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 if [ -f "$PID_FILE" ]; then
   PREVIOUS="$(cat "$PID_FILE")"
   case "$PREVIOUS" in ''|*[!0-9]*) echo 'Invalid proxy PID file; inspect it before restarting.' >&2; exit 1;; esac
@@ -36,10 +38,18 @@ if [ -n "${CODESPACE_NAME:-}" ] && [ -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOM
   echo "proxy url: $URL"
   echo "Set port $PORT visibility to Public in the Ports panel when public access is intended."
   if [ "${PUBLISH_PROXY_URL:-0}" = 1 ]; then
-    git diff --quiet && git diff --cached --quiet || { echo "Commit or set aside other changes before publishing." >&2; exit 1; }
     gh codespace ports visibility "${PORT}:public" -c "$CODESPACE_NAME"
-    node -e 'require("fs").writeFileSync("proxy-url.json",JSON.stringify({url:process.argv[1]})+"\n")' "$URL"
-    git add proxy-url.json
-    if ! git diff --cached --quiet -- proxy-url.json; then git commit --only proxy-url.json -m 'Update public demo proxy URL'; git push; fi
+    echo "port $PORT: public"
+    CURRENT_URL="$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync("proxy-url.json","utf8")).url||"")}catch(_){console.log("")}')"
+    if [ "$CURRENT_URL" != "$URL" ]; then
+      if git diff --quiet && git diff --cached --quiet; then
+        node -e 'require("fs").writeFileSync("proxy-url.json",JSON.stringify({url:process.argv[1]})+"\n")' "$URL"
+        git add proxy-url.json
+        git commit -m 'Update public demo proxy URL' --only -- proxy-url.json
+        git push
+      else
+        echo "Proxy ready; discovery update skipped because this checkout has changes. Paste $URL into the connection panel."
+      fi
+    fi
   fi
 fi

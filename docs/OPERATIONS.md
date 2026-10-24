@@ -16,7 +16,7 @@ Limits: `dailyBudget`, `hourlyPerCaller`, `maxTokens`, `maxConcurrent` (default 
 
 The startup script now starts the checked-out version without pulling, committing or publishing automatically. Run `git pull --ff-only` explicitly, then `bash proxy/start.sh`. A PID file limits restarts to this checkout; it does not kill unrelated Node processes. A pre-existing server started by an older script must be stopped once by the operator. A failed readiness check exits nonzero and never publishes a URL.
 
-To deliberately publish a demo endpoint and update the static discovery file, use `PUBLISH_PROXY_URL=1 bash proxy/start.sh` from a clean branch with repository push access. Check the diff first; this action makes the port public and commits/pushes `proxy-url.json`. A regular startup leaves port visibility unchanged. Recheck the page's connection panel afterwards.
+To deliberately publish a demo endpoint and update the static discovery file, use `PUBLISH_PROXY_URL=1 bash proxy/start.sh` from a clean branch with repository push access. Check the diff first; this action makes the port public and commits/pushes `proxy-url.json`. A direct script invocation leaves port visibility unchanged. The committed Codespaces `postStartCommand` explicitly sets `PUBLISH_PROXY_URL=1`, preserving automatic public demo setup when opening the Codespace. If the proxy address is unchanged, no discovery commit is made. A dirty checkout still starts and exposes the proxy, but skips a changed discovery-file update and prints the address for manual connection. Recheck the page's connection panel afterwards.
 
 ## Before exposing a pilot
 

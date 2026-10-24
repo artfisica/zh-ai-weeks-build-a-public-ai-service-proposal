@@ -18,6 +18,7 @@ class BudgetStore {
   }
   roll() {
     const date = this.now().toISOString(), day = date.slice(0, 10), hour = date.slice(0, 13);
+    if (this.state.day && this.state.day > day) { this.error = true; return hour; }
     if (this.state.day !== day) this.state = { day, used: 0, callers: {} };
     for (const key of Object.keys(this.state.callers)) if (!key.endsWith(':' + hour)) delete this.state.callers[key];
     return hour;

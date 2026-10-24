@@ -38,7 +38,8 @@ if (process.env.AUTH_HEADER) cfg.authHeader = process.env.AUTH_HEADER;
 if (process.env.AUTH_PREFIX !== undefined) cfg.authPrefix = process.env.AUTH_PREFIX;
 const KEY = process.env.APERTUS_API_KEY || '';
 const TOKENS = String(process.env.DEMO_TOKEN || '').split(',').map(s => s.trim()).filter(Boolean);
-const PORT = parseInt(process.env.PORT || '8787', 10);
+const PORT = Number(process.env.PORT === undefined ? '8787' : process.env.PORT);
+if (!Number.isInteger(PORT) || PORT < 0 || PORT > 65535) throw new Error('PORT must be an integer from 0 to 65535');
 const providerName = p => p === 'swisscom' ? 'Swisscom' : p === 'publicai' ? 'Public AI' : (p || 'fournisseur');
 const sha = s => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);
 
@@ -58,7 +59,7 @@ let stopping = false;
 
 function readiness() {
   const missing = [];
-  if (budget.error) missing.push('budget storage unavailable; operator repair required');
+  if (!budget.peek().available) missing.push('budget storage unavailable; operator repair required');
   if (stopping) missing.push('proxy stopping');
   if (!KEY) missing.push('APERTUS_API_KEY (Codespaces secret)');
   if (!cfg.upstreamBase) missing.push('UPSTREAM_BASE (Codespaces secret) or upstreamBase in proxy.config.json');

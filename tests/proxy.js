@@ -170,3 +170,8 @@ test('Concurrency rejection does not charge budget', { timeout: 15000 }, async t
   assert.equal((await f.chat()).status, 429); assert.equal((await f.health()).budget.used, 1);
   controller.abort(); await rejected; await promptly(f.state.closed.promise);
 });
+
+test('Invalid port values stop startup instead of silently selecting another port',()=>{
+  const {spawnSync}=require('node:child_process');
+  for(const port of ['8787oops','-1','65536']){const child=spawnSync(process.execPath,[path.join(__dirname,'../proxy/server.js')],{env:{PATH:process.env.PATH,PORT:port},encoding:'utf8'});assert.notEqual(child.status,0);assert.match(child.stderr,/PORT must be an integer/);}
+});

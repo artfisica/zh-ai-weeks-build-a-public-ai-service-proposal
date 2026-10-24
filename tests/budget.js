@@ -28,3 +28,8 @@ test('UTC hour and day rollover reset only their own limits',t=>{
   assert.equal(store.take('one').ok,true);date=new Date('2026-10-24T11:01:00Z');assert.equal(store.take('one').ok,true);assert.equal(store.take('two').reason,'daily');
   date=new Date('2026-10-25T00:01:00Z');assert.equal(store.take('one').ok,true);assert.equal(store.peek().used,1);
 });
+
+test('Moving the clock backwards cannot issue a second daily allowance',t=>{
+  const file=fixture(t);let date=new Date('2026-10-25T10:00:00Z');const store=new BudgetStore(file,2,2,()=>date);assert.equal(store.take('one').ok,true);
+  date=new Date('2026-10-24T10:00:00Z');assert.equal(store.take('two').reason,'storage');assert.equal(store.peek().remaining,0);assert.equal(JSON.parse(fs.readFileSync(file,'utf8')).used,1);
+});
