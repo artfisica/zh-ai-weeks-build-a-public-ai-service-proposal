@@ -816,6 +816,8 @@
       const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
       u += '\nRetain unaffected question definitions and existing question ids. Retain all ' + prev.branches.length + ' existing branches and ' + prev.questions.length + ' existing questions, even above the normal initial-map limits. Ask at most four NEW questions.' + (['addition','completion'].includes(change.kind) ? '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) : '') + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(prev.questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(prev.questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
     }
+    if (change && change.kind === 'fact_replacement') u += '\nRequested replacement values (return every id with this exact value): ' + JSON.stringify(change.expectedValues || {});
+    if (change && change.archivedTarget) u += '\nReturning to a saved scenario. Use its supplied confirmed answers. Previously answered questions absent from those answers may be omitted; retain unrelated unanswered questions. Do not copy answers from the previous scenario.';
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
@@ -974,7 +976,7 @@
     if (!change) return false;
     if (['addition','completion'].includes(change.kind)) return true;
     const known = new Set([...currentVars().map(v=>v.id),...(previous.questions || []).map(q=>q.id),...Object.keys(viewedAnswers())]);
-    const changed = change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id];
+    const changed = (change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id]).concat(change.answerChanges || []);
     return step.depends_on.length > 0 && step.depends_on.every(id=>known.has(id) && !changed.includes(id));
   }
   function preserveAcceptedSources(tree, previous, requestedSteps, preserved, change) {
@@ -1010,7 +1012,7 @@
     {
       (previous.questions || []).forEach(q => {
         const next = tree.questions.find(x => x.id === q.id);
-        if (!next ? preserveAll || !(q.id in confirmedAnswers) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
+        if (!next ? preserveAll || !(q.id in confirmedAnswers) && !(change.archivedTarget && q.id in viewedAnswers()) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
       });
       const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
       const texts = state.mode === 'explore' ? state.exploreQtexts : state.qtexts;
@@ -1028,7 +1030,7 @@
       const next = tree.variables.find(n=>n.id===v.id);
       if (!changedIds.includes(v.id)) {
         if (!next || ['value','span','label'].some(k=>next[k]!==v[k]) || JSON.stringify(next.alternatives.filter(a=>a!==next.value))!==JSON.stringify(v.alternatives.filter(a=>a!==v.value))) gaps.push('fact/' + v.id);
-      } else if (!change.kind && (!next || next.value !== change.to)) gaps.push('fact/' + v.id);
+      } else if (!next || next.value !== (change.kind === 'fact_replacement' ? (change.expectedValues || {})[v.id] : change.to)) gaps.push('fact/' + v.id);
     });
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
@@ -1067,11 +1069,12 @@
 
   // ---- Conversation ----
   function mapForPrompt(tree, answers = viewedAnswers()) {
-    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = guidanceClaim(r); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => q.text) });
+    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = guidanceClaim(r); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => ({id:q.id,text:q.text,type:q.type,options:q.options})) });
   }
   function followSystem() {
     return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
-      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"add|compare|whatif|fact|question|both","update":"none|add_fact|replace_fact|new_situation","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","changes":[{"id":"existing variable or answered-question id","value":"proposed value"}],"steps":["ids of map steps the answer refers to"],"not_covered":true|false,"target":{"type":"variable|question","id":"existing id","value":"alternative answer"}}' +
+      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"add|compare|whatif|fact|question|both","update":"none|add_fact|replace_fact|new_situation","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","changes":[{"id":"existing variable or answered-question id","value":"proposed value"}],"answers":[{"id":"existing open or answered question id","value":"verbatim stated answer","quote":"verbatim clause in the follow-up stating that answer"}],"steps":["ids of map steps the answer refers to"],"not_covered":true|false,"target":{"type":"variable|question","id":"existing id","value":"alternative answer"}}' +
+      '\nFor every replacement return changes with the existing id and exact requested value; do not rely on a rewritten story alone. If a stated fact directly answers an existing open or previously answered question, return it in answers with its existing question id, a value present verbatim in the follow-up and a verbatim clause containing that value. Only bind answers explicitly stated about the person; a workplace or residence never proves nationality. Never infer or invent an answer. These are proposals, confirmed only if adopted.' +
       '\nSet update add_fact when adding a personal fact or hypothetical fact without replacing an existing fact; replace_fact only for an explicit correction/replacement. Workplace and home/destination are different facts: “What if I work in Gland but still move to Saint-Cergue?” adds a hypothetical workplace and keeps the destination Saint-Cergue. Never target the destination merely because an alternative city is mentioned. Copy every other original fact into story. Set new_situation only when explicitly requested; otherwise this remains the same person and situation. A hypothetical can use kind compare and update add_fact. Questions without new facts use update none.' +
       '\nIntent: a question about an existing step is kind question and must not change any story or answer. A request for an ADDITIONAL goal or service is kind add: keep the existing situation and answers; never append the new topic to an old answer. "Can I also have life insurance? How?" adds a goal; it does not change an answer about tenancy disputes. Use target or changes only for an explicit replacement of the referenced fact or answer, such as "instead of tenancy, employment disputes". If unclear, ask a short clarification question without changing the map.' +
       '\nA request that replaces an existing path, a hypothetical, "what if", "et si", "instead", or changing an answer MUST use kind compare and give the full alternative story or changes to existing variable ids. A comparison is NOT a confirmed fact. For an answered-question alternative, use target type question, its existing id and the proposed value; do not turn it into an unrelated situation sentence. For a variable alternative use target type variable. Preserve every other stated fact in story. A correction such as "it is Nyon, not Hyon" must replace the mistaken word in story. Do not merely explain the alternative: return the changed situation so the app can preview its map. If kind fact or both, also preserve existing facts except explicit corrections. Rules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states a confirmed fact about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
@@ -1086,6 +1089,11 @@
     }));
     return matches.length === 1 ? matches[0] : null;
   }
+  const ownsAnswer = (answers,id) => Object.prototype.hasOwnProperty.call(answers,id);
+  const literalFact = (text,value) => {
+    const escaped = String(value || '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    return !!escaped && new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(String(text));
+  };
   async function converse(text) {
     text = text.trim(); if (!text || state.loading) return;
     state.followDraft = '';
@@ -1119,17 +1127,24 @@
         set({loading:'',followDraft:text,error:t('La proposition contredit un fait que vous voulez garder. Précisez le changement ; votre carte est conservée.','The proposal conflicts with a fact you asked to keep. Please clarify the change; your map is preserved.')}); return;
       }
       if (j.kind === 'add' && !explicitReplacement) { set({ loading: '' }); await stageStory(text, true); return; }
-      if ((j.target || (Array.isArray(j.changes) ? j.changes : []).some(c => c && c.id in viewedAnswers())) && ['compare','whatif'].includes(j.kind) && !/\b(instead|rather|replace|switch|change|what if|et si|plutôt|changer|remplacer)\b/i.test(text)) {
+      if ((j.target || (Array.isArray(j.changes) ? j.changes : []).some(c => c && ownsAnswer(viewedAnswers(),c.id))) && ['compare','whatif'].includes(j.kind) && !/\b(instead|rather|replace|switch|change|what if|et si|plutôt|changer|remplacer)\b/i.test(text)) {
         j.kind = 'question'; j.story = baseStory; j.target = null; j.changes = [];
       }
       if (j.target && typeof j.target.value === 'string' && ['compare','whatif'].includes(j.kind)) {
         set({ loading: '' });
         if (currentVars().some(v => v.id === j.target.id)) { await propose(j.target.id, j.target.value); return; }
-        if (j.target.id in viewedAnswers()) { await proposeAnswer(j.target.id, j.target.value); return; }
+        if (ownsAnswer(viewedAnswers(),j.target.id)) { await proposeAnswer(j.target.id, j.target.value); return; }
       }
-      const answerChanges = (Array.isArray(j.changes) ? j.changes : []).filter(c => c && typeof c.value === 'string' && c.id in viewedAnswers());
+      const answerChanges = (Array.isArray(j.changes) ? j.changes : []).filter(c => c && typeof c.value === 'string' && ownsAnswer(viewedAnswers(),c.id));
       if (answerChanges.length === 1 && ['compare','whatif'].includes(j.kind)) { set({ loading: '' }); await proposeAnswer(answerChanges[0].id, answerChanges[0].value); return; }
       let answerText = String(j.answer || '').trim(), newStory = String(j.story || baseStory).trim();
+      const answerUpdates = {};
+      for (const binding of Array.isArray(j.answers) ? j.answers : []) {
+        if (!binding || ownsAnswer(answerUpdates,binding.id) || !viewTree.questions.some(q=>q.id===binding.id) && !(ownsAnswer(viewedAnswers(),binding.id)) || typeof binding.value!=='string' || typeof binding.quote!=='string' || !binding.quote.trim() || !text.toLowerCase().includes(binding.quote.trim().toLowerCase()) || !literalFact(binding.quote,binding.value)) throw new Error(t('La réponse proposée n’est pas vérifiable dans vos mots. Répondez directement à la question ; votre carte est conservée.','The proposed answer could not be verified in your words. Answer the question directly; your map is preserved.'));
+        answerUpdates[binding.id] = binding.value.trim();
+      }
+      if (Object.keys(answerUpdates).length && newStory===baseStory && ['fact','both','compare','whatif'].includes(j.kind)) newStory=baseStory+'\n'+text;
+
       const correction = text.match(/(?:^|\b)(?:is|it's|it’s|it is|c'est|c’est)\s+([\p{L}][\p{L}\-'’]*)\s*,?\s*(?:no|not|non|pas)\s+([\p{L}][\p{L}\-'’]*)/iu);
       if (correction && newStory === baseStory) { const escaped = correction[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); newStory = baseStory.replace(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'), correction[1]); }
       const changes = Array.isArray(j.changes) ? j.changes.filter(c => c && currentVars().some(v => v.id === c.id) && typeof c.value === 'string' && c.value.trim()) : [];
@@ -1146,34 +1161,47 @@
       // Any proposed changed situation gets a map, even if the model mislabels a "what if" as a question.
       if (newStory !== baseStory) {
         const addingFact = (j.update === 'add_fact' || ['fact','both'].includes(j.kind)) && j.update !== 'replace_fact' && !explicitReplacement && !correction && !changes.length;
-        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes.map(c=>c.id) : null); return;
+        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes : null,answerUpdates); return;
       }
       if (['compare', 'fact', 'both'].includes(j.kind) && !answerText) set({ error: t('Le changement n’a pas été compris. Touchez un mot souligné ou réécrivez la phrase pour comparer.', 'The change was not understood. Touch an underlined word or rewrite the sentence to compare.') });
       else if (found.length) set({ sel: Object.assign({ alt: false }, found[0]) });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
-  async function stageStory(text, addition = false, intent = 'fact_replacement', requestedIds = null) {
+  async function stageStory(text, addition = false, intent = 'fact_replacement', requestedChanges = null, answerUpdates = {}) {
     text = String(text || '').trim(); if (!text || text === viewedStory()) return;
     if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
     const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
-    const fresh = intent === 'new_situation';
-    const request = text;
-    // An edited/interpreted story may replace only facts removed from that
-    // input, or ids explicitly identified by the interpreter's changes array.
-    const changedIds = intent === 'fact_replacement' ? (requestedIds || currentVars().filter(v => {
-      const escaped = String(v.value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      return !new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(text);
-    }).map(v=>v.id)) : [];
-    if (addition) text = viewedStory() + '\n' + t('Demande supplémentaire : ', 'Additional request: ') + request;
-    const answers = fresh ? {} : Object.assign({},viewedAnswers()), qtexts = fresh ? {} : Object.assign({},exploring ? state.exploreQtexts : state.qtexts);
+    const fresh = intent === 'new_situation', request = text, before = viewedStory();
+    const changedIds = !addition && intent === 'fact_replacement' ? (requestedChanges ? requestedChanges.map(c=>c.id) : currentVars().filter(v=>!literalFact(text,v.value)).map(v=>v.id)) : [];
+    const expectedValues = {};
+    for (const id of changedIds) {
+      const v=currentVars().find(v=>v.id===id), explicit=requestedChanges && requestedChanges.find(c=>c.id===id);
+      let value=explicit && String(explicit.value || '').trim();
+      if (!value && v) {
+        const quote=v.span || v.value, pos=before.indexOf(quote);
+        if (pos>=0 && before.indexOf(quote,pos+quote.length)<0) {
+          const prefix=before.slice(0,pos),suffix=before.slice(pos+quote.length);
+          if (text.startsWith(prefix) && text.endsWith(suffix)) value=text.slice(prefix.length,suffix ? -suffix.length : undefined).trim();
+        }
+      }
+      if (!v || !value || !literalFact(text,value)) { set({pending:null,loading:'',editing:true,editDraft:text,error:t('Le remplacement n’est pas assez précis. Utilisez un fait souligné pour le changer ; votre carte est conservée.','The replacement is unclear. Use an underlined fact to change it; your map is preserved.')}); return; }
+      expectedValues[id]=value;
+    }
+    if (Object.values(answerUpdates).some(value=>!literalFact(text,value))) { set({pending:null,loading:'',error:t('Confirmez la réponse directement dans la question. Votre carte est conservée.','Confirm the answer directly in the question. Your map is preserved.')}); return; }
+    if (addition) text = before + '\n' + t('Demande supplémentaire : ', 'Additional request: ') + request;
+    const answers = fresh ? {} : Object.assign({},viewedAnswers(),answerUpdates), qtexts = fresh ? {} : Object.assign({},exploring ? state.exploreQtexts : state.qtexts);
+    const defs = fresh ? {} : Object.assign({},exploring ? state.exploreQuestionDefs : state.questionDefs,Object.fromEntries(previous.questions.map(q=>[q.id,q])));
+    Object.keys(answerUpdates).forEach(id=>{if(defs[id])qtexts[id]=defs[id].text;});
+    const answerChanges = Object.keys(answers).filter(id=>answers[id]!==viewedAnswers()[id]);
     const id = beginRequest(t('Apertus dessine le chemin alternatif…', 'Apertus is drawing the alternative path…'));
     try {
-      const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, addition ? {kind:'addition',id:'additional_goal',to:request} : fresh ? null : {kind:intent,id:'story_update',to:request,changedIds}); if (!stillCurrent(id)) return;
-      if (exploring) set({ exploreStory: text, exploreVars: tree.variables, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, exploreQuestionDefs:fresh?{}:state.exploreQuestionDefs, loading: '', sel: null });
-      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'story', addition, intent, story: text, vars: tree.variables, tree, answers, qtexts, from: t('ma situation', 'my situation'), to: t('ce chemin', 'this path') }, suggestedStory: '', loading: '', sel: null });
-    } catch (e) { if (stillCurrent(id)) set({ loading: '', suggestedStory: addition ? request : text, suggestedAddition: addition, suggestedIntent:intent, suggestedChangeIds:changedIds, error: e.message || 'error' }); }
+      const change = addition ? {kind:'addition',id:'additional_goal',to:request} : fresh ? null : {kind:intent,id:'story_update',to:request,changedIds,expectedValues,answerChanges};
+      const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, change); if (!stillCurrent(id)) return;
+      if (exploring) set({ exploreStory:text,exploreVars:tree.variables,exploreTree:tree,exploreAnswers:answers,exploreQtexts:qtexts,exploreQuestionDefs:defs,loading:'',sel:null });
+      else set({ activeLane:(diffBranches(state.tree.branches,tree.branches).find(r=>r.cmp.some(c=>c.kind!=='same')) || {}).id || state.activeLane,pending:{kind:'story',addition,intent,story:text,vars:tree.variables,tree,answers,qtexts,questionDefs:defs,from:t('ma situation','my situation'),to:t('ce chemin','this path')},suggestedStory:'',loading:'',sel:null });
+    } catch(e) { if(stillCurrent(id))set({loading:'',suggestedStory:addition ? request : text,suggestedAddition:addition,suggestedIntent:intent,suggestedChanges:changedIds.map(id=>({id,value:expectedValues[id]})),suggestedAnswerUpdates:answerUpdates,error:e.message || 'error'}); }
   }
-  async function applySuggestedStory(text) { await stageStory(text, !!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',state.suggestedChangeIds || null); }
+  async function applySuggestedStory(text) { await stageStory(text,!!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',state.suggestedChanges || null,state.suggestedAnswerUpdates || {}); }
   async function startStory(text) {
     text = text.trim(); if (!text || state.loading) return;
     if (state.tree) { await stageStory(text); return; }
@@ -1191,12 +1219,15 @@
     const v = currentVars().find(x => x.id === varId); to = String(to || '').trim(); if (!v || !to || to === v.value || state.loading) return;
     const exploring = state.mode === 'explore', original = currentVars(), vars = original.map(x => x.id === varId ? Object.assign({}, x, { value: to, span: to }) : x);
     const story = storyWithVars(viewedStory(), vars, original), previous = exploring ? state.exploreTree : state.tree;
-    const answers = Object.assign({},viewedAnswers()), qtexts = Object.assign({},exploring ? state.exploreQtexts : state.qtexts);
+    const archived = !exploring && state.answerSets[scenarioKey(vars)];
+    const answers = Object.assign({},archived ? archived.answers : viewedAnswers()), qtexts = Object.assign({},archived ? archived.qtexts : exploring ? state.exploreQtexts : state.qtexts);
+    const answerChanges = [...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]);
     const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
     try {
-      const tree = await fetchTree(story, vars, answers, previous, { id: varId, from: v.value, to }); if (!stillCurrent(id)) return;
-      if (exploring) set({ exploreVars: vars, exploreStory: story, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
-      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars, tree, answers, qtexts }, loading: '' });
+      const tree = await fetchTree(story, vars, answers, previous, { id:varId,from:v.value,to,archivedTarget:!!archived,answerChanges }); if (!stillCurrent(id)) return;
+      const nextVars=vars.map(x=>x.id!==varId ? x : Object.assign({},x,{alternatives:[...new Set([v.value,...((tree.variables.find(n=>n.id===varId) || {}).alternatives || []),...(v.alternatives || [])])].filter(a=>a!==to).slice(0,3)}));
+      if (exploring) set({ exploreVars: nextVars, exploreStory: story, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars:nextVars, tree, answers, qtexts }, loading: '' });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
   function adopt() {
@@ -1205,7 +1236,7 @@
     const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers: state.answers, qtexts: state.qtexts } });
     const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
     const resetContext = p.intent === 'new_situation';
-    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
+    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : p.questionDefs || state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
   }
   async function refreshSources() {
     if (!state.tree || state.loading || !live()) return;
@@ -1233,7 +1264,7 @@
     } catch(e) { if(stillCurrent(id))set({loading:'',error:e.message}); }
   }
   async function proposeAnswer(qid, to) {
-    to = String(to || '').trim(); const cur = viewedAnswers(); if (!to || !(qid in cur) || cur[qid] === to || state.loading) return;
+    to = String(to || '').trim(); const cur = viewedAnswers(); if (!to || !ownsAnswer(cur,qid) || cur[qid] === to || state.loading) return;
     const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree, answers = Object.assign({}, cur, { [qid]: to });
     const id = beginRequest(t('Apertus dessine cette autre réponse…', 'Apertus is drawing this alternative answer…'));
     try {
@@ -1331,7 +1362,9 @@
     if (d.previewOn) {
       const c = count(d);
       const parked = Object.keys(s.answers).filter(id => !(id in (s.pending.answers || {}))).length;
-      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
+      const revisedAnswers = Object.keys(s.pending.answers || {}).filter(id=>s.pending.answers[id]!==s.answers[id]);
+      const answerPreview = (revisedAnswers.length ? '<div class="small proposed-answers">' + t('Réponses proposées : ', 'Proposed answers: ') + revisedAnswers.map(id=>esc((s.pending.qtexts || {})[id] || id) + ' ' + esc(s.pending.answers[id])).join('<br>') + '</div>' : '') + (parked ? '<div class="small">' + parked + t(' réponse(s) actuelle(s) ne font pas partie de ce chemin proposé.', ' current answer(s) are not part of this proposed path.') + '</div>' : '');
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
     }
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     const note = d.previewOn ? { text: s.pending.tree.note, prov: s.pending.tree.prov } : d.exploreOn && d.tree ? { text: d.tree.note, prov: d.tree.prov } : s.note && s.note.text ? s.note : null;
