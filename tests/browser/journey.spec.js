@@ -88,6 +88,15 @@ test('Completion retains an unchanged action’s saved source note and keeps ref
   await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Compare current sources',exact:true})).toBeVisible();
   await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('#detail')).toContainText('Saved original catalogue note');
 });
+test('An accepted six-branch map can gain a seventh path without losing its old branches',async({page})=>{
+  await draw(page);
+  await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));for(let i=0;i<3;i++)saved.tree.branches.push({id:'extra_'+i,name:'Extra '+i,steps:[{id:'extra_step_'+i,short:'Check extra '+i,title:'Check extra '+i,why:'Confirm with provider',depends_on:[],sources:[],authority:'other',confirm_with:'Provider'}]});localStorage.setItem(key,JSON.stringify(saved));});
+  await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');
+  const next=map();for(let i=0;i<3;i++)next.branches.push({id:'extra_'+i,name:'Extra '+i,steps:[{id:'extra_step_'+i,short:'Check extra '+i,title:'Check extra '+i,why:'Confirm with provider',depends_on:[],sources:[],authority:'other',confirm_with:'Provider'}]});next.branches.push({id:'life',name:'Life insurance',steps:[{id:'life_cover',short:'Ask about cover',title:'Ask about life cover',why:'Clarify your needs',depends_on:[],sources:[],authority:'other',confirm_with:'Provider'}]});
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(next)}}]}}));
+  await page.locator('[data-converse-form] input').fill('Can I also buy life insurance?');await page.locator('[data-converse-form] button').click();await expect(page.locator('.map-comparison')).toContainText('1 added');
+  await page.getByRole('button',{name:'Adopt',exact:true}).click();expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).tree.branches.length)).toBe(7);
+});
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
   await alternative(page);await expect(page.locator('.sentence')).toContainText('Saint-Cergue');
