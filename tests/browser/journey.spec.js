@@ -159,3 +159,19 @@ test('Initial form, map and source detail pass automated WCAG A/AA checks',async
   const check=async name=>{const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();await info.attach(name,{body:JSON.stringify(result.violations,null,2),contentType:'application/json'});expect(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);};
   await check('initial-accessibility');await draw(page);await check('map-accessibility');await page.getByRole('button',{name:/^Announce departure/}).press('Enter');await check('detail-accessibility');
 });
+
+test('A workplace hypothetical retains the home destination and reaches interpretation',async({page})=>{
+  await draw(page);let calls=0;const text='What if I work in Gland but still move to Saint-Cergue?',next=map();next.variables.push({id:'workplace',label:'Workplace',value:'Gland',span:'Gland',alternatives:[]});
+  await page.route('https://fixture.invalid/chat',route=>{const body=route.request().postDataJSON();const response=++calls===1?{kind:'compare',update:'add_fact',story:story+' '+text,answer:'',steps:[]}:next;if(calls===1)expect(body.messages[1].content).toContain(text);return route.fulfill({json:{choices:[{message:{content:JSON.stringify(response)}}]}});});
+  await page.locator('[data-converse-form] input').fill(text);await page.locator('[data-converse-form] button').click();await expect(page.locator('.map-comparison')).toBeVisible();expect(calls).toBe(2);
+  await page.getByRole('button',{name:'Adopt',exact:true}).click();
+  const values=await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).vars);expect(values.find(v=>v.id==='destination').value).toBe('Saint-Cergue');expect(values.find(v=>v.id==='workplace').value).toBe('Gland');await expect(page.locator('[data-var="destination"]')).toContainText('Saint-Cergue');
+});
+test('Adding an ordinary fact retains confirmed nationality and a completed departure after reload',async({page})=>{
+  await draw(page);await page.getByRole('button',{name:/^Announce departure/}).click();await page.locator('[data-done="departure"]').click();await page.locator('[data-action="close-detail"]').click();await page.locator('[data-q="nationality"]').click();await page.getByRole('button',{name:'EU/EFTA',exact:true}).click();
+  let calls=0;const next=map();next.variables.push({id:'workplace',label:'Workplace',value:'Geneva',span:'Geneva',alternatives:[]});
+  await page.route('https://fixture.invalid/chat',route=>{const response=++calls===1?{kind:'fact',update:'add_fact',story:story+' I also work in Geneva.',answer:'',steps:[]}:next;expect(route.request().postDataJSON().messages[1].content).toContain('EU/EFTA');return route.fulfill({json:{choices:[{message:{content:JSON.stringify(response)}}]}});});
+  await page.locator('[data-converse-form] input').fill('I also work in Geneva.');await page.locator('[data-converse-form] button').click();await expect(page.locator('.map-comparison')).toBeVisible();await page.getByRole('button',{name:'Adopt',exact:true}).click();
+  await page.reload();await expect(page.locator('[data-answered="nationality"]')).toContainText('EU/EFTA');await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('[data-done="departure"]')).toContainText('Done');expect(calls).toBe(2);
+  await page.locator('[data-action="close-detail"]').click();await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.locator('.sentence')).not.toContainText('Geneva');await expect(page.locator('[data-answered="nationality"]')).toContainText('EU/EFTA');
+});
