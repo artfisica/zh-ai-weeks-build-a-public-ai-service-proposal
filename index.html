@@ -818,7 +818,7 @@
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
-  function validate(j, story, confirmedAnswers = {}, allowedIds = null) {
+  function validate(j, story, confirmedAnswers = {}, allowedIds = null, requestedSteps = null) {
     if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('Invalid map object');
     if (Array.isArray(j.branches) && j.branches.some(b => b && ['variables','questions','note'].some(k => Object.prototype.hasOwnProperty.call(b,k)))) throw new Error('Map fields variables, questions and note must be at the root, outside branches');
     const snake = s => { const id=String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'x'; if (Object.prototype.hasOwnProperty.call(Object.prototype,id)) throw new Error('Reserved map id: '+id); return id; };
@@ -831,13 +831,13 @@
     const questions = (Array.isArray(j.questions) ? j.questions : []).slice(0, 4).map(q => ({ id: snake(q.id), text: String(q.text || ''), why: String(q.why || ''), type: ['yesno', 'choice', 'text'].includes(q.type) ? q.type : 'text', options: Array.isArray(q.options) ? q.options.map(String).slice(0, 5) : [] })).filter(q => q.text);
     // Apertus assumed these; the person never said them. Ask instead of asserting.
     inferred.forEach(v => { if (!questions.some(q => q.id === v.id)) questions.push({ id: v.id, text: v.label.charAt(0).toUpperCase() + v.label.slice(1) + ' ?', why: t('Vous ne l’avez pas dit ; Apertus avait supposé « ', 'You did not say it; Apertus had assumed “') + v.value + t(' ». La carte en dépend, alors nous demandons.', '”. The map depends on it, so we ask.'), type: 'choice', options: [v.value].concat(v.alternatives).slice(0, 5), inferred: true }); });
-    const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => ({
+    const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, 4).map(s => { const step = {
       id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
       sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id) && (!allowedIds || allowedIds.has(r.id))).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
       authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : 'other',
       confirm_with: s.confirm_with ? String(s.confirm_with) : null
-    })).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
+    }; if (requestedSteps) requestedSteps.set(step,s); return step; }).map(s => Object.assign(s, { source: s.sources.length ? s.sources[0].id : null })).filter(s => s.title) })).filter(b => b.name && b.steps.length);
     const seenBranches = new Set(), seenSteps = new Set();
     branches.forEach(b => { const original = b.id; let i = 2; while (seenBranches.has(b.id)) b.id = original + '_' + i++; seenBranches.add(b.id); b.steps.forEach(st => { const originalId = st.id; let n = 2; while (seenSteps.has(st.id)) st.id = b.id + '_' + originalId + '_' + n++; seenSteps.add(st.id); }); });
     for (const values of [vars.filter(grounded).map(v=>v.id), questions.map(q=>q.id)]) if (new Set(values).size !== values.length) throw new Error('Duplicate fact or question ids');
@@ -904,9 +904,10 @@
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
         const parsed = JSON.parse(ex.text);
-        let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds), prev, effectiveStory);
+        const requestedSteps = prev && change && ['addition','completion'].includes(change.kind) ? new WeakMap() : null;
+        let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds, requestedSteps), prev, effectiveStory, requestedSteps);
         const preserved = new WeakSet();
-        if (prev && change && ['addition','completion'].includes(change.kind)) preserveAcceptedSources(tree,prev,parsed,preserved);
+        if (requestedSteps) preserveAcceptedSources(tree,prev,requestedSteps,preserved);
         if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
         const gaps = comparisonGaps(tree, prev, change);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
@@ -937,15 +938,15 @@
 
   // Reuse trusted accepted records only for an unchanged action that explicitly
   // requested the same source ids/claims. Model-supplied archives never enter here.
-  function preserveAcceptedSources(tree, previous, raw, preserved) {
+  const requestedSources = step => (Array.isArray(step.sources) ? step.sources : step.source ? [{id:step.source,claim:null}] : []).map(r=>typeof r==='string'?{id:r,claim:null}:r && {id:r.id,claim:r.claim || null});
+  function preserveAcceptedSources(tree, previous, requestedSteps, preserved) {
     previous.branches.forEach(oldBranch => {
       const branch = tree.branches.find(b=>b.id===oldBranch.id && b.name===oldBranch.name);
-      const requestedBranch = (raw.branches || []).find(b=>b && b.id===oldBranch.id);
-      if (!branch || !requestedBranch) return;
+      if (!branch) return;
       oldBranch.steps.forEach(old => {
-        const step = branch.steps.find(s=>s.id===old.id), requested = (Array.isArray(requestedBranch.steps) ? requestedBranch.steps : []).find(s=>s && s.id===old.id);
+        const step = branch.steps.find(s=>s.id===old.id), requested = step && requestedSteps.get(step);
         if (!step || !requested || ['short','title','why','authority','confirm_with'].some(k=>step[k]!==old[k]) || JSON.stringify(step.depends_on)!==JSON.stringify(old.depends_on)) return;
-        const refs = (Array.isArray(requested.sources) ? requested.sources : requested.source ? [{id:requested.source,claim:null}] : []).map(r=>typeof r==='string'?{id:r,claim:null}:r && {id:r.id,claim:r.claim || null});
+        const refs = requestedSources(requested);
         if (JSON.stringify(refs)!==JSON.stringify(referencesForModel(old.sources))) return;
         step.sources = JSON.parse(JSON.stringify(old.sources));
         step.source = old.source;
@@ -997,7 +998,7 @@
     return gaps;
   }
 
-  function reconcileIds(tree, previous, story = '') {
+  function reconcileIds(tree, previous, story = '', requestedSteps = null) {
     if (!previous) return tree;
     const renames = {};
     tree.variables.forEach(v => { const old = (previous.variables || []).find(x => x.id === v.id) || (previous.variables || []).find(x => (x.span || x.value).toLowerCase() === (v.span || v.value).toLowerCase()); if (old && !tree.variables.some(x => x !== v && x.id === old.id)) { renames[v.id] = old.id; v.id = old.id; if (!v.alternatives.length) v.alternatives = old.alternatives || []; } });
@@ -1008,7 +1009,7 @@
       const old = previous.branches.find(x => x.id === b.id) || previous.branches.find(x => x.name.toLowerCase() === b.name.toLowerCase());
       if (old && !usedBranches.has(old.id)) b.id = old.id;
       usedBranches.add(b.id);
-      b.steps.forEach(st => { const match = old && (old.steps.find(x => x.id === st.id) || old.steps.find(x => x.title === st.title && JSON.stringify(referencesForModel(x.sources)) === JSON.stringify(referencesForModel(st.sources)))); if (match && !usedSteps.has(match.id)) st.id = match.id; usedSteps.add(st.id); });
+      b.steps.forEach(st => { const requested = requestedSteps && requestedSteps.get(st), refs = requested ? requestedSources(requested) : referencesForModel(st.sources); const match = old && (old.steps.find(x => x.id === st.id) || old.steps.find(x => x.title === st.title && JSON.stringify(referencesForModel(x.sources)) === JSON.stringify(refs))); if (match && !usedSteps.has(match.id)) st.id = match.id; usedSteps.add(st.id); });
     });
     return tree;
   }
