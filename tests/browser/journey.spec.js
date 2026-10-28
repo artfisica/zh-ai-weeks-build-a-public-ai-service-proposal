@@ -1,6 +1,6 @@
 'use strict';
 const {test,expect}=require('@playwright/test');
-const {map,story}=require('../fixtures');
+const {map,story,extended}=require('../fixtures');
 test.beforeEach(async({page,context})=>{
   context.__runtimeErrors=[];const watch=p=>p.on('pageerror',error=>context.__runtimeErrors.push(error.message));watch(page);context.on('page',watch);
   await context.route(/fonts\.(googleapis|gstatic)\.com/,route=>route.abort());
@@ -60,6 +60,42 @@ test('An incomplete initial map has an actionable completion button',async({page
   await draw(page);await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Complete map',exact:true}).click();
   await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.locator('.journey-map')).toBeVisible();expect(calls).toBe(2);
+});
+test('Completion rejects dropped partial actions and a successful extension can be undone',async({page})=>{
+  const raw=JSON.stringify(map()),cut=raw.slice(0,raw.indexOf('"school_contact"')+12),bad=map();bad.branches.shift();let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:++calls===1?cut:JSON.stringify(bad)}}]}}));
+  await draw(page);await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.locator('#story')).toContainText('alternative omitted existing steps');
+  await expect(page.getByRole('button',{name:/^Announce departure/})).toBeVisible();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();expect(calls).toBe(3);
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:raw}}]}}));
+  await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^Announce departure/})).toBeVisible();
+});
+test('Completion cannot silently swap accepted origin and destination facts',async({page})=>{
+  const raw=JSON.stringify(map()),cut=raw.slice(0,raw.indexOf('"school_contact"')+12),bad=map();bad.variables.find(v=>v.id==='origin').value='Saint-Cergue';bad.variables.find(v=>v.id==='origin').span='Saint-Cergue';let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:++calls===1?cut:JSON.stringify(bad)}}]}}));
+  await draw(page);await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.locator('#story')).toContainText('fact/origin');expect(calls).toBe(3);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).vars.find(v=>v.id==='origin').value)).toBe('Nyon');
+  await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
+});
+test('Completion retains an unchanged action’s saved source note and keeps refresh available',async({page})=>{
+  await draw(page);
+  await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.tree.incomplete=true;saved.tree.catalogueVersion='0000000000000000';const ref=saved.tree.branches[0].steps[0].sources[0];ref.record.revision='0000000000000000';ref.record.note.text='Saved original catalogue note';localStorage.setItem(key,JSON.stringify(saved));});
+  await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');
+  const renamed=extended();renamed.branches[0].id='generated_registration';renamed.branches[0].steps[0].id='generated_departure';await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(renamed)}}]}}));
+  await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Compare current sources',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('#detail')).toContainText('Saved original catalogue note');
+});
+test('An accepted six-branch map can gain a seventh path without losing its old branches',async({page})=>{
+  await draw(page);
+  await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));for(let i=0;i<3;i++)saved.tree.branches.push({id:'extra_'+i,name:'Extra '+i,steps:[{id:'extra_step_'+i,short:'Check extra '+i,title:'Check extra '+i,why:'Confirm with provider',depends_on:[],sources:[],authority:'other',confirm_with:'Provider'}]});localStorage.setItem(key,JSON.stringify(saved));});
+  await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');
+  const next=map();for(let i=0;i<3;i++)next.branches.push({id:'extra_'+i,name:'Extra '+i,steps:[{id:'extra_step_'+i,short:'Check extra '+i,title:'Check extra '+i,why:'Confirm with provider',depends_on:[],sources:[],authority:'other',confirm_with:'Provider'}]});next.branches.push({id:'life',name:'Life insurance',steps:[{id:'life_cover',short:'Ask about cover',title:'Ask about life cover',why:'Clarify your needs',depends_on:[],sources:[],authority:'other',confirm_with:'Provider'}]});
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(next)}}]}}));
+  await page.locator('[data-converse-form] input').fill('Can I also buy life insurance?');await page.locator('[data-converse-form] button').click();await expect(page.locator('.map-comparison')).toContainText('1 added');
+  await page.getByRole('button',{name:'Adopt',exact:true}).click();expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).tree.branches.length)).toBe(7);
 });
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
@@ -122,4 +158,21 @@ test('Initial form, map and source detail pass automated WCAG A/AA checks',async
   const AxeBuilder=require('@axe-core/playwright').default;
   const check=async name=>{const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();await info.attach(name,{body:JSON.stringify(result.violations,null,2),contentType:'application/json'});expect(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);};
   await check('initial-accessibility');await draw(page);await check('map-accessibility');await page.getByRole('button',{name:/^Announce departure/}).press('Enter');await check('detail-accessibility');
+});
+
+test('An additional goal cannot adopt a renamed duplicate of an old branch',async({page})=>{
+  await draw(page);const bad=map(),copy=JSON.parse(JSON.stringify(bad.branches[2]));copy.id='life';copy.name='Life insurance';copy.steps.forEach(st=>st.id='new_'+st.id);bad.branches.push(copy);let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>{calls++;return route.fulfill({json:{choices:[{message:{content:JSON.stringify(bad)}}]}});});
+  await page.locator('[data-converse-form] input').fill('Can I also buy life insurance?');await page.locator('[data-converse-form] button').click();await expect(page.locator('#story')).toContainText('did not add steps in a new branch');expect(calls).toBe(2);await expect(page.locator('.map-comparison')).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).tree.branches.length)).toBe(3);
+});
+
+test('Echoing an incomplete map keeps completion available until a real extension succeeds',async({page})=>{
+  await draw(page);await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.tree.incomplete=true;localStorage.setItem(key,JSON.stringify(saved));});await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>{calls++;return route.fulfill({json:{choices:[{message:{content:JSON.stringify(map())}}]}});});await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.locator('#story')).toContainText('map remains incomplete');await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();expect(calls).toBe(2);
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(extended())}}]}}));await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
+});
+
+test('A legacy unrecorded source retains explicit refresh after completion and Undo',async({page})=>{
+  await draw(page);await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.tree.incomplete=true;delete saved.tree.branches[0].steps[0].sources[0].record;localStorage.setItem(key,JSON.stringify(saved));});await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(extended())}}]}}));
+  await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.locator('.catalogue-update')).toContainText('original source version was not recorded');await page.getByRole('button',{name:'Compare current sources',exact:true}).click();await expect(page.locator('.map-comparison')).toBeVisible();await page.getByRole('button',{name:'Adopt',exact:true}).click();await expect(page.getByRole('button',{name:'Compare current sources',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.getByRole('button',{name:'Compare current sources',exact:true})).toBeVisible();
 });
