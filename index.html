@@ -808,10 +808,13 @@
     let u = 'Situation: ' + story;
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
-    if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, actions, personal facts and confirmed answers exactly; the new request does not replace an old answer. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
-    else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions. Do not replace, rename, remove or relocate any existing action. Preserve the stated personal facts and confirmed answers.';
+    if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, their action lists and order, personal facts and confirmed answers exactly; the new request does not replace an old answer. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
+    else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions. Preserve the relative order of existing branches and actions. Do not replace, rename, remove or relocate any existing action. Copy ONLY the accepted variable definitions below; do not extract any additional variables, even from words already in the story. Preserve the stated personal facts and confirmed answers.';
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
-    if (change && ['addition','completion'].includes(change.kind)) u += '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) + '\nPreserve these existing question definitions exactly (answered questions remain hidden by the app): ' + JSON.stringify(prev.questions || []);
+    if (change && ['addition','completion'].includes(change.kind)) {
+      const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
+      u += '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(prev.questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(prev.questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
+    }
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
@@ -904,6 +907,7 @@
         if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
         const gaps = comparisonGaps(tree, prev, change);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
+        if (change && change.kind === 'completion') tree.variables = vars.map(v=>Object.assign({},v,{alternatives:v.alternatives.slice()}));
         if (change && change.kind === 'addition' && !diffBranches(prev.branches,tree.branches).some(r => r.added && r.cmp.some(c => c.kind === 'added'))) throw new Error(t('Apertus n’a pas ajouté de nouvelle piste pour votre demande. Votre carte et vos réponses sont conservées.', 'Apertus did not add steps in a new branch for your additional request. Your map and answers are preserved.'));
         const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
         if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
@@ -934,6 +938,9 @@
     const gaps = [];
     const preserveAll = ['addition','completion'].includes(change.kind);
     if (preserveAll) {
+      if (change.kind === 'completion' && tree.variables.length !== currentVars().length) gaps.push('fact-set');
+      const branchIds = new Set(previous.branches.map(b=>b.id));
+      if (JSON.stringify(tree.branches.filter(b=>branchIds.has(b.id)).map(b=>b.id)) !== JSON.stringify(previous.branches.map(b=>b.id))) gaps.push('branch-order');
       currentVars().forEach(v => {
         const next = tree.variables.find(x => x.id === v.id);
         if (!next || ['value','span','label'].some(k => next[k] !== v[k]) || JSON.stringify(next.alternatives) !== JSON.stringify(v.alternatives)) gaps.push('fact/' + v.id);
@@ -942,10 +949,22 @@
         const next = tree.questions.find(x => x.id === q.id);
         if (!next || ['text','why','type'].some(k => next[k] !== q[k]) || JSON.stringify(next.options) !== JSON.stringify(q.options)) gaps.push('question/' + q.id);
       });
+      const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
+      const texts = state.mode === 'explore' ? state.exploreQtexts : state.qtexts;
+      Object.keys(viewedAnswers()).forEach(id => {
+        if ((previous.questions || []).some(q=>q.id===id)) return;
+        const next = tree.questions.find(q=>q.id===id), old = defs[id];
+        if (next && (old ? ['text','why','type'].some(k=>next[k]!==old[k]) || JSON.stringify(next.options)!==JSON.stringify(old.options) : texts[id] && next.text!==texts[id])) gaps.push('answer/' + id);
+      });
     }
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
       if (preserveAll && (!branch || branch.name !== b.name)) gaps.push(b.id);
+      if (preserveAll && branch) {
+        const ids = new Set(b.steps.map(st=>st.id));
+        if (JSON.stringify(branch.steps.filter(st=>ids.has(st.id)).map(st=>st.id)) !== JSON.stringify(b.steps.map(st=>st.id))) gaps.push(b.id + '/order');
+        if (change.kind === 'addition' && branch.steps.length !== b.steps.length) gaps.push(b.id + '/new-steps');
+      }
       b.steps.forEach(st => {
         const matching = branch && branch.steps.find(x => x.id === st.id);
         const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
