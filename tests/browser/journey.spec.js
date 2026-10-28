@@ -79,6 +79,13 @@ test('Completion cannot silently swap accepted origin and destination facts',asy
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).vars.find(v=>v.id==='origin').value)).toBe('Nyon');
   await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
 });
+test('Completion retains an unchanged action’s saved source note and keeps refresh available',async({page})=>{
+  await draw(page);
+  await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.tree.incomplete=true;saved.tree.catalogueVersion='0000000000000000';const ref=saved.tree.branches[0].steps[0].sources[0];ref.record.revision='0000000000000000';ref.record.note.text='Saved original catalogue note';localStorage.setItem(key,JSON.stringify(saved));});
+  await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Compare current sources',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('#detail')).toContainText('Saved original catalogue note');
+});
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
   await alternative(page);await expect(page.locator('.sentence')).toContainText('Saint-Cergue');

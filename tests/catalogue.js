@@ -38,3 +38,22 @@ test('Explicit canton names and common Saint-Cergue spellings retain relevant re
 test('Catalogue text and jurisdiction types cannot silently coerce into misleading notes',()=>{
   for(const mutate of [p=>{p[0].entries[0].title={unexpected:'object'}},p=>{p[0].entries[0].claims[0].text=['not text']},p=>{p[0].entries[0].jurisdiction.commune={unexpected:'object'}}]){const p=packs();mutate(p);assert.throws(()=>validatePacks(p));}
 });
+test('Completing an unchanged partial action preserves its archived source after catalogue changes',async()=>{
+  const h=await generated(),a=h.app,ref=a.state.tree.branches[0].steps[0].sources[0];ref.record.revision='0000000000000000';a.state.tree.incomplete=true;const original=JSON.stringify(ref.record),oldNote=ref.record.note.text;
+  const current=a.catalogById('ch-move');current.claims[0].text='A replacement catalogue note';current.packVersion=2;
+  const calls=h.queue([map()]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));
+  assert.equal(calls.length,1);assert.equal(a.state.tree.incomplete,false);assert.equal(JSON.stringify(a.state.tree.branches[0].steps[0].sources[0].record),original);assert.ok(a.sourceBlock(a.state.tree.branches[0].steps[0]).includes(oldNote));assert.doesNotMatch(a.sourceBlock(a.state.tree.branches[0].steps[0]),/replacement catalogue note/);assert.match(h.element('tree-host').innerHTML,/Compare current sources/);
+  a.printPlan(a.derive());assert.ok(h.element('print-plan').innerHTML.includes(oldNote));assert.match(h.element('print-plan').innerHTML,/ch v1/);
+});
+test('Retired references can remain archived on unchanged actions but cannot enter new actions',async()=>{
+  const h=await generated(),a=h.app,ref=a.state.tree.branches[0].steps[0].sources[0];ref.record.revision='0000000000000000';const original=JSON.stringify(ref.record);a.catalogById('ch-move').claims[0].status='retired';
+  const next=map();next.branches.push({id:'life',name:'Life insurance',steps:[{id:'life_cover',short:'Ask about cover',title:'Ask a provider about cover',why:'Clarify the policy',depends_on:[],sources:[{id:'ch-move',claim:'c1',record:{source:{url:'javascript:alert(1)'}}}],authority:'other',confirm_with:'Provider'}]});
+  const calls=h.queue([next]);await a.converse('Can I also buy life insurance?');assert.equal(calls.length,1);assert.ok(a.state.pending);assert.equal(JSON.stringify(a.state.pending.tree.branches[0].steps[0].sources[0].record),original);assert.equal(a.state.pending.tree.branches.find(b=>b.id==='life').steps[0].sources.length,0);
+});
+test('Changed actions cannot inherit an old archived source by copying its id',async()=>{
+  const h=await generated(),a=h.app;a.state.tree.incomplete=true;const before=JSON.stringify(a.state.tree);a.catalogById('ch-move').packVersion=2;const bad=map();bad.branches[0].steps[0].title='A different action';h.queue([bad,bad]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/registration\/departure/);
+});
+test('Explicit source refresh still replaces archived records reversibly after completion',async()=>{
+  const h=await generated(),a=h.app,ref=a.state.tree.branches[0].steps[0].sources[0];ref.record.revision='0000000000000000';a.state.tree.incomplete=true;const oldNote=ref.record.note.text;a.catalogById('ch-move').claims[0].text='A replacement catalogue note';a.catalogById('ch-move').packVersion=2;
+  h.queue([map()]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));h.queue([map()]);await a.refreshSources();assert.equal(a.state.pending.kind,'refresh');a.adopt();assert.equal(a.state.tree.branches[0].steps[0].sources[0].record.source.packVersion,2);a.undo();assert.equal(a.state.tree.branches[0].steps[0].sources[0].record.source.packVersion,1);assert.equal(a.state.tree.branches[0].steps[0].sources[0].record.note.text,oldNote);
+});

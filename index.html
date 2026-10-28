@@ -615,13 +615,13 @@
 
 
   // These records are stamped from the catalogue after model validation, never accepted from model JSON.
-  function recordSources(tree, selection) {
-    tree.branches.forEach(b => b.steps.forEach(st => st.sources.forEach(ref => {
+  function recordSources(tree, selection, preserved = new WeakSet()) {
+    tree.branches.forEach(b => b.steps.forEach(st => { if (preserved.has(st)) return; st.sources.forEach(ref => {
       const source = selection.find(c => c.id === ref.id), note = claimOf(ref.id,ref.claim);
       ref.record = { schemaVersion:1, id:ref.id, claim:ref.claim, revision:CATALOG_VERSION,
         source:{url:source.url,title:source.title,level:source.level,exact:source.exact,pack:source.pack,packVersion:source.packVersion},
         note:note ? JSON.parse(JSON.stringify(note)) : null };
-    })));
+    }); }));
   }
   function referenceOf(ref) {
     const current = catalogById(ref.id); if (!current) return {cat:null,claim:null,archived:false,changed:false};
@@ -808,7 +808,7 @@
     let u = 'Situation: ' + story;
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
-    if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, their action lists and order, personal facts and confirmed answers exactly; the new request does not replace an old answer. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
+    if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, their action lists and order, personal facts and confirmed answers exactly; the new request does not replace an old answer. Keep variables exactly equal to the accepted definitions below; describe the new goal in its branch and questions, not as newly extracted personal facts. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
     else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions. Preserve the relative order of existing branches and actions. Do not replace, rename, remove or relocate any existing action. Copy ONLY the accepted variable definitions below; do not extract any additional variables, even from words already in the story. Preserve the stated personal facts and confirmed answers.';
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
     if (change && ['addition','completion'].includes(change.kind)) {
@@ -903,11 +903,14 @@
       try {
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
-        let tree = reconcileIds(validate(JSON.parse(ex.text), effectiveStory, answers, allowedIds), prev, effectiveStory);
+        const parsed = JSON.parse(ex.text);
+        let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds), prev, effectiveStory);
+        const preserved = new WeakSet();
+        if (prev && change && ['addition','completion'].includes(change.kind)) preserveAcceptedSources(tree,prev,parsed,preserved);
         if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
         const gaps = comparisonGaps(tree, prev, change);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
-        if (change && change.kind === 'completion') tree.variables = vars.map(v=>Object.assign({},v,{alternatives:v.alternatives.slice()}));
+        if (change && ['addition','completion'].includes(change.kind)) tree.variables = vars.map(v=>Object.assign({},v,{alternatives:v.alternatives.slice()}));
         if (change && change.kind === 'addition' && !diffBranches(prev.branches,tree.branches).some(r => r.added && r.cmp.some(c => c.kind === 'added'))) throw new Error(t('Apertus n’a pas ajouté de nouvelle piste pour votre demande. Votre carte et vos réponses sont conservées.', 'Apertus did not add steps in a new branch for your additional request. Your map and answers are preserved.'));
         const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
         if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
@@ -918,7 +921,7 @@
             if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers, allowedIds), tree, effectiveStory); res.prov = reviewed.prov; }
           } catch (e) { /* the first complete map remains usable */ }
         }
-        recordSources(tree, selection);
+        recordSources(tree, selection, preserved);
         tree.catalogueVersion = CATALOG_VERSION; tree.sourceSelection = selection.map(c => c.id);
         tree.incomplete = ex.truncated;
         tree.prov = res.prov; tree.key = key;
@@ -932,13 +935,32 @@
     }
   }
 
+  // Reuse trusted accepted records only for an unchanged action that explicitly
+  // requested the same source ids/claims. Model-supplied archives never enter here.
+  function preserveAcceptedSources(tree, previous, raw, preserved) {
+    previous.branches.forEach(oldBranch => {
+      const branch = tree.branches.find(b=>b.id===oldBranch.id && b.name===oldBranch.name);
+      const requestedBranch = (raw.branches || []).find(b=>b && b.id===oldBranch.id);
+      if (!branch || !requestedBranch) return;
+      oldBranch.steps.forEach(old => {
+        const step = branch.steps.find(s=>s.id===old.id), requested = (Array.isArray(requestedBranch.steps) ? requestedBranch.steps : []).find(s=>s && s.id===old.id);
+        if (!step || !requested || ['short','title','why','authority','confirm_with'].some(k=>step[k]!==old[k]) || JSON.stringify(step.depends_on)!==JSON.stringify(old.depends_on)) return;
+        const refs = (Array.isArray(requested.sources) ? requested.sources : requested.source ? [{id:requested.source,claim:null}] : []).map(r=>typeof r==='string'?{id:r,claim:null}:r && {id:r.id,claim:r.claim || null});
+        if (JSON.stringify(refs)!==JSON.stringify(referencesForModel(old.sources))) return;
+        step.sources = JSON.parse(JSON.stringify(old.sources));
+        step.source = old.source;
+        step.sourceGaps = JSON.parse(JSON.stringify(old.sourceGaps || []));
+        preserved.add(step);
+      });
+    });
+  }
   function comparisonGaps(tree, previous, change) {
     if (!previous || !change) return [];
     const known = new Set([...(previous.variables || []).map(v => v.id), ...(previous.questions || []).map(q => q.id), ...Object.keys(viewedAnswers())]);
     const gaps = [];
     const preserveAll = ['addition','completion'].includes(change.kind);
     if (preserveAll) {
-      if (change.kind === 'completion' && tree.variables.length !== currentVars().length) gaps.push('fact-set');
+      if (tree.variables.length !== currentVars().length) gaps.push('fact-set');
       const branchIds = new Set(previous.branches.map(b=>b.id));
       if (JSON.stringify(tree.branches.filter(b=>branchIds.has(b.id)).map(b=>b.id)) !== JSON.stringify(previous.branches.map(b=>b.id))) gaps.push('branch-order');
       currentVars().forEach(v => {
@@ -1360,7 +1382,7 @@
   function mapToolbar(d, mobile) {
     const c = count(d), p = state.pending;
     let html = '<div class="map-tools"><div><div class="map-title">' + (d.exploreOn ? t('Explorer un autre chemin', 'Explore another path') : d.previewOn ? t('Votre chemin, et l’alternative', 'Your path, and the alternative') : t('Votre carte de parcours', 'Your journey map')) + '</div><div class="map-meta">' + d.rows.length + t(' pistes · étapes proposées par Apertus', ' paths · steps proposed by Apertus') + '</div></div><div class="map-actions">' + (!mobile ? '<button data-action="zoom-out" aria-label="' + t('Réduire', 'Zoom out') + '">−</button><button data-action="fit" aria-pressed="' + (state.mapZoom === 'fit') + '">' + t('Vue entière', 'Fit map') + '</button><button data-action="zoom-in" aria-label="' + t('Agrandir', 'Zoom in') + '">+</button>' : '') + '<button data-action="plan">' + t('Mon plan', 'My plan') + '</button>' + (state.history.length && !d.exploreOn ? '<button data-action="undo">' + t('Annuler le changement', 'Undo change') + '</button>' : '') + '</div></div>';
-    if (d.tree.catalogueVersion !== CATALOG_VERSION) html += '<div class="catalogue-update"><p>' + (d.tree.catalogueVersion ? t('Le catalogue a changé. Les notes conservées correspondent à la carte d’origine.', 'The catalogue has changed. Recorded notes belong to the original map.') : t('La version d’origine des sources n’a pas été enregistrée.', 'The original source version was not recorded.')) + '</p><button type="button" class="btn" data-action="refresh-sources"' + (live() && !state.loading ? '' : ' disabled') + '>' + t('Comparer avec les sources actuelles','Compare current sources') + '</button></div>';
+    if (d.tree.catalogueVersion !== CATALOG_VERSION || d.tree.branches.some(b=>b.steps.some(st=>(st.sources || []).some(ref=>referenceOf(ref).changed)))) html += '<div class="catalogue-update"><p>' + (d.tree.catalogueVersion ? t('Le catalogue a changé. Les notes conservées correspondent à la carte d’origine.', 'The catalogue has changed. Recorded notes belong to the original map.') : t('La version d’origine des sources n’a pas été enregistrée.', 'The original source version was not recorded.')) + '</p><button type="button" class="btn" data-action="refresh-sources"' + (live() && !state.loading ? '' : ' disabled') + '>' + t('Comparer avec les sources actuelles','Compare current sources') + '</button></div>';
     if (d.previewOn) {
       const summary = p.answerChange && !c.changed && !c.added && !c.removed ? t('Seule votre réponse change ; les étapes restent identiques. Rien n’est appliqué.', 'Only your answer changes; the mapped steps stay the same. Nothing is applied.') : c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') + c.same + t(' identiques. Rien n’est appliqué.', ' identical. Nothing is applied.');
       html += '<div class="map-comparison"><span>' + summary + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt">' + t('Adopter', 'Adopt') + '</button></div>';

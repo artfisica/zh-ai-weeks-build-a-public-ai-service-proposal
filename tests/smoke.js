@@ -293,5 +293,8 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
  await test('Completion repairs extra variables and retains accepted ordering and done marks',async()=>{
    const h=harness(),a=saved(h);a.state.tree.incomplete=true;a.state.tree.branches[0].steps[0].depends_on=[];h.click('[data-done]',{done:'departure'});const good=clone(a.state.tree),bad=clone(good),original=JSON.stringify(a.state.vars);bad.variables.push({id:'extra_origin',label:'Extra origin',value:'Nyon',span:'Nyon',alternatives:[]});good.variables.reverse();const calls=h.queue([bad,good]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));assert.equal(calls.length,2);assert.equal(a.state.tree.incomplete,false);assert.equal(JSON.stringify(a.state.vars),original);assert.equal(a.isDone('departure'),true);assert.equal(a.state.history.length,1);
  });
+ await test('An added goal cannot introduce a new variable that changes an old done mark',async()=>{
+   const h=harness(),a=saved(h);a.state.tree.branches[0].steps[0].depends_on=[];h.click('[data-done]',{done:'departure'});const bad=clone(a.state.tree);bad.variables.push({id:'extra_origin',label:'Extra origin',value:'Nyon',span:'Nyon',alternatives:[]});bad.branches.push({id:'life',name:'Life insurance',steps:[step('life_cover','Life cover','Ask about life cover',null)]});const calls=h.queue([bad,bad]);await a.converse('Can I also buy life insurance?');assert.equal(calls.length,2);assert.equal(a.state.pending,null);assert.match(a.state.error,/fact-set/);assert.equal(a.isDone('departure'),true);
+ });
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
