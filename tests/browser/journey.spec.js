@@ -1,6 +1,6 @@
 'use strict';
 const {test,expect}=require('@playwright/test');
-const {map,story}=require('../fixtures');
+const {map,story,extended}=require('../fixtures');
 test.beforeEach(async({page,context})=>{
   context.__runtimeErrors=[];const watch=p=>p.on('pageerror',error=>context.__runtimeErrors.push(error.message));watch(page);context.on('page',watch);
   await context.route(/fonts\.(googleapis|gstatic)\.com/,route=>route.abort());
@@ -83,7 +83,7 @@ test('Completion retains an unchanged action’s saved source note and keeps ref
   await draw(page);
   await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.tree.incomplete=true;saved.tree.catalogueVersion='0000000000000000';const ref=saved.tree.branches[0].steps[0].sources[0];ref.record.revision='0000000000000000';ref.record.note.text='Saved original catalogue note';localStorage.setItem(key,JSON.stringify(saved));});
   await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');
-  const renamed=map();renamed.branches[0].id='generated_registration';renamed.branches[0].steps[0].id='generated_departure';await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(renamed)}}]}}));
+  const renamed=extended();renamed.branches[0].id='generated_registration';renamed.branches[0].steps[0].id='generated_departure';await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(renamed)}}]}}));
   await page.getByRole('button',{name:'Complete map',exact:true}).click();
   await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Compare current sources',exact:true})).toBeVisible();
   await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('#detail')).toContainText('Saved original catalogue note');
@@ -164,4 +164,10 @@ test('An additional goal cannot adopt a renamed duplicate of an old branch',asyn
   await draw(page);const bad=map(),copy=JSON.parse(JSON.stringify(bad.branches[2]));copy.id='life';copy.name='Life insurance';copy.steps.forEach(st=>st.id='new_'+st.id);bad.branches.push(copy);let calls=0;
   await page.route('https://fixture.invalid/chat',route=>{calls++;return route.fulfill({json:{choices:[{message:{content:JSON.stringify(bad)}}]}});});
   await page.locator('[data-converse-form] input').fill('Can I also buy life insurance?');await page.locator('[data-converse-form] button').click();await expect(page.locator('#story')).toContainText('did not add steps in a new branch');expect(calls).toBe(2);await expect(page.locator('.map-comparison')).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).tree.branches.length)).toBe(3);
+});
+
+test('Echoing an incomplete map keeps completion available until a real extension succeeds',async({page})=>{
+  await draw(page);await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.tree.incomplete=true;localStorage.setItem(key,JSON.stringify(saved));});await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>{calls++;return route.fulfill({json:{choices:[{message:{content:JSON.stringify(map())}}]}});});await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.locator('#story')).toContainText('map remains incomplete');await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();expect(calls).toBe(2);
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:JSON.stringify(extended())}}]}}));await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
 });
