@@ -61,6 +61,16 @@ test('An incomplete initial map has an actionable completion button',async({page
   await page.getByRole('button',{name:'Complete map',exact:true}).click();
   await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.locator('.journey-map')).toBeVisible();expect(calls).toBe(2);
 });
+test('Completion rejects dropped partial actions and a successful extension can be undone',async({page})=>{
+  const raw=JSON.stringify(map()),cut=raw.slice(0,raw.indexOf('"school_contact"')+12),bad=map();bad.branches.shift();let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:++calls===1?cut:JSON.stringify(bad)}}]}}));
+  await draw(page);await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.locator('#story')).toContainText('alternative omitted existing steps');
+  await expect(page.getByRole('button',{name:/^Announce departure/})).toBeVisible();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();expect(calls).toBe(3);
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:raw}}]}}));
+  await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^Announce departure/})).toBeVisible();
+});
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
   await alternative(page);await expect(page.locator('.sentence')).toContainText('Saint-Cergue');

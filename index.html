@@ -809,6 +809,7 @@
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, actions, personal facts and confirmed answers exactly; the new request does not replace an old answer. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
+    else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions. Do not replace, rename, remove or relocate any existing action. Preserve the stated personal facts and confirmed answers.';
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
@@ -902,7 +903,7 @@
         if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
         const gaps = comparisonGaps(tree, prev, change);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
-        if (change && change.kind === 'addition' && !diffBranches(prev.branches,tree.branches).some(r => r.cmp.some(c => c.kind === 'added'))) throw new Error(t('Apertus n’a pas ajouté de démarche pour votre nouvelle demande. Votre carte et vos réponses sont conservées.', 'Apertus did not add steps for your additional request. Your map and answers are preserved.'));
+        if (change && change.kind === 'addition' && !diffBranches(prev.branches,tree.branches).some(r => r.added && r.cmp.some(c => c.kind === 'added'))) throw new Error(t('Apertus n’a pas ajouté de nouvelle piste pour votre demande. Votre carte et vos réponses sont conservées.', 'Apertus did not add steps in a new branch for your additional request. Your map and answers are preserved.'));
         const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
         if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
           try {
@@ -930,12 +931,17 @@
     if (!previous || !change) return [];
     const known = new Set([...(previous.variables || []).map(v => v.id), ...(previous.questions || []).map(q => q.id), ...Object.keys(viewedAnswers())]);
     const gaps = [];
-    previous.branches.forEach(b => b.steps.forEach(st => {
-      const branch = tree.branches.find(x => x.id === b.id), matching = branch && branch.steps.find(x => x.id === st.id);
-      const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
-      const declaredUnchanged = change.kind === 'addition' || (st.depends_on.length && !st.depends_on.includes(change.id) && st.depends_on.every(id => known.has(id)));
-      if (relocated || (declaredUnchanged && !matching) || (change.kind === 'addition' && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
-    }));
+    const preserveAll = ['addition','completion'].includes(change.kind);
+    previous.branches.forEach(b => {
+      const branch = tree.branches.find(x => x.id === b.id);
+      if (preserveAll && (!branch || branch.name !== b.name)) gaps.push(b.id);
+      b.steps.forEach(st => {
+        const matching = branch && branch.steps.find(x => x.id === st.id);
+        const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
+        const declaredUnchanged = preserveAll || (st.depends_on.length && !st.depends_on.includes(change.id) && st.depends_on.every(id => known.has(id)));
+        if (relocated || (declaredUnchanged && !matching) || (preserveAll && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
+      });
+    });
     return gaps;
   }
 
@@ -1088,8 +1094,12 @@
     state.trees = {};
     const id = beginRequest(t('Apertus complète la carte. Votre carte actuelle est conservée en cas d’échec…', 'Apertus is completing the map. Your current map is kept if this fails…'));
     try {
-      const tree = await fetchTree(viewedStory(),currentVars(),viewedAnswers(),previous,null);
-      if (stillCurrent(id)) set(exploring ? {exploreTree:tree,loading:''} : {tree,loading:'',note:{text:tree.note,prov:tree.prov}},!exploring);
+      const tree = await fetchTree(viewedStory(),currentVars(),viewedAnswers(),previous,{kind:'completion'});
+      if (stillCurrent(id)) {
+        if (!exploring) remember();
+        const defs = Object.assign({}, exploring ? state.exploreQuestionDefs : state.questionDefs, Object.fromEntries(tree.questions.map(q=>[q.id,q])));
+        set(exploring ? {exploreTree:tree,exploreVars:tree.variables,exploreQuestionDefs:defs,loading:''} : {tree,vars:tree.variables,questionDefs:defs,loading:'',note:{text:tree.note,prov:tree.prov}},!exploring);
+      }
     } catch(e) { if(stillCurrent(id))set({loading:'',error:e.message}); }
   }
   async function proposeAnswer(qid, to) {
@@ -1490,7 +1500,7 @@
     const sf = e.target.closest('[data-start-form]'); if (sf) { e.preventDefault(); startStory(sf.elements.text.value); return; }
     const cf = e.target.closest('[data-converse-form]'); if (cf) { e.preventDefault(); const v = cf.elements.text.value; cf.elements.text.value = ''; converse(v); return; }
     const sg = e.target.closest('[data-suggest-form]'); if (sg) { e.preventDefault(); applySuggestedStory(sg.elements.text.value); return; }
-    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); state.editing = false; if (st.elements.text.value.trim() !== viewedStory()) stageStory(st.elements.text.value); else if ((derive().tree || {}).incomplete) { const text = viewedStory(); state.trees = {}; if (state.tree) { const id = beginRequest(t('Apertus complète la carte…', 'Apertus is completing the map…')); fetchTree(text, currentVars(), viewedAnswers(), derive().tree, null).then(tree => { if (stillCurrent(id)) set(state.mode === 'explore' ? { exploreTree: tree, loading: '' } : { tree, loading: '' }, state.mode !== 'explore'); }).catch(err => { if (stillCurrent(id)) set({ loading: '', error: err.message }); }); } } else render(); return; }
+    const st = e.target.closest('[data-story-form]'); if (st) { e.preventDefault(); state.editing = false; if (st.elements.text.value.trim() !== viewedStory()) stageStory(st.elements.text.value); else if ((derive().tree || {}).incomplete) completeMap(); else render(); return; }
     const pf = e.target.closest('[data-propose-form]'); if (pf) { e.preventDefault(); propose(pf.dataset.proposeForm, pf.elements.value.value); return; }
     const paf = e.target.closest('[data-propose-answer-form]'); if (paf) { e.preventDefault(); proposeAnswer(paf.dataset.proposeAnswerForm, paf.elements.value.value); return; }
     const af = e.target.closest('[data-answer-form]'); if (af) { e.preventDefault(); answer(af.dataset.answerForm, af.elements.answer.value); }

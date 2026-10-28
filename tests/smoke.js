@@ -240,5 +240,25 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
  await test('An empty HTTP 404 explains Codespace connectivity instead of exposing a JSON parser error',async()=>{
    const h=harness(),a=saved(h);a.reset();h.context.fetch=async()=>({ok:false,status:404,json:async()=>{throw new SyntaxError('Unexpected end of JSON input');}});await a.startStory('I want insurance.');assert.match(a.state.error,/Codespace is running/);assert.doesNotMatch(a.state.error,/Unexpected end|rephrase/);
  });
+ await test('Completion repairs a dropped partial action and provides Undo for a successful extension',async()=>{
+   const h=harness(),partial=map();partial.branches=partial.branches.slice(0,2);const a=saved(h,partial);a.state.tree.incomplete=true;const before=JSON.stringify(a.state.tree);
+   const bad=map();bad.branches[0].steps.shift();const calls=h.queue([bad,map()]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));
+   assert.equal(calls.length,2);assert.match(calls[0].messages[1].content,/COMPLETE THE PARTIAL MAP/);assert.match(calls[1].messages.at(-1).content,/registration\/departure/);assert.equal(a.state.tree.incomplete,false);assert.equal(a.state.tree.branches.length,3);assert.equal(a.state.history.length,1);a.undo();assert.equal(JSON.stringify(a.state.tree),before);
+ });
+ await test('Failed completion cannot remove, rename, rewrite or relocate existing partial actions',async()=>{
+   const mutations=[m=>m.branches.shift(),m=>m.branches[0].steps.shift(),m=>{m.branches[0].name='Life insurance'},m=>{m.branches[0].steps[0].title='A different instruction'},m=>{m.branches[1].steps.push(m.branches[0].steps.shift())}];
+   for(const mutate of mutations){const h=harness(),a=saved(h);a.state.tree.incomplete=true;h.click('[data-done]',{done:'departure'});const before=JSON.stringify(a.state.tree),stored=h.storage.get('public-ai-commune.v5'),bad=map();mutate(bad);const calls=h.queue([bad,bad]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));
+     assert.equal(calls.length,2);assert.equal(JSON.stringify(a.state.tree),before);assert.equal(h.storage.get('public-ai-commune.v5'),stored);assert.equal(a.state.history.length,0);assert.match(a.state.error,/alternative omitted existing steps/);
+   }
+ });
+ await test('Completing an Explore map cannot replace or save over the accepted situation',async()=>{
+   const h=harness(),a=saved(h);a.state.tree.incomplete=true;const before=JSON.stringify(a.state.tree);h.element('mode-explore').listeners.click();const calls=h.queue([map()]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));assert.equal(calls.length,1);assert.equal(a.state.exploreTree.incomplete,false);assert.equal(JSON.stringify(a.state.tree),before);assert.equal(a.state.history.length,0);
+ });
+ await test('An additional goal appended to an existing branch is rejected after one repair',async()=>{
+   const h=harness(),a=saved(h),bad=map(),before=JSON.stringify(a.state.tree);bad.branches[0].steps.push(step('extra_life','Life cover','Ask about life insurance',null));const calls=h.queue([bad,bad]);await a.converse('Can I also buy life insurance?');assert.equal(calls.length,2);assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/new branch/);
+ });
+ await test('An added branch cannot rename an accepted branch while retaining all its actions',async()=>{
+   const h=harness(),a=saved(h),bad=map(),before=JSON.stringify(a.state.tree);bad.branches[0].name='Life insurance';bad.branches.push({id:'life',name:'Extra cover',steps:[step('life_cover','Life cover','Ask about life insurance',null)]});const calls=h.queue([bad,bad]);await a.converse('Can I also buy life insurance?');assert.equal(calls.length,2);assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/registration/);
+ });
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
