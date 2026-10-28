@@ -979,7 +979,7 @@
   }
   function preserveAcceptedSources(tree, previous, requestedSteps, preserved, change) {
     previous.branches.forEach(oldBranch => {
-      const branch = tree.branches.find(b=>b.id===oldBranch.id && b.name===oldBranch.name);
+      const branch = tree.branches.find(b=>b.id===oldBranch.id);
       if (!branch) return;
       oldBranch.steps.forEach(old => {
         if (!unaffectedAction(old,previous,change)) return;
