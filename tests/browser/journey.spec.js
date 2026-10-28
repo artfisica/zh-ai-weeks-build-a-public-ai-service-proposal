@@ -175,3 +175,16 @@ test('Adding an ordinary fact retains confirmed nationality and a completed depa
   await page.reload();await expect(page.locator('[data-answered="nationality"]')).toContainText('EU/EFTA');await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('[data-done="departure"]')).toContainText('Done');expect(calls).toBe(2);
   await page.locator('[data-action="close-detail"]').click();await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.locator('.sentence')).not.toContainText('Geneva');await expect(page.locator('[data-answered="nationality"]')).toContainText('EU/EFTA');
 });
+
+test('A destination replacement repairs an unauthorized origin change before offering adoption',async({page})=>{
+  await draw(page);let calls=0;const bad=map('Gland');Object.assign(bad.variables.find(v=>v.id==='origin'),{value:'Gland',span:'Gland'});
+  await page.route('https://fixture.invalid/chat',route=>{const body=route.request().postDataJSON();const response=++calls===1?{kind:'compare',update:'replace_fact',story:story.replace('Saint-Cergue','Gland'),answer:'',steps:[]}:calls===2?bad:map('Gland');if(calls===3)expect(body.messages.at(-1).content).toContain('fact/origin');return route.fulfill({json:{choices:[{message:{content:JSON.stringify(response)}}]}});});
+  await page.locator('[data-converse-form] input').fill('We will move to Gland rather than Saint-Cergue.');await page.locator('[data-converse-form] button').click();await expect(page.locator('.map-comparison')).toBeVisible();expect(calls).toBe(3);await page.getByRole('button',{name:'Adopt',exact:true}).click();
+  const values=await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).vars);expect(values.find(v=>v.id==='origin').value).toBe('Nyon');expect(values.find(v=>v.id==='destination').value).toBe('Gland');
+});
+test('Adding a job rejects repeated unrelated departure rewrites and retains its completed mark',async({page})=>{
+  await draw(page);await page.getByRole('button',{name:/^Announce departure/}).click();await page.locator('[data-done="departure"]').click();await page.locator('[data-action="close-detail"]').click();let calls=0;const bad=map();bad.branches[0].steps[0].title='A different departure action';
+  await page.route('https://fixture.invalid/chat',route=>{const response=++calls===1?{kind:'fact',update:'add_fact',story:story+' I also work in Geneva.',answer:'',steps:[]}:bad;return route.fulfill({json:{choices:[{message:{content:JSON.stringify(response)}}]}});});
+  await page.locator('[data-converse-form] input').fill('I also work in Geneva.');await page.locator('[data-converse-form] button').click();await expect(page.locator('#story')).toContainText('registration/departure');expect(calls).toBe(3);await expect(page.locator('.map-comparison')).toHaveCount(0);await expect(page.getByRole('button',{name:'Adopt',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('[data-done="departure"]')).toContainText('Done');await expect(page.locator('.sentence')).not.toContainText('Geneva');
+});

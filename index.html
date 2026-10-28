@@ -810,7 +810,7 @@
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, their action lists and order, personal facts and confirmed answers exactly; the new request does not replace an old answer. Keep variables exactly equal to the accepted definitions below; describe the new goal in its branch and questions, not as newly extracted personal facts. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
     else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions. Preserve the relative order of existing branches and actions. Do not replace, rename, remove or relocate any existing action. Copy ONLY the accepted variable definitions below; do not extract any additional variables, even from words already in the story. Preserve the stated personal facts and confirmed answers.';
-    else if (change && ['fact_addition','fact_replacement'].includes(change.kind)) u += '\nSAME SITUATION, ' + (change.kind === 'fact_addition' ? 'ADDED FACT: Keep all accepted variable definitions unchanged; additional grounded variables are allowed. ' : 'REPLACED FACT: Change only facts explicitly replaced in the new situation. ') + 'Keep confirmed answers and their meanings. Retain unaffected actions with exactly the same fields and ids. New facts may affect related actions. Updated situation: ' + story + '\nAccepted variable definitions: ' + JSON.stringify(currentVars());
+    else if (change && ['fact_addition','fact_replacement'].includes(change.kind)) u += '\nSAME SITUATION, ' + (change.kind === 'fact_addition' ? 'ADDED FACT: Keep all accepted variable definitions unchanged; additional grounded variables are allowed. Copy existing actions with known dependencies exactly. Add related actions rather than rewriting an unrelated old action. ' : 'REPLACED FACT: Change only facts explicitly replaced in the new situation. ') + 'Keep confirmed answers and their meanings. Retain unaffected actions with exactly the same fields and ids. New facts may affect related actions. Updated situation: ' + story + '\nAccepted variable definitions: ' + JSON.stringify(currentVars());
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
     if (change && prev) {
       const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
@@ -905,7 +905,7 @@
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
         const parsed = JSON.parse(ex.text);
-        const requestedSteps = prev && change && ['addition','completion','fact_addition','fact_replacement'].includes(change.kind) ? new WeakMap() : null;
+        const requestedSteps = prev && change ? new WeakMap() : null;
         const completing = change && change.kind === 'completion';
         const limits = prev ? {branches:Math.max(6,prev.branches.length + (completing ? 3 : 1)),questions:Math.max(6,prev.questions.length + 4),steps:Math.max(4,...prev.branches.map(b=>b.steps.length)) + (completing ? 3 : 0)} : null;
         let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds, requestedSteps, limits), prev, effectiveStory, requestedSteps);
@@ -999,7 +999,16 @@
         if (next && (old ? ['text','why','type'].some(k=>next[k]!==old[k]) || JSON.stringify(next.options)!==JSON.stringify(old.options) : texts[id] && next.text!==texts[id])) gaps.push('answer/' + id);
       });
     }
-    const changedIds = change.kind === 'fact_replacement' ? currentVars().filter(v=>!tree.variables.some(n=>n.id===v.id && n.value===v.value)).map(v=>v.id) : [change.id];
+    // These permissions come from the requested input, before generation. A
+    // generated variable or dependency cannot authorize its own replacement.
+    const changedIds = change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id];
+    const replacingFacts = change.kind === 'fact_replacement' || !change.kind && currentVars().some(v=>v.id===change.id);
+    if (replacingFacts) currentVars().forEach(v => {
+      const next = tree.variables.find(n=>n.id===v.id);
+      if (!changedIds.includes(v.id)) {
+        if (!next || ['value','span','label'].some(k=>next[k]!==v[k]) || JSON.stringify(next.alternatives.filter(a=>a!==next.value))!==JSON.stringify(v.alternatives.filter(a=>a!==v.value))) gaps.push('fact/' + v.id);
+      } else if (!change.kind && (!next || next.value !== change.to)) gaps.push('fact/' + v.id);
+    });
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
       if (preserveAll && (!branch || branch.name !== b.name)) gaps.push(b.id);
@@ -1012,7 +1021,7 @@
         const matching = branch && branch.steps.find(x => x.id === st.id);
         const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
         const declaredUnchanged = preserveAll || (st.depends_on.length && !st.depends_on.some(id=>changedIds.includes(id)) && st.depends_on.every(id => known.has(id)));
-        if (relocated || (declaredUnchanged && !matching) || (preserveAll && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
+        if (relocated || (declaredUnchanged && !matching) || ((preserveAll || (addedFact || replacingFacts) && declaredUnchanged) && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
       });
     });
     return gaps;
@@ -1116,28 +1125,34 @@
       // Any proposed changed situation gets a map, even if the model mislabels a "what if" as a question.
       if (newStory !== baseStory) {
         const addingFact = (j.update === 'add_fact' || ['fact','both'].includes(j.kind)) && j.update !== 'replace_fact' && !explicitReplacement && !correction && !changes.length;
-        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement'); return;
+        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes.map(c=>c.id) : null); return;
       }
       if (['compare', 'fact', 'both'].includes(j.kind) && !answerText) set({ error: t('Le changement n’a pas été compris. Touchez un mot souligné ou réécrivez la phrase pour comparer.', 'The change was not understood. Touch an underlined word or rewrite the sentence to compare.') });
       else if (found.length) set({ sel: Object.assign({ alt: false }, found[0]) });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
-  async function stageStory(text, addition = false, intent = 'fact_replacement') {
+  async function stageStory(text, addition = false, intent = 'fact_replacement', requestedIds = null) {
     text = String(text || '').trim(); if (!text || text === viewedStory()) return;
     if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
     const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
     const fresh = intent === 'new_situation';
     const request = text;
+    // An edited/interpreted story may replace only facts removed from that
+    // input, or ids explicitly identified by the interpreter's changes array.
+    const changedIds = intent === 'fact_replacement' ? (requestedIds || currentVars().filter(v => {
+      const escaped = String(v.value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      return !new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(text);
+    }).map(v=>v.id)) : [];
     if (addition) text = viewedStory() + '\n' + t('Demande supplémentaire : ', 'Additional request: ') + request;
     const answers = fresh ? {} : Object.assign({},viewedAnswers()), qtexts = fresh ? {} : Object.assign({},exploring ? state.exploreQtexts : state.qtexts);
     const id = beginRequest(t('Apertus dessine le chemin alternatif…', 'Apertus is drawing the alternative path…'));
     try {
-      const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, addition ? {kind:'addition',id:'additional_goal',to:request} : fresh ? null : {kind:intent,id:'story_update',to:request}); if (!stillCurrent(id)) return;
+      const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, addition ? {kind:'addition',id:'additional_goal',to:request} : fresh ? null : {kind:intent,id:'story_update',to:request,changedIds}); if (!stillCurrent(id)) return;
       if (exploring) set({ exploreStory: text, exploreVars: tree.variables, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, exploreQuestionDefs:fresh?{}:state.exploreQuestionDefs, loading: '', sel: null });
       else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'story', addition, intent, story: text, vars: tree.variables, tree, answers, qtexts, from: t('ma situation', 'my situation'), to: t('ce chemin', 'this path') }, suggestedStory: '', loading: '', sel: null });
-    } catch (e) { if (stillCurrent(id)) set({ loading: '', suggestedStory: addition ? request : text, suggestedAddition: addition, suggestedIntent:intent, error: e.message || 'error' }); }
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', suggestedStory: addition ? request : text, suggestedAddition: addition, suggestedIntent:intent, suggestedChangeIds:changedIds, error: e.message || 'error' }); }
   }
-  async function applySuggestedStory(text) { await stageStory(text, !!state.suggestedAddition,state.suggestedIntent || 'fact_replacement'); }
+  async function applySuggestedStory(text) { await stageStory(text, !!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',state.suggestedChangeIds || null); }
   async function startStory(text) {
     text = text.trim(); if (!text || state.loading) return;
     if (state.tree) { await stageStory(text); return; }

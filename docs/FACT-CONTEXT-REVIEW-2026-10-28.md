@@ -19,3 +19,10 @@ Live-provider validation is pending while the published Codespaces proxy is unav
 ## Required merge gate
 
 Per the repository owner's instruction: before merging any PR, wait for review to finish on the latest commit, inspect both general and inline comments, address the findings, and wait for the updated commit's review. Green CI alone does not authorize merging. Apply this to PR #8 and this follow-up independently; merge in dependency order and evaluate each result before proceeding.
+
+## Review findings addressed
+
+- [Restrict replacements to facts the user named](https://github.com/artfisica/zh-ai-weeks-build-a-public-ai-service-proposal/pull/9#discussion_r4403066624): replacement permissions are calculated from the requested/interpreted input before calling map generation. An interpreter changes array explicitly supplies affected ids; a full edited story permits changing only facts absent from that input. The returned map cannot authorize extra replacements. Protected variable definitions and unrelated actions must remain unchanged. Targeted variable replacements also validate protected facts and the requested new value.
+- [Reject unrelated action rewrites when adding a fact](https://github.com/artfisica/zh-ai-weeks-build-a-public-ai-service-proposal/pull/9#discussion_r4403066639): accepted actions whose known dependencies remain unchanged must match exactly, including dependency ids, wording and sources. Unchanged accepted source archives are restored before comparison. A job addition may add a work-related action; it cannot rewrite a completed origin-only departure. Repeated failures leave the accepted map in place and offer no Adopt button.
+
+Four further named regressions cover both story and changes-array replacements, bounded failure, action-field mutations, permitted new actions and targeted replacements. Two additional browser journeys cover repair before adoption and repeated-repair failure with the completed action retained. `npm run test:all -- --workers=4` passed on this revision: 117 application regressions, 44 Node tests and 88 browser cases (249 checks total).
