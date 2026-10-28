@@ -818,7 +818,7 @@
       u += '\nRetain unaffected question definitions and existing question ids. ' + (['addition','completion'].includes(change.kind) ? 'Retain all ' + prev.branches.length + ' existing branches and ' + questions.length + ' existing questions, even above the normal initial-map limits.' : 'The prior map has ' + prev.branches.length + ' branches. Retain all unaffected branches/actions, even above initial-map limits. Use the question contract below; omit questions only when explicitly answered or outside a saved target scenario.') + ' Ask at most four NEW questions.' + (['addition','completion'].includes(change.kind) ? '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) : '') + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
     }
     if (change && change.kind === 'fact_replacement') u += '\nRequested replacement values (return every id with this exact value): ' + JSON.stringify(change.expectedValues || {});
-    if (change && change.archivedTarget) u += '\nReturning to a saved scenario. Use its supplied confirmed answers. Use its saved question definitions below when available. Questions outside that saved scenario may be omitted; retain its unanswered questions. Do not copy answers from the previous scenario.';
+    if (change && change.archivedTarget) u += '\nReturning to a saved scenario. Use its supplied confirmed answers. Use its saved question definitions below when available. Exclude questions outside that saved scenario and actions depending on them; retain its unanswered questions. Do not copy answers from the previous scenario.';
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
@@ -1018,6 +1018,13 @@
       });
       const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs);
       const texts = change.archivedQtexts || (state.mode === 'explore' ? state.exploreQtexts : state.qtexts);
+      if (change.archivedTarget && change.archivedQuestions) {
+        const allowedQuestions = new Set(questions.map(q=>q.id).concat(Object.keys(confirmedAnswers)));
+        tree.questions.forEach(q=>{ if (!allowedQuestions.has(q.id)) gaps.push('question/outside-target/' + q.id); });
+        const allowedDependencies = new Set([...allowedQuestions,...tree.variables.map(v=>v.id)]);
+        tree.branches.forEach(b=>b.steps.forEach(st=>{ if (st.depends_on.some(id=>!allowedDependencies.has(id))) gaps.push(b.id + '/' + st.id + '/outside-target'); }));
+      }
+
       Object.keys(change.archivedTarget ? confirmedAnswers : viewedAnswers()).forEach(id => {
         if (questions.some(q=>q.id===id)) return;
         const next = tree.questions.find(q=>q.id===id), old = defs[id];
