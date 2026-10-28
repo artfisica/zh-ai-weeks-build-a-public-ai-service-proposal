@@ -923,8 +923,8 @@
         const actionTerms = title => new Set(words(title).split(' ').filter(w=>!['a','an','the','your','you','to','at','of','for','with','today','le','la','les','un','une','votre','vos','au','aux','de','du','des'].includes(w)).map(w=>(actionAliases.get(w) || w)));
         const sameAction = (a,b) => {
           if (substantive(a)!==substantive(b)) return false;
-          const x=actionTerms(a.title),y=actionTerms(b.title),overlap=[...x].filter(w=>y.has(w)).length;
-          return words(a.title)===words(b.title) || x.size+y.size>0 && 2*overlap/(x.size+y.size)>=.6;
+          const x=[...actionTerms(a.title)].sort(),y=[...actionTerms(b.title)].sort();
+          return words(a.title)===words(b.title) || JSON.stringify(x)===JSON.stringify(y);
         };
         const novelAction = step => !!words(step.title) && !acceptedActions.some(old=>sameAction(step,old));
         const addedBranches = prev ? tree.branches.filter(b=>!prev.branches.some(old=>old.id===b.id)) : [];
