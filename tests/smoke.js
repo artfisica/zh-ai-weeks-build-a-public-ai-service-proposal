@@ -311,5 +311,11 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
  await test('A correct completion cannot inherit stale alternative definitions from prior tree metadata',async()=>{
    const h=harness(),a=saved(h);a.state.vars.find(v=>v.id==='origin').alternatives=[];a.state.tree.variables.find(v=>v.id==='origin').alternatives=['Geneva'];a.state.tree.incomplete=true;const next=clone(a.state.tree);next.variables=clone(a.state.vars);const calls=h.queue([next]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));assert.equal(calls.length,1);assert.equal(a.state.tree.incomplete,false);assert.equal(a.state.vars.find(v=>v.id==='origin').alternatives.length,0);
  });
+ await test('An additional goal cannot be satisfied by a renamed copy of an accepted branch',async()=>{
+   for(const renamed of [false,true]){const h=harness(),a=saved(h),bad=map(),duplicate=clone(bad.branches[2]);duplicate.id='life_insurance';duplicate.name=renamed?'Life insurance':duplicate.name;duplicate.steps.forEach(st=>{st.id='copy_'+st.id;st.title='  '+st.title.toUpperCase()+' ! ';st.why='A newly phrased explanation';});bad.branches.push(duplicate);const before=JSON.stringify(a.state.tree),calls=h.queue([bad,bad]);await a.converse('Can I also buy life insurance?');assert.equal(calls.length,2);assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/did not add steps in a new branch/);}
+ });
+ await test('An addition repairs copied branches to new actions without accepting extra duplicate paths',async()=>{
+   const h=harness(),a=saved(h),bad=map(),copy=clone(bad.branches[2]);copy.id='duplicate_transport';copy.steps.forEach(st=>st.id='copy_'+st.id);bad.branches.push(copy);bad.branches.push({id:'life',name:'Life insurance',steps:[step('life_cover','Life cover','Ask about life cover',null)]});const good=clone(bad);good.branches=good.branches.filter(b=>b.id!=='duplicate_transport');const calls=h.queue([bad,good]);await a.converse('Can I also buy life insurance?');assert.equal(calls.length,2);assert.ok(a.state.pending);assert.equal(a.state.pending.tree.branches.length,4);assert.equal(a.state.tree.branches.length,3);
+ });
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

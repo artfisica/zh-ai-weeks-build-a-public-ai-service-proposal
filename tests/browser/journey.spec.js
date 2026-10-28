@@ -159,3 +159,9 @@ test('Initial form, map and source detail pass automated WCAG A/AA checks',async
   const check=async name=>{const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();await info.attach(name,{body:JSON.stringify(result.violations,null,2),contentType:'application/json'});expect(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);};
   await check('initial-accessibility');await draw(page);await check('map-accessibility');await page.getByRole('button',{name:/^Announce departure/}).press('Enter');await check('detail-accessibility');
 });
+
+test('An additional goal cannot adopt a renamed duplicate of an old branch',async({page})=>{
+  await draw(page);const bad=map(),copy=JSON.parse(JSON.stringify(bad.branches[2]));copy.id='life';copy.name='Life insurance';copy.steps.forEach(st=>st.id='new_'+st.id);bad.branches.push(copy);let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>{calls++;return route.fulfill({json:{choices:[{message:{content:JSON.stringify(bad)}}]}});});
+  await page.locator('[data-converse-form] input').fill('Can I also buy life insurance?');await page.locator('[data-converse-form] button').click();await expect(page.locator('#story')).toContainText('did not add steps in a new branch');expect(calls).toBe(2);await expect(page.locator('.map-comparison')).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).tree.branches.length)).toBe(3);
+});
