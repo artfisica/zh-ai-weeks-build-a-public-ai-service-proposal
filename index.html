@@ -889,7 +889,7 @@
     const generation = requestId;
     const fingerprint = JSON.stringify({ story:effectiveStory, values:vars.map(v=>[v.id,v.value]), answers, previous:prev ? {branches:prev.branches,variables:prev.variables,questions:prev.questions} : null, change, language:LANG, provider:conn.prov });
     const cached = state.trees[key];
-    if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change).length === 0) return cached.tree; }
+    if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change,answers).length === 0) return cached.tree; }
     const prompt = userPrompt(effectiveStory, vars, answers, prev, change);
     let retryReason = "", previousResponse = "";
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -910,9 +910,9 @@
         const limits = prev ? {branches:Math.max(6,prev.branches.length + (completing ? 3 : 1)),questions:Math.max(6,prev.questions.length + 4),steps:Math.max(4,...prev.branches.map(b=>b.steps.length)) + (completing ? 3 : 0)} : null;
         let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds, requestedSteps, limits), prev, effectiveStory, requestedSteps);
         const preserved = new WeakSet();
-        if (requestedSteps) preserveAcceptedSources(tree,prev,requestedSteps,preserved);
+        if (requestedSteps) preserveAcceptedSources(tree,prev,requestedSteps,preserved,change);
         if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
-        const gaps = comparisonGaps(tree, prev, change);
+        const gaps = comparisonGaps(tree, prev, change, answers);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
         if (change && ['addition','completion'].includes(change.kind)) tree.variables = vars.map(v=>Object.assign({},v,{alternatives:v.alternatives.slice()}));
         // Neither regenerated ids nor trivial title edits establish new work.
@@ -970,11 +970,19 @@
     const suppliedKey = key(supplied);
     return suppliedKey !== null && suppliedKey === key(referencesForModel(accepted));
   }
-  function preserveAcceptedSources(tree, previous, requestedSteps, preserved) {
+  function unaffectedAction(step, previous, change) {
+    if (!change) return false;
+    if (['addition','completion'].includes(change.kind)) return true;
+    const known = new Set([...currentVars().map(v=>v.id),...(previous.questions || []).map(q=>q.id),...Object.keys(viewedAnswers())]);
+    const changed = change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id];
+    return step.depends_on.length > 0 && step.depends_on.every(id=>known.has(id) && !changed.includes(id));
+  }
+  function preserveAcceptedSources(tree, previous, requestedSteps, preserved, change) {
     previous.branches.forEach(oldBranch => {
       const branch = tree.branches.find(b=>b.id===oldBranch.id && b.name===oldBranch.name);
       if (!branch) return;
       oldBranch.steps.forEach(old => {
+        if (!unaffectedAction(old,previous,change)) return;
         const step = branch.steps.find(s=>s.id===old.id), requested = step && requestedSteps.get(step);
         if (!step || !requested || ['short','title','why','authority','confirm_with'].some(k=>step[k]!==old[k]) || JSON.stringify(step.depends_on)!==JSON.stringify(old.depends_on)) return;
         if (!sameRequestedSources(requested,old.sources)) return;
@@ -985,9 +993,8 @@
       });
     });
   }
-  function comparisonGaps(tree, previous, change) {
+  function comparisonGaps(tree, previous, change, confirmedAnswers = viewedAnswers()) {
     if (!previous || !change) return [];
-    const known = new Set([...(previous.variables || []).map(v => v.id), ...(previous.questions || []).map(q => q.id), ...Object.keys(viewedAnswers())]);
     const gaps = [];
     const preserveAll = ['addition','completion'].includes(change.kind);
     const addedFact = change.kind === 'fact_addition';
@@ -1003,7 +1010,7 @@
     {
       (previous.questions || []).forEach(q => {
         const next = tree.questions.find(x => x.id === q.id);
-        if (preserveAll ? !next || ['text','why','type'].some(k => next[k] !== q[k]) || JSON.stringify(next.options) !== JSON.stringify(q.options) : q.id in viewedAnswers() && next && (['text','why','type'].some(k => next[k] !== q[k]) || JSON.stringify(next.options) !== JSON.stringify(q.options))) gaps.push('question/' + q.id);
+        if (!next ? preserveAll || !(q.id in confirmedAnswers) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
       });
       const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
       const texts = state.mode === 'explore' ? state.exploreQtexts : state.qtexts;
@@ -1025,7 +1032,7 @@
     });
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
-      if ((preserveAll || addedFact) && (!branch || branch.name !== b.name)) gaps.push(b.id);
+      if ((preserveAll || addedFact || replacingFacts && b.steps.every(st=>unaffectedAction(st,previous,change))) && (!branch || branch.name !== b.name)) gaps.push(b.id);
       if (preserveAll && branch) {
         const ids = new Set(b.steps.map(st=>st.id));
         if (JSON.stringify(branch.steps.filter(st=>ids.has(st.id)).map(st=>st.id)) !== JSON.stringify(b.steps.map(st=>st.id))) gaps.push(b.id + '/order');
@@ -1034,7 +1041,7 @@
       b.steps.forEach(st => {
         const matching = branch && branch.steps.find(x => x.id === st.id);
         const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
-        const declaredUnchanged = preserveAll || (st.depends_on.length && !st.depends_on.some(id=>changedIds.includes(id)) && st.depends_on.every(id => known.has(id)));
+        const declaredUnchanged = unaffectedAction(st,previous,change);
         if (relocated || (declaredUnchanged && !matching) || ((preserveAll || (addedFact || replacingFacts) && declaredUnchanged) && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
       });
     });
