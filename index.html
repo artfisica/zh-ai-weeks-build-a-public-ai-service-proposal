@@ -647,6 +647,7 @@
   // ---- State ----
   const scenarioKey = vars => JSON.stringify((vars || []).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0])));
   const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', goalConfirmation: null, vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
+  const scenarioRecord = (answers,qtexts,tree,defs) => JSON.parse(JSON.stringify({answers,qtexts,questions:tree.questions,questionDefs:defs}));
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
   function storyWithVars(story, vars, original) {
@@ -689,7 +690,7 @@
     for (const key of ['done','turns']) if (d[key] && !Array.isArray(d[key])) throw new Error('Invalid saved list');
     if ((d.turns || []).some(u => !u || typeof u.role !== 'string' || typeof u.text !== 'string' || (u.steps && (!Array.isArray(u.steps) || u.steps.some(x => !x || !Number.isInteger(x.li) || typeof x.id !== 'string'))))) throw new Error('Invalid saved conversation');
     for (const key of ['answers','qtexts']) if (Object.values(d[key] || {}).some(v => typeof v !== 'string')) throw new Error('Invalid saved answer value');
-    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); }
+    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); if(entry.questions!==undefined && (!Array.isArray(entry.questions) || entry.questions.some(q=>!validQuestion(q))))throw new Error('Invalid scenario questions'); if(entry.questionDefs!==undefined && (!entry.questionDefs || typeof entry.questionDefs!=='object' || Array.isArray(entry.questionDefs) || Object.values(entry.questionDefs).some(q=>!validQuestion(q))))throw new Error('Invalid scenario question definitions'); }
     if (Object.values(d.questionDefs || {}).some(q => !validQuestion(q))) throw new Error('Invalid saved question definition');
     const tree = normalizeTree(d.tree);
     const done = (d.done || []).map(String).map(key => { const id=key.split('|')[0]; return key === completionKey(tree,d.vars,d.answers || {},id,true) ? completionKey(tree,d.vars,d.answers || {},id) : key; });
@@ -810,11 +811,14 @@
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal with an action whose title describes a new action for the request, rather than copying accepted actions under new ids or labels. Explain the new goal-specific purpose in why. A different title alone is not new work. Give a distinct, goal-specific explanation or other substantively different action fields; identical purposes, dependencies, sources and contacts remain the same action even under a synonym title. Preserve all existing branches, their action lists and order, personal facts and confirmed answers exactly; the new request does not replace an old answer. Keep variables exactly equal to the accepted definitions below; describe the new goal in its branch and questions, not as newly extracted personal facts. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
     else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions only when supported by the situation. Do not invent actions to satisfy completion validation; an unchanged response leaves the map incomplete. Preserve the relative order of existing branches and actions. Do not replace, rename, remove or relocate any existing action. Copy ONLY the accepted variable definitions below; do not extract any additional variables, even from words already in the story. Preserve the stated personal facts and confirmed answers.';
+    else if (change && ['fact_addition','fact_replacement'].includes(change.kind)) u += '\nSAME SITUATION, ' + (change.kind === 'fact_addition' ? 'ADDED FACT: Keep all accepted variable definitions unchanged; additional grounded variables are allowed. Copy existing actions with known dependencies exactly. Add related actions rather than rewriting an unrelated old action. ' : 'REPLACED FACT: Change only facts explicitly replaced in the new situation. ') + 'Keep confirmed answers and their meanings. Retain unaffected actions with exactly the same fields and ids. New facts may affect related actions. Updated situation: ' + story + '\nAccepted variable definitions: ' + JSON.stringify(currentVars());
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
-    if (change && ['addition','completion'].includes(change.kind)) {
-      const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
-      u += '\nRetain all ' + prev.branches.length + ' existing branches and ' + prev.questions.length + ' existing questions, even above the normal initial-map limits. Ask at most four NEW questions.\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(prev.questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(prev.questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
+    if (change && prev) {
+      const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs), questions=change.archivedQuestions || prev.questions;
+      u += '\nRetain unaffected question definitions and existing question ids. ' + (['addition','completion'].includes(change.kind) ? 'Retain all ' + prev.branches.length + ' existing branches and ' + questions.length + ' existing questions, even above the normal initial-map limits.' : 'The prior map has ' + prev.branches.length + ' branches. Retain all unaffected branches/actions, even above initial-map limits. Use the question contract below; omit questions only when explicitly answered or outside a saved target scenario.') + ' Ask at most four NEW questions.' + (['addition','completion'].includes(change.kind) ? '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) : '') + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
     }
+    if (change && change.kind === 'fact_replacement') u += '\nRequested replacement values (return every id with this exact value): ' + JSON.stringify(change.expectedValues || {});
+    if (change && change.archivedTarget) u += '\nReturning to a saved scenario. Use its supplied confirmed answers. Use its saved question definitions below when available. Exclude questions outside that saved scenario and actions depending on them; retain its unanswered questions. Do not copy answers from the previous scenario.';
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
@@ -888,7 +892,7 @@
     const generation = requestId;
     const fingerprint = JSON.stringify({ story:effectiveStory, values:vars.map(v=>[v.id,v.value]), answers, previous:prev ? {branches:prev.branches,variables:prev.variables,questions:prev.questions} : null, change, language:LANG, provider:conn.prov });
     const cached = state.trees[key];
-    if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change).length === 0) return cached.tree; }
+    if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change,answers).length === 0) return cached.tree; }
     const prompt = userPrompt(effectiveStory, vars, answers, prev, change);
     let retryReason = "", previousResponse = "";
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -904,14 +908,14 @@
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
         const parsed = JSON.parse(ex.text);
-        const requestedSteps = prev && change && ['addition','completion'].includes(change.kind) ? new WeakMap() : null;
+        const requestedSteps = prev && change ? new WeakMap() : null;
         const completing = change && change.kind === 'completion';
         const limits = prev ? {branches:Math.max(6,prev.branches.length + (completing ? 3 : 1)),questions:Math.max(6,prev.questions.length + 4),steps:Math.max(4,...prev.branches.map(b=>b.steps.length)) + (completing ? 3 : 0)} : null;
         let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds, requestedSteps, limits), prev, effectiveStory, requestedSteps);
         const preserved = new WeakSet();
-        if (requestedSteps) preserveAcceptedSources(tree,prev,requestedSteps,preserved);
+        if (requestedSteps) preserveAcceptedSources(tree,prev,requestedSteps,preserved,change);
         if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
-        const gaps = comparisonGaps(tree, prev, change);
+        const gaps = comparisonGaps(tree, prev, change, answers);
         if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
         if (change && ['addition','completion'].includes(change.kind)) tree.variables = vars.map(v=>Object.assign({},v,{alternatives:v.alternatives.slice()}));
         // Neither regenerated ids nor trivial title edits establish new work.
@@ -969,11 +973,19 @@
     const suppliedKey = key(supplied);
     return suppliedKey !== null && suppliedKey === key(referencesForModel(accepted));
   }
-  function preserveAcceptedSources(tree, previous, requestedSteps, preserved) {
+  function unaffectedAction(step, previous, change) {
+    if (!change) return false;
+    if (['addition','completion'].includes(change.kind)) return true;
+    const known = new Set([...currentVars().map(v=>v.id),...(previous.questions || []).map(q=>q.id),...Object.keys(viewedAnswers())]);
+    const changed = (change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id]).concat(change.answerChanges || []);
+    return step.depends_on.length > 0 && step.depends_on.every(id=>known.has(id) && !changed.includes(id));
+  }
+  function preserveAcceptedSources(tree, previous, requestedSteps, preserved, change) {
     previous.branches.forEach(oldBranch => {
-      const branch = tree.branches.find(b=>b.id===oldBranch.id && b.name===oldBranch.name);
+      const branch = tree.branches.find(b=>b.id===oldBranch.id);
       if (!branch) return;
       oldBranch.steps.forEach(old => {
+        if (!unaffectedAction(old,previous,change)) return;
         const step = branch.steps.find(s=>s.id===old.id), requested = step && requestedSteps.get(step);
         if (!step || !requested || ['short','title','why','authority','confirm_with'].some(k=>step[k]!==old[k]) || JSON.stringify(step.depends_on)!==JSON.stringify(old.depends_on)) return;
         if (!sameRequestedSources(requested,old.sources)) return;
@@ -984,34 +996,54 @@
       });
     });
   }
-  function comparisonGaps(tree, previous, change) {
+  function comparisonGaps(tree, previous, change, confirmedAnswers = viewedAnswers()) {
     if (!previous || !change) return [];
-    const known = new Set([...(previous.variables || []).map(v => v.id), ...(previous.questions || []).map(q => q.id), ...Object.keys(viewedAnswers())]);
     const gaps = [];
     const preserveAll = ['addition','completion'].includes(change.kind);
-    if (preserveAll) {
-      if (tree.variables.length !== currentVars().length) gaps.push('fact-set');
+    const addedFact = change.kind === 'fact_addition';
+    if (preserveAll || addedFact) {
+      if (!addedFact && tree.variables.length !== currentVars().length) gaps.push('fact-set');
       const branchIds = new Set(previous.branches.map(b=>b.id));
       if (JSON.stringify(tree.branches.filter(b=>branchIds.has(b.id)).map(b=>b.id)) !== JSON.stringify(previous.branches.map(b=>b.id))) gaps.push('branch-order');
       currentVars().forEach(v => {
         const next = tree.variables.find(x => x.id === v.id);
         if (!next || ['value','span','label'].some(k => next[k] !== v[k]) || JSON.stringify(next.alternatives.filter(a=>a!==next.value)) !== JSON.stringify(v.alternatives.filter(a=>a!==v.value))) gaps.push('fact/' + v.id);
       });
-      (previous.questions || []).forEach(q => {
+    }
+    {
+      const questions=change.archivedQuestions || previous.questions || [];
+      questions.forEach(q => {
         const next = tree.questions.find(x => x.id === q.id);
-        if (!next || ['text','why','type'].some(k => next[k] !== q[k]) || JSON.stringify(next.options) !== JSON.stringify(q.options)) gaps.push('question/' + q.id);
+        if (!next ? preserveAll || !(q.id in confirmedAnswers) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
       });
-      const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
-      const texts = state.mode === 'explore' ? state.exploreQtexts : state.qtexts;
-      Object.keys(viewedAnswers()).forEach(id => {
-        if ((previous.questions || []).some(q=>q.id===id)) return;
+      const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs);
+      const texts = change.archivedQtexts || (state.mode === 'explore' ? state.exploreQtexts : state.qtexts);
+      if (change.archivedTarget && change.archivedQuestions) {
+        const allowedQuestions = new Set(questions.map(q=>q.id).concat(Object.keys(confirmedAnswers)));
+        tree.questions.forEach(q=>{ if (!allowedQuestions.has(q.id)) gaps.push('question/outside-target/' + q.id); });
+        const allowedDependencies = new Set([...allowedQuestions,...tree.variables.map(v=>v.id)]);
+        tree.branches.forEach(b=>b.steps.forEach(st=>{ if (st.depends_on.some(id=>!allowedDependencies.has(id))) gaps.push(b.id + '/' + st.id + '/outside-target'); }));
+      }
+
+      Object.keys(change.archivedTarget ? confirmedAnswers : viewedAnswers()).forEach(id => {
+        if (questions.some(q=>q.id===id)) return;
         const next = tree.questions.find(q=>q.id===id), old = defs[id];
         if (next && (old ? ['text','why','type'].some(k=>next[k]!==old[k]) || JSON.stringify(next.options)!==JSON.stringify(old.options) : texts[id] && next.text!==texts[id])) gaps.push('answer/' + id);
       });
     }
+    // These permissions come from the requested input, before generation. A
+    // generated variable or dependency cannot authorize its own replacement.
+    const changedIds = change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id];
+    const replacingFacts = change.kind === 'fact_replacement' || !change.kind && currentVars().some(v=>v.id===change.id);
+    if (replacingFacts) currentVars().forEach(v => {
+      const next = tree.variables.find(n=>n.id===v.id);
+      if (!changedIds.includes(v.id)) {
+        if (!next || ['value','span','label'].some(k=>next[k]!==v[k]) || JSON.stringify(next.alternatives.filter(a=>a!==next.value))!==JSON.stringify(v.alternatives.filter(a=>a!==v.value))) gaps.push('fact/' + v.id);
+      } else if (!next || next.value !== (change.kind === 'fact_replacement' ? (change.expectedValues || {})[v.id] : change.to)) gaps.push('fact/' + v.id);
+    });
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
-      if (preserveAll && (!branch || branch.name !== b.name)) gaps.push(b.id);
+      if ((preserveAll || addedFact || replacingFacts && b.steps.every(st=>unaffectedAction(st,previous,change))) && (!branch || branch.name !== b.name)) gaps.push(b.id);
       if (preserveAll && branch) {
         const ids = new Set(b.steps.map(st=>st.id));
         if (JSON.stringify(branch.steps.filter(st=>ids.has(st.id)).map(st=>st.id)) !== JSON.stringify(b.steps.map(st=>st.id))) gaps.push(b.id + '/order');
@@ -1020,8 +1052,8 @@
       b.steps.forEach(st => {
         const matching = branch && branch.steps.find(x => x.id === st.id);
         const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
-        const declaredUnchanged = preserveAll || (st.depends_on.length && !st.depends_on.includes(change.id) && st.depends_on.every(id => known.has(id)));
-        if (relocated || (declaredUnchanged && !matching) || (preserveAll && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
+        const declaredUnchanged = unaffectedAction(st,previous,change);
+        if (relocated || (declaredUnchanged && !matching) || ((preserveAll || (addedFact || replacingFacts) && declaredUnchanged) && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
       });
     });
     return gaps;
@@ -1046,20 +1078,31 @@
 
   // ---- Conversation ----
   function mapForPrompt(tree, answers = viewedAnswers()) {
-    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = guidanceClaim(r); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => q.text) });
+    return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = guidanceClaim(r); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => ({id:q.id,text:q.text,type:q.type,options:q.options})) });
   }
   function followSystem() {
     return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
-      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"add|compare|whatif|fact|question|both","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","changes":[{"id":"existing variable or answered-question id","value":"proposed value"}],"steps":["ids of map steps the answer refers to"],"not_covered":true|false,"target":{"type":"variable|question","id":"existing id","value":"alternative answer"}}' +
+      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"add|compare|whatif|fact|question|both","update":"none|add_fact|replace_fact|new_situation","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","changes":[{"id":"existing variable or answered-question id","value":"proposed value"}],"answers":[{"id":"existing open or answered question id","value":"verbatim stated answer","quote":"verbatim clause in the follow-up stating that answer"}],"steps":["ids of map steps the answer refers to"],"not_covered":true|false,"target":{"type":"variable|question","id":"existing id","value":"alternative answer"}}' +
+      '\nFor every replacement return changes with the existing id and exact requested value; do not rely on a rewritten story alone. If a stated fact directly answers an existing open or previously answered question, return it in answers with its existing question id, a value present verbatim in the follow-up and a verbatim clause containing that value. Only bind answers explicitly stated about the person; a workplace or residence never proves nationality. Never infer or invent an answer. These are proposals, confirmed only if adopted.' +
+      '\nSet update add_fact when adding a personal fact or hypothetical fact without replacing an existing fact; replace_fact only for an explicit correction/replacement. Workplace and home/destination are different facts: “What if I work in Gland but still move to Saint-Cergue?” adds a hypothetical workplace and keeps the destination Saint-Cergue. Never target the destination merely because an alternative city is mentioned. Copy every other original fact into story. Set new_situation only when explicitly requested; otherwise this remains the same person and situation. A hypothetical can use kind compare and update add_fact. Questions without new facts use update none.' +
       '\nIntent: a question about an existing step is kind question and must not change any story or answer. A request for an ADDITIONAL goal or service is kind add: keep the existing situation and answers; never append the new topic to an old answer. "Can I also have life insurance? How?" adds a goal; it does not change an answer about tenancy disputes. Use target or changes only for an explicit replacement of the referenced fact or answer, such as "instead of tenancy, employment disputes". If unclear, ask a short clarification question without changing the map.' +
-      '\nA request that replaces an existing path, a hypothetical, "what if", "et si", "instead", or changing an answer MUST use kind compare and give the full alternative story or changes to existing variable ids. A comparison is NOT a confirmed fact. For an answered-question alternative, use target type question, its existing id and the proposed value; do not turn it into an unrelated situation sentence. For a variable alternative use target type variable. Preserve every other stated fact in story. A correction such as "it is Nyon, not Hyon" must replace the mistaken word in story. Do not merely explain the alternative: return the changed situation so the app can preview its map. If kind fact or both, also preserve existing facts except explicit corrections. Rules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states anything about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
+      '\nA request that replaces an existing path, a hypothetical, "what if", "et si", "instead", or changing an answer MUST use kind compare and give the full alternative story or changes to existing variable ids. A comparison is NOT a confirmed fact. For an answered-question alternative, use target type question, its existing id and the proposed value; do not turn it into an unrelated situation sentence. For a variable alternative use target type variable. Preserve every other stated fact in story. A correction such as "it is Nyon, not Hyon" must replace the mistaken word in story. Do not merely explain the alternative: return the changed situation so the app can preview its map. If kind fact or both, also preserve existing facts except explicit corrections. Rules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states a confirmed fact about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
   }
   function directAlternative(text) {
-    if (!/\b(what if|instead|rather|switch|change|move to|et si|plutôt|changer|remplacer|déménager)\b/i.test(text)) return null;
-    const words = text.toLowerCase().match(/[\p{L}\p{N}-]+/gu) || [];
-    const matches = []; currentVars().forEach(v => (v.alternatives || []).forEach(a => { const tokens = a.toLowerCase().match(/[\p{L}\p{N}-]+/gu) || []; if (tokens.length && words.some((_, i) => tokens.every((w, j) => words[i + j] === w))) matches.push({ id: v.id, to: a }); }));
+    const quote = value => '["\u201c\u201d\u2018\u2019\x27]?' + String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '["\u201c\u201d\u2018\u2019\x27]?';
+    const matches = [];
+    currentVars().forEach(v => (v.alternatives || []).forEach(a => {
+      const from = quote(v.value), to = quote(a);
+      const command = '^(?:(?:replace|change)\\s+' + from + '\\s+(?:with|to)\\s+' + to + '|(?:remplace[r]?|change[r]?)\\s+' + from + '\\s+(?:par|en)\\s+' + to + '|what if\\s+' + to + '\\s+instead of\\s+' + from + ')[.!?]*$';
+      if (new RegExp(command,'iu').test(text.trim())) matches.push({id:v.id,to:a});
+    }));
     return matches.length === 1 ? matches[0] : null;
   }
+  const ownsAnswer = (answers,id) => Object.prototype.hasOwnProperty.call(answers,id);
+  const literalFact = (text,value) => {
+    const escaped = String(value || '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    return !!escaped && new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(String(text));
+  };
   async function converse(text) {
     text = text.trim(); if (!text || state.loading) return;
     state.followDraft = '';
@@ -1067,6 +1110,8 @@
     if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
     const exploring = state.mode === 'explore', turns = (exploring ? state.exploreTurns : state.turns).concat([{ role: 'you', text }]);
     set(exploring ? { exploreTurns: turns } : { turns }, !exploring);
+    const fresh = text.match(/^(?:start (?:a )?new situation|new situation|nouvelle situation)\s*:\s*([\s\S]+)$/i);
+    if (fresh) { await stageStory(fresh[1],false,'new_situation'); return; }
     const explicitReplacement = /\b(instead|rather than|replace|au lieu|plutôt|remplacer)\b/i.test(text);
     const adding = !explicitReplacement && /\b(also|as well|in addition|aussi|en plus|également)\b/i.test(text) && /\b(have|buy|get|want|need|obtain|add|insurance|avoir|souscrire|veux|voudrais|souhaite|ajouter|assurance)\b/i.test(text);
     if (adding && /\blive insurance\b/i.test(text)) {
@@ -1081,18 +1126,37 @@
       const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + baseStory + '\nVariables: ' + JSON.stringify(currentVars()) + '\nConfirmed answers: ' + JSON.stringify(Object.keys(viewedAnswers()).map(q => ({ id: q, text: (state.mode === 'explore' ? state.exploreQtexts : state.qtexts)[q] || q, answer: viewedAnswers()[q] }))) + '\nMap: ' + mapForPrompt(viewTree) + '\nFollow-up: ' + text }], 1100);
       if (!stillCurrent(id)) return;
       const ex = extractJSON(res.text.replace(/```json|```/g, '').trim()), j = JSON.parse(ex.text);
+      if (j.update === 'new_situation') { set({loading:'',followDraft:text,error:t('Pour une autre situation, utilisez « Recommencer » ou écrivez « Nouvelle situation : … ». Votre carte actuelle est conservée.','For a separate situation, use Start over or write “New situation: …”. Your current map is preserved.')}); return; }
+      const retained = currentVars().filter(v => {
+        const escaped = String(v.value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        return new RegExp('(?:still|keep|continue|toujours|garde)[^,.;!?]*?(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(text);
+      });
+      const proposedChanges = (Array.isArray(j.changes) ? j.changes : []).concat(j.target ? [j.target] : []);
+      if (retained.some(v => proposedChanges.some(c=>c && c.id===v.id && c.value!==v.value) || typeof j.story==='string' && !j.story.toLowerCase().includes(v.value.toLowerCase()))) {
+        set({loading:'',followDraft:text,error:t('La proposition contredit un fait que vous voulez garder. Précisez le changement ; votre carte est conservée.','The proposal conflicts with a fact you asked to keep. Please clarify the change; your map is preserved.')}); return;
+      }
       if (j.kind === 'add' && !explicitReplacement) { set({ loading: '' }); await stageStory(text, true); return; }
-      if ((j.target || (Array.isArray(j.changes) ? j.changes : []).some(c => c && c.id in viewedAnswers())) && ['compare','whatif'].includes(j.kind) && !/\b(instead|rather|replace|switch|change|what if|et si|plutôt|changer|remplacer)\b/i.test(text)) {
+      if ((j.target || (Array.isArray(j.changes) ? j.changes : []).some(c => c && ownsAnswer(viewedAnswers(),c.id))) && ['compare','whatif'].includes(j.kind) && !/\b(instead|rather|replace|switch|change|what if|et si|plutôt|changer|remplacer)\b/i.test(text)) {
         j.kind = 'question'; j.story = baseStory; j.target = null; j.changes = [];
       }
+      const requestedChanges=(Array.isArray(j.changes)?j.changes:[]).concat(j.target?[j.target]:[]);
+      if(requestedChanges.some(c=>c && typeof c.value==='string' && (currentVars().some(v=>v.id===c.id && v.value!==c.value) || ownsAnswer(viewedAnswers(),c.id) && viewedAnswers()[c.id]!==c.value) && !literalFact(text,c.value))) {set({loading:'',followDraft:text,error:t('La nouvelle valeur proposée n’est pas dans votre message. Votre carte est conservée.','The proposed new value was not stated in your message. Your map is preserved.')});return;}
       if (j.target && typeof j.target.value === 'string' && ['compare','whatif'].includes(j.kind)) {
         set({ loading: '' });
         if (currentVars().some(v => v.id === j.target.id)) { await propose(j.target.id, j.target.value); return; }
-        if (j.target.id in viewedAnswers()) { await proposeAnswer(j.target.id, j.target.value); return; }
+        if (ownsAnswer(viewedAnswers(),j.target.id)) { await proposeAnswer(j.target.id, j.target.value, true); return; }
       }
-      const answerChanges = (Array.isArray(j.changes) ? j.changes : []).filter(c => c && typeof c.value === 'string' && c.id in viewedAnswers());
-      if (answerChanges.length === 1 && ['compare','whatif'].includes(j.kind)) { set({ loading: '' }); await proposeAnswer(answerChanges[0].id, answerChanges[0].value); return; }
+      const answerChanges = (Array.isArray(j.changes) ? j.changes : []).filter(c => c && typeof c.value === 'string' && ownsAnswer(viewedAnswers(),c.id));
+      if (answerChanges.length === 1 && ['compare','whatif'].includes(j.kind)) { set({ loading: '' }); await proposeAnswer(answerChanges[0].id, answerChanges[0].value, true); return; }
       let answerText = String(j.answer || '').trim(), newStory = String(j.story || baseStory).trim();
+      const answerUpdates = {};
+      for (const binding of Array.isArray(j.answers) ? j.answers : []) {
+        if (!binding || ownsAnswer(answerUpdates,binding.id) || !viewTree.questions.some(q=>q.id===binding.id) && !(ownsAnswer(viewedAnswers(),binding.id)) || typeof binding.value!=='string' || typeof binding.quote!=='string' || !binding.quote.trim() || !text.toLowerCase().includes(binding.quote.trim().toLowerCase()) || !literalFact(binding.quote,binding.value)) throw new Error(t('La réponse proposée n’est pas vérifiable dans vos mots. Répondez directement à la question ; votre carte est conservée.','The proposed answer could not be verified in your words. Answer the question directly; your map is preserved.'));
+        answerUpdates[binding.id] = binding.value.trim();
+      }
+      if (exploring && Object.keys(answerUpdates).some(id=>answerUpdates[id]!==viewedAnswers()[id])) { const qid=Object.keys(answerUpdates).find(id=>answerUpdates[id]!==viewedAnswers()[id]);set({loading:'',followDraft:text,sel:{q:qid,requireDirect:true,suggestedAnswer:answerUpdates[qid]},error:t('Confirmez la réponse directement dans cette question avant de modifier l’hypothèse.','Confirm the answer directly in this question before changing the hypothesis.')}); return; }
+      if (Object.keys(answerUpdates).length && newStory===baseStory && ['fact','both','compare','whatif'].includes(j.kind)) newStory=baseStory+'\n'+text;
+
       const correction = text.match(/(?:^|\b)(?:is|it's|it’s|it is|c'est|c’est)\s+([\p{L}][\p{L}\-'’]*)\s*,?\s*(?:no|not|non|pas)\s+([\p{L}][\p{L}\-'’]*)/iu);
       if (correction && newStory === baseStory) { const escaped = correction[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); newStory = baseStory.replace(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'), correction[1]); }
       const changes = Array.isArray(j.changes) ? j.changes.filter(c => c && currentVars().some(v => v.id === c.id) && typeof c.value === 'string' && c.value.trim()) : [];
@@ -1107,26 +1171,49 @@
       const guide = !comparing && (answerText || j.kind === 'question' || found.length) ? [{ role: 'guide', text: safeText, steps: found, prov: res.prov, catalogueOnly: true, notCovered: !notes.length || !!j.not_covered }] : [];
       set(exploring ? { exploreTurns: turns.concat(guide), loading: '' } : { turns: turns.concat(guide), loading: '' }, !exploring);
       // Any proposed changed situation gets a map, even if the model mislabels a "what if" as a question.
-      if (newStory !== baseStory) { await stageStory(newStory); return; }
+      if (newStory !== baseStory) {
+        const addingFact = (j.update === 'add_fact' || ['fact','both'].includes(j.kind)) && j.update !== 'replace_fact' && !explicitReplacement && !correction && !changes.length;
+        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes : null,answerUpdates,text); return;
+      }
       if (['compare', 'fact', 'both'].includes(j.kind) && !answerText) set({ error: t('Le changement n’a pas été compris. Touchez un mot souligné ou réécrivez la phrase pour comparer.', 'The change was not understood. Touch an underlined word or rewrite the sentence to compare.') });
       else if (found.length) set({ sel: Object.assign({ alt: false }, found[0]) });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
-  async function stageStory(text, addition = false) {
+  async function stageStory(text, addition = false, intent = 'fact_replacement', requestedChanges = null, answerUpdates = {}, requestText = null) {
     text = String(text || '').trim(); if (!text || text === viewedStory()) return;
     if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
     const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
-    const request = text;
-    if (addition) text = viewedStory() + '\n' + t('Demande supplémentaire : ', 'Additional request: ') + request;
-    const answers = addition ? Object.assign({}, viewedAnswers()) : {}, qtexts = addition ? Object.assign({}, exploring ? state.exploreQtexts : state.qtexts) : {};
+    const fresh = intent === 'new_situation', request = text, before = viewedStory(), originalRequest=requestText===null?text:String(requestText);
+    const changedIds = !addition && intent === 'fact_replacement' ? (requestedChanges ? requestedChanges.map(c=>c.id) : currentVars().filter(v=>!literalFact(text,v.value)).map(v=>v.id)) : [];
+    const expectedValues = {};
+    for (const id of changedIds) {
+      const v=currentVars().find(v=>v.id===id), explicit=requestedChanges && requestedChanges.find(c=>c.id===id);
+      let value=explicit && String(explicit.value || '').trim();
+      if (!value && v) {
+        const quote=v.span || v.value, pos=before.indexOf(quote);
+        if (pos>=0 && before.indexOf(quote,pos+quote.length)<0) {
+          const prefix=before.slice(0,pos),suffix=before.slice(pos+quote.length);
+          if (text.startsWith(prefix) && text.endsWith(suffix)) value=text.slice(prefix.length,suffix ? -suffix.length : undefined).trim();
+        }
+      }
+      if (!v || !value || !literalFact(text,value) || !literalFact(originalRequest,value)) { set(Object.assign({pending:null,loading:'',error:t('Le remplacement proposé n’est pas vérifiable dans vos mots. Utilisez un fait souligné ; votre carte est conservée.','The proposed replacement could not be verified in your words. Use an underlined fact; your map is preserved.')},requestText===null?{editing:true,editDraft:text}:{followDraft:originalRequest})); return; }
+      expectedValues[id]=value;
+    }
+    if (Object.values(answerUpdates).some(value=>!literalFact(text,value))) { set({pending:null,loading:'',error:t('Confirmez la réponse directement dans la question. Votre carte est conservée.','Confirm the answer directly in the question. Your map is preserved.')}); return; }
+    if (addition) text = before + '\n' + t('Demande supplémentaire : ', 'Additional request: ') + request;
+    const answers = fresh ? {} : Object.assign({},viewedAnswers(),answerUpdates), qtexts = fresh ? {} : Object.assign({},exploring ? state.exploreQtexts : state.qtexts);
+    const defs = fresh ? {} : Object.assign({},exploring ? state.exploreQuestionDefs : state.questionDefs,Object.fromEntries(previous.questions.map(q=>[q.id,q])));
+    Object.keys(answerUpdates).forEach(id=>{if(defs[id])qtexts[id]=defs[id].text;});
+    const answerChanges = Object.keys(answers).filter(id=>answers[id]!==viewedAnswers()[id]);
     const id = beginRequest(t('Apertus dessine le chemin alternatif…', 'Apertus is drawing the alternative path…'));
     try {
-      const tree = await fetchTree(text, addition ? currentVars() : [], answers, previous, addition ? {kind:'addition',id:'additional_goal',to:request} : null); if (!stillCurrent(id)) return;
-      if (exploring) set({ exploreStory: text, exploreVars: tree.variables, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '', sel: null });
-      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'story', addition, story: text, vars: tree.variables, tree, answers, qtexts, from: t('ma situation', 'my situation'), to: t('ce chemin', 'this path') }, suggestedStory: '', loading: '', sel: null });
-    } catch (e) { if (stillCurrent(id)) set({ loading: '', suggestedStory: addition ? request : text, suggestedAddition: addition, error: e.message || 'error' }); }
+      const change = addition ? {kind:'addition',id:'additional_goal',to:request} : fresh ? null : {kind:intent,id:'story_update',to:request,changedIds,expectedValues,answerChanges};
+      const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, change); if (!stillCurrent(id)) return;
+      if (exploring) set({ exploreStory:text,exploreVars:tree.variables,exploreTree:tree,exploreAnswers:answers,exploreQtexts:qtexts,exploreQuestionDefs:defs,loading:'',sel:null });
+      else set({ activeLane:(diffBranches(state.tree.branches,tree.branches).find(r=>r.cmp.some(c=>c.kind!=='same')) || {}).id || state.activeLane,pending:{kind:'story',addition,intent,story:text,vars:tree.variables,tree,answers,qtexts,questionDefs:defs,requiredAnswers:Object.keys(answerUpdates).filter(id=>answers[id]!==viewedAnswers()[id]),confirmedAnswers:[],from:t('ma situation','my situation'),to:t('ce chemin','this path')},suggestedStory:'',loading:'',sel:null });
+    } catch(e) { if(stillCurrent(id))set({loading:'',suggestedStory:addition ? request : text,suggestedAddition:addition,suggestedIntent:intent,suggestedChanges:changedIds.map(id=>({id,value:expectedValues[id]})),suggestedAnswerUpdates:answerUpdates,suggestedRequestText:originalRequest,error:e.message || 'error'}); }
   }
-  async function applySuggestedStory(text) { await stageStory(text, !!state.suggestedAddition); }
+  async function applySuggestedStory(text) { const same=text===state.suggestedStory;await stageStory(text,!!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',same?state.suggestedChanges || null:null,state.suggestedAnswerUpdates || {},same?state.suggestedRequestText || null:null); }
   async function startStory(text) {
     text = text.trim(); if (!text || state.loading) return;
     if (state.tree) { await stageStory(text); return; }
@@ -1144,21 +1231,33 @@
     const v = currentVars().find(x => x.id === varId); to = String(to || '').trim(); if (!v || !to || to === v.value || state.loading) return;
     const exploring = state.mode === 'explore', original = currentVars(), vars = original.map(x => x.id === varId ? Object.assign({}, x, { value: to, span: to }) : x);
     const story = storyWithVars(viewedStory(), vars, original), previous = exploring ? state.exploreTree : state.tree;
-    const answers = exploring ? Object.assign({}, state.exploreAnswers) : answersFor(vars), qtexts = exploring ? Object.assign({}, state.exploreQtexts) : qtextsFor(vars);
+    const archived = !exploring && state.answerSets[scenarioKey(vars)];
+    const answers = Object.assign({},archived ? archived.answers : viewedAnswers()), qtexts = Object.assign({},archived ? archived.qtexts : exploring ? state.exploreQtexts : state.qtexts);
+    const historyTarget=archived && state.history.slice().reverse().find(snapshot=>scenarioKey(snapshot.vars)===scenarioKey(vars));
+    const archivedQuestions=archived && (archived.questions || historyTarget && historyTarget.tree.questions), archivedDefs=archived && (archived.questionDefs || historyTarget && historyTarget.questionDefs);
+    const questionChanges=archivedQuestions ? previous.questions.filter(q=>{const target=archivedQuestions.find(t=>t.id===q.id) || (archivedDefs || {})[q.id];return !target ? !ownsAnswer(answers,q.id) : ['text','type'].some(k=>q[k]!==target[k]) || JSON.stringify(q.options)!==JSON.stringify(target.options);}).map(q=>q.id) : [];
+    const answerChanges = [...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]).concat(questionChanges);
     const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
     try {
-      const tree = await fetchTree(story, vars, answers, previous, { id: varId, from: v.value, to }); if (!stillCurrent(id)) return;
-      if (exploring) set({ exploreVars: vars, exploreStory: story, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
-      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars, tree, answers, qtexts }, loading: '' });
+      const tree = await fetchTree(story, vars, answers, previous, { id:varId,from:v.value,to,archivedTarget:!!archived,archivedQuestions,archivedDefs,archivedQtexts:archived && archived.qtexts,answerChanges }); if (!stillCurrent(id)) return;
+      const nextVars=vars.map(x=>x.id!==varId ? x : Object.assign({},x,{alternatives:[...new Set([v.value,...((tree.variables.find(n=>n.id===varId) || {}).alternatives || []),...(v.alternatives || [])])].filter(a=>a!==to).slice(0,3)}));
+      if (exploring) set({ exploreVars: nextVars, exploreStory: story, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars:nextVars, tree, answers, qtexts,questionDefs:archived ? Object.assign({},state.questionDefs,archivedDefs || {},Object.fromEntries((archivedQuestions || []).map(q=>[q.id,q]))) : state.questionDefs }, loading: '' });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
+  const pendingAnswersConfirmed = p => !p || (p.requiredAnswers || []).every(id=>(p.confirmedAnswers || []).includes(id));
+  function confirmProposedAnswer(id) {
+    const p=state.pending; if(!p || state.loading || !(p.requiredAnswers || []).includes(id))return;
+    const confirmed=(p.confirmedAnswers || []).includes(id) ? p.confirmedAnswers.filter(q=>q!==id) : (p.confirmedAnswers || []).concat(id);
+    set({pending:Object.assign({},p,{confirmedAnswers:confirmed})});
+  }
   function adopt() {
-    const p = state.pending; if (!p || state.loading) return; remember();
+    const p = state.pending; if (!p || state.loading || !pendingAnswersConfirmed(p)) return; remember();
     const next = p.answers ? { answers: p.answers, qtexts: p.qtexts || {} } : (state.answerSets[scenarioKey(p.vars)] || { answers: {}, qtexts: {} });
-    const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers: state.answers, qtexts: state.qtexts } });
+    const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: scenarioRecord(state.answers,state.qtexts,state.tree,state.questionDefs) });
     const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
-    const resetContext = p.kind === 'story' && !p.addition;
-    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
+    const resetContext = p.intent === 'new_situation';
+    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : p.questionDefs || state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
   }
   async function refreshSources() {
     if (!state.tree || state.loading || !live()) return;
@@ -1185,14 +1284,18 @@
       }
     } catch(e) { if(stillCurrent(id))set({loading:'',error:e.message}); }
   }
-  async function proposeAnswer(qid, to) {
-    to = String(to || '').trim(); const cur = viewedAnswers(); if (!to || !(qid in cur) || cur[qid] === to || state.loading) return;
+  async function proposeAnswer(qid, to, interpreted = false) {
+    to = String(to || '').trim(); const cur = viewedAnswers(); if (!to || !ownsAnswer(cur,qid) || cur[qid] === to || state.loading) return;
     const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree, answers = Object.assign({}, cur, { [qid]: to });
+    const defs=exploring ? state.exploreQuestionDefs : state.questionDefs, question=previous.questions.find(q=>q.id===qid) || defs[qid];
+    const qtexts=Object.assign({},exploring ? state.exploreQtexts : state.qtexts);if(question)qtexts[qid]=question.text;
+    if (interpreted && !qtexts[qid]) {set({loading:'',error:t('Répondez directement à la question avant de modifier sa réponse.','Answer the question directly before changing its answer.')});return;}
+    if (interpreted && exploring) {set({loading:'',exploreQtexts:qtexts,sel:{q:qid,requireDirect:true,suggestedAnswer:to},error:t('Confirmez la réponse directement dans cette question avant de modifier l’hypothèse.','Confirm the answer directly in this question before changing the hypothesis.')});return;}
     const id = beginRequest(t('Apertus dessine cette autre réponse…', 'Apertus is drawing this alternative answer…'));
     try {
       const tree = await fetchTree(viewedStory(), currentVars(), answers, previous, { id: qid, from: cur[qid], to }); if (!stillCurrent(id)) return;
-      if (exploring) set({ exploreTree: tree, exploreAnswers: answers, loading: '' });
-      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'answer', answerChange: true, id: qid, from: cur[qid], to, story: state.story, vars: state.vars, answers, qtexts: state.qtexts, tree }, loading: '' });
+      if (exploring) set({ exploreTree: tree, exploreAnswers: answers, exploreQtexts:qtexts, loading: '' });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'answer', answerChange: true, requiredAnswers:interpreted?[qid]:[], confirmedAnswers:[], id: qid, from: cur[qid], to, story: state.story, vars: state.vars, answers, qtexts, tree }, loading: '' });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
   async function answer(qid, value) {
@@ -1205,7 +1308,7 @@
     try {
       const tree = await fetchTree(viewedStory(), currentVars(), answers, previous, null); if (!stillCurrent(id)) return;
       if (exploring) set({ exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
-      else { remember(); set({ prevTree: previous, tree, answers, qtexts, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers, qtexts } }), pending: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
+      else { remember(); set({ prevTree: previous, tree, answers, qtexts, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: scenarioRecord(answers,qtexts,tree,state.questionDefs) }), pending: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
 
@@ -1284,7 +1387,11 @@
     if (d.previewOn) {
       const c = count(d);
       const parked = Object.keys(s.answers).filter(id => !(id in (s.pending.answers || {}))).length;
-      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
+      const omittedQuestions=d.tree.questions.filter(q=>!ownsAnswer(s.answers,q.id) && !ownsAnswer(s.pending.answers || {},q.id) && !s.pending.tree.questions.some(next=>next.id===q.id));
+      const questionPreview=omittedQuestions.length ? '<div class="small">' + t('Questions hors du chemin proposé : ','Questions outside the proposed path: ') + omittedQuestions.map(q=>esc(q.text)).join(' · ') + '</div>' : '';
+      const revisedAnswers = Object.keys(s.pending.answers || {}).filter(id=>s.pending.answers[id]!==s.answers[id]);
+      const answerPreview = (revisedAnswers.length ? '<div class="small proposed-answers">' + t('Réponses proposées : ', 'Proposed answers: ') + revisedAnswers.map(id=>'<p>' + esc((s.pending.qtexts || {})[id] || id) + '<br><b>' + esc(s.pending.answers[id]) + '</b>' + ((s.pending.requiredAnswers || []).includes(id) ? '<br><button type="button" class="btn" data-action="confirm-answer" data-question="' + esc(id) + '" aria-pressed="' + (s.pending.confirmedAnswers || []).includes(id) + '">' + ((s.pending.confirmedAnswers || []).includes(id) ? t('Annuler la confirmation','Undo confirmation') : t('Confirmer la réponse','Confirm answer')) + '</button>' : '') + '</p>').join('') + (!pendingAnswersConfirmed(s.pending) ? '<p>' + t('Confirmez la réponse à chaque question avant d’adopter ce chemin.','Confirm the answer to each question before adopting this path.') + '</p>' : '') + '</div>' : '') + (parked ? '<div class="small">' + parked + t(' réponse(s) actuelle(s) ne font pas partie de ce chemin proposé.', ' current answer(s) are not part of this proposed path.') + '</div>' : '');
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + questionPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
     }
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     const note = d.previewOn ? { text: s.pending.tree.note, prov: s.pending.tree.prov } : d.exploreOn && d.tree ? { text: d.tree.note, prov: d.tree.prov } : s.note && s.note.text ? s.note : null;
@@ -1418,7 +1525,7 @@
     if (missingRecords || d.tree.catalogueVersion !== CATALOG_VERSION || sourceRecords.some(ref=>ref.changed)) html += '<div class="catalogue-update"><p>' + (d.tree.catalogueVersion && !missingRecords ? t('Le catalogue a changé. Les notes conservées correspondent à la carte d’origine.', 'The catalogue has changed. Recorded notes belong to the original map.') : t('La version d’origine des sources n’a pas été enregistrée.', 'The original source version was not recorded.')) + '</p><button type="button" class="btn" data-action="refresh-sources"' + (live() && !state.loading ? '' : ' disabled') + '>' + t('Comparer avec les sources actuelles','Compare current sources') + '</button></div>';
     if (d.previewOn) {
       const summary = p.answerChange && !c.changed && !c.added && !c.removed ? t('Seule votre réponse change ; les étapes restent identiques. Rien n’est appliqué.', 'Only your answer changes; the mapped steps stay the same. Nothing is applied.') : c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') + c.same + t(' identiques. Rien n’est appliqué.', ' identical. Nothing is applied.');
-      html += '<div class="map-comparison"><span>' + summary + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt">' + t('Adopter', 'Adopt') + '</button></div>';
+      html += '<div class="map-comparison"><span>' + summary + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter', 'Adopt') + '</button></div>';
     }
     if (mobile) html += '<div class="lane-tabs" role="group" aria-label="' + t('Pistes', 'Paths') + '">' + d.rows.map(r => '<button data-lane-select="' + esc(r.id) + '" aria-pressed="' + (r.id === (state.activeLane && d.rows.some(x => x.id === state.activeLane) ? state.activeLane : d.rows[0].id)) + '">' + esc(r.name) + '</button>').join('') + '</div>';
     return html;
@@ -1479,14 +1586,14 @@
     if (!d.tree) { html = '<div class="eyebrow">' + t('Comment ça marche', 'How it works') + '</div><h2>' + t('Vous racontez. Apertus dessine. Vous changez un mot.', 'You tell. Apertus draws. You change a word.') + '</h2><p class="lead">' + t('La carte montre des pistes parallèles. Chaque point est une étape avec une page suggérée du catalogue, ou une lacune explicite. Touchez un mot souligné pour voir, en pointillé, ce qui changerait avant de décider.', 'The map shows parallel paths. Each point is a step with a suggested catalogue page, or an explicit gap. Touch an underlined word to see, dashed, what would change before deciding.') + '</p>'; document.getElementById('detail').innerHTML = html + foot; return; }
     if (s.sel && s.sel.qAlt && s.pending) {
       const q = s.pending.tree.questions.find(q => q.id === s.sel.qAlt);
-      if (q) { html = '<div class="eyebrow">' + t('Sur le chemin proposé', 'On the proposed path') + '</div><h2>' + esc(q.text) + '</h2><p class="lead">' + esc(q.why) + '</p><p>' + t('Cette question reste ouverte. Adoptez ce chemin pour y répondre, ou explorez sans changer votre situation.', 'This question remains open. Adopt this path to answer it, or explore without changing your situation.') + '</p><button class="btn primary" data-action="adopt">' + t('Adopter ce chemin', 'Adopt this path') + '</button>'; document.getElementById('detail').innerHTML = html + foot; return; }
+      if (q) { html = '<div class="eyebrow">' + t('Sur le chemin proposé', 'On the proposed path') + '</div><h2>' + esc(q.text) + '</h2><p class="lead">' + esc(q.why) + '</p><p>' + t('Cette question reste ouverte. Adoptez ce chemin pour y répondre, ou explorez sans changer votre situation.', 'This question remains open. Adopt this path to answer it, or explore without changing your situation.') + '</p><button class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter ce chemin', 'Adopt this path') + '</button>'; document.getElementById('detail').innerHTML = html + foot; return; }
     }
     if (s.sel && s.sel.q) {
       const q = d.tree.questions.find(x => x.id === s.sel.q) || ((d.qtexts || {})[s.sel.q] ? { id: s.sel.q, text: d.qtexts[s.sel.q], why: t('Vous pouvez corriger cette réponse ; la carte sera recalculée.', 'You can correct this answer; the map will be recalculated.'), type: 'text', options: [] } : null);
       if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div></div>';
-        if (q.type === 'yesno') html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
-        else if (q.type === 'choice' && q.options.some(o => o.trim())) html += '<div class="row">' + q.options.filter(o => o.trim()).map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
-        else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" aria-label="' + esc(q.text) + '" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
+        if (q.type === 'yesno' && !s.sel.requireDirect) html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
+        else if (q.type === 'choice' && q.options.some(o => o.trim()) && !s.sel.requireDirect) html += '<div class="row">' + q.options.filter(o => o.trim()).map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
+        else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" value="' + esc(s.sel.suggestedAnswer || '') + '" aria-label="' + esc(q.text) + '" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
         document.getElementById('detail').innerHTML = html + foot; return; }
     }
     if (s.sel && s.sel.aq) {
@@ -1519,7 +1626,7 @@
     if (other) {
       html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? t('Version enregistrée', 'Saved version') : t('Version proposée', 'Proposed version')) + '</div><div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><div class="small">' + esc(other.why) + '</div>' + sourceBlock(other) + '</div>';
     } else if (viewingAlt) html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + t('Aujourd’hui : cette étape n’existe pas', 'Today: this step does not exist') + '</div></div>';
-    if (d.previewOn) html += '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt">' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' à ma situation', ' to my situation') + '</button></div>';
+    if (d.previewOn) html += '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' à ma situation', ' to my situation') + '</button></div>';
     document.getElementById('detail').innerHTML = html + foot;
   }
 
@@ -1572,7 +1679,7 @@
     const pa = e.target.closest('[data-propose-answer]'); if (pa) { proposeAnswer(pa.dataset.proposeAnswer, pa.dataset.value); return; }
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'confirm-goal') { const goal=state.goalConfirmation; if(goal)stageStory(goal.suggestion,true); return; } if (x === 'edit-goal') { const goal=state.goalConfirmation; set({goalConfirmation:null,followDraft:goal ? goal.request : ''}); return; } if (x === 'complete-map') { completeMap(); return; } if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'refresh-sources') { refreshSources(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'confirm-answer') { confirmProposedAnswer(a.dataset.question); return; } if (x === 'confirm-goal') { const goal=state.goalConfirmation; if(goal)stageStory(goal.suggestion,true); return; } if (x === 'edit-goal') { const goal=state.goalConfirmation; set({goalConfirmation:null,followDraft:goal ? goal.request : ''}); return; } if (x === 'complete-map') { completeMap(); return; } if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'refresh-sources') { refreshSources(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
     const lane = e.target.closest('[data-lane-select]'); if (lane) { set({ activeLane: lane.dataset.laneSelect, sel: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }
