@@ -54,7 +54,7 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
 
  await test('Keyboard activation works on an SVG node even when it has no click() method',()=>{const h=harness(),a=saved(h);let prevented=false;const target={dataset:{sel:'0|arrival|0'},closest:s=>s==='[data-sel]'?target:null,dispatchEvent:event=>{assert.equal(event.bubbles,true);for(const f of h.events.get('click'))f({target})}};for(const f of h.events.get('keydown'))f({key:'Enter',target,preventDefault:()=>{prevented=true}});assert.equal(prevented,true);assert.equal(a.state.sel.id,'arrival');assert.match(h.element('detail').innerHTML,/Saint-Cergue/);});
  await test('Rendering the story cannot mutate the accepted model map or its shared variable objects',()=>{const h=harness(),a=saved(h);a.state.vars=a.state.tree.variables;const before=JSON.stringify(a.state.tree);a.render();assert.equal(JSON.stringify(a.state.tree),before);});
- await test('A proposal that drops an action declared unaffected gets one continuity repair, not a misleading diff',async()=>{const h=harness(),a=saved(h),bad=map('Gland');bad.branches[0].steps=bad.branches[0].steps.filter(s=>s.id!=='departure');const calls=h.queue([bad,map('Gland')]);await a.propose('destination','Gland');assert.equal(calls.length,2);assert.match(calls[1].messages[1].content,/registration\/departure/);assert.ok(a.state.pending);assert.equal(a.derive().rows[0].cmp.find(c=>c.id==='departure').kind,'same');});
+ await test('A proposal that drops an action declared unaffected gets one continuity repair, not a misleading diff',async()=>{const h=harness(),a=saved(h),bad=map('Gland');bad.branches[0].steps=bad.branches[0].steps.filter(s=>s.id!=='departure');const calls=h.queue([bad,map('Gland')]);await a.propose('destination','Gland');assert.equal(calls.length,2);assert.match(calls[1].messages.at(-1).content,/registration\/departure/);assert.ok(a.state.pending);assert.equal(a.derive().rows[0].cmp.find(c=>c.id==='departure').kind,'same');});
  await test('Two continuity failures leave the accepted map intact and do not offer Adopt',async()=>{const h=harness(),a=saved(h),bad=map('Gland');bad.branches[0].steps=bad.branches[0].steps.filter(s=>s.id!=='departure');const before=JSON.stringify(a.state.tree);h.queue([bad,bad]);await a.propose('destination','Gland');assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/alternative omitted existing steps/);});
  await test('Moving an existing action into another branch triggers a continuity repair',async()=>{const h=harness(),a=saved(h),bad=map('Gland');const st=bad.branches[0].steps.pop();bad.branches[1].steps.push(st);const calls=h.queue([bad,map('Gland')]);await a.propose('destination','Gland');assert.equal(calls.length,2);assert.ok(a.state.pending);assert.ok(a.state.pending.tree.branches[0].steps.some(s=>s.id==='arrival'));});
  await test('Explore retains a changed hypothetical answer through successive variable changes',async()=>{
@@ -150,5 +150,42 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
    const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');const pending=a.state.pending;await a.setLang('fr');assert.equal(a.state.pending,pending);assert.equal(h.context.document.documentElement.lang,'en');assert.equal(h.element('lang-fr').disabled,true);
  });
  if(process.env.REVIEW_OUTPUT){const h=harness(),a=saved(h);h.queue([map('Gland')]);await a.propose('destination','Gland');fs.mkdirSync(process.env.REVIEW_OUTPUT,{recursive:true});fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-desktop.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map"[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));h.context.window.innerWidth=390;a.render();fs.writeFileSync(process.env.REVIEW_OUTPUT+'/tree-mobile.svg',h.element('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/)[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));}
+ await test('Split model objects are repaired using the actual response, not an empty retry context',async()=>{
+   const h=harness(),a=saved(h);a.reset();
+   const text='What steps are needed to obtain legal insurance?';
+   const split='{"variables":[{"id":"insurance_type","value":"legal insurance","span":"legal insurance"}]},\n'+JSON.stringify({questions:[],branches:map().branches,note:''});
+   const calls=h.queue([split,map()]);await a.startStory(text);
+   assert.equal(calls.length,2);assert.equal(calls[1].messages[2].role,'assistant');assert.equal(calls[1].messages[2].content,split);
+   assert.match(calls[1].messages.at(-1).content,/multiple JSON objects/);assert.ok(a.state.tree);assert.equal(a.state.story,text);
+ });
+ await test('A branch-first split response cannot silently lose its following questions and facts',()=>{
+   const a=harness().app;
+   assert.throws(()=>a.extractJSON(JSON.stringify({branches:map().branches})+',\n'+JSON.stringify({questions:map().questions,variables:map().variables})),/multiple JSON objects/);
+ });
+ await test('Two empty model maps keep the typed question and stop without a third request',async()=>{
+   const h=harness(),a=saved(h);a.reset();const text='What steps are needed to obtain legal insurance?';
+   const calls=h.queue([{branches:[]},{branches:[]}]);await a.startStory(text);
+   assert.equal(calls.length,2);assert.equal(a.state.tree,null);assert.equal(a.state.draftStory,text);assert.match(a.state.error,/no usable branch/);assert.doesNotMatch(a.state.error,/rephrase/);
+ });
+ await test('A repair is visible and cancellation during it cannot install a map',async()=>{
+   const h=harness(),a=saved(h);a.reset();let finish,called=0;
+   h.context.fetch=async()=>{if(++called===1)return h.reply({branches:[]});return new Promise(r=>{finish=r});};
+   const operation=a.startStory('I want legal insurance.');while(!finish)await new Promise(r=>setImmediate(r));
+   assert.match(a.state.loading,/repairing the map/);assert.match(h.element('tree-host').innerHTML,/one retry/);
+   h.click('[data-action]',{action:'cancel-request'});finish(h.reply(map()));await operation;
+   assert.equal(called,2);assert.equal(a.state.tree,null);assert.equal(a.state.loading,'');assert.equal(a.state.draftStory,'I want legal insurance.');
+ });
+ await test('Upstream authentication errors explain provider settings without leaking diagnostics or retrying',async()=>{
+   for(const status of [401,403]){const h=harness(),a=saved(h);a.reset();let calls=0;
+     h.context.fetch=async()=>{calls++;return {ok:false,status:502,json:async()=>({error:'upstream '+status,detail:'sensitive fixture-key'})};};
+     await a.startStory('I want legal insurance.');assert.equal(calls,1);assert.match(a.state.error,/provider rejected the API credentials/);assert.match(a.state.error,/key, endpoint and model/);assert.doesNotMatch(a.state.error,/rephrase|readable map|sensitive|fixture-key/);
+   }
+ });
+ await test('Timeout and quota errors preserve the draft and do not request a map repair',async()=>{
+   for(const status of [504,429]){const h=harness(),a=saved(h);a.reset();let calls=0;
+     h.context.fetch=async()=>{calls++;return {ok:false,status,json:async()=>({error:'fixture'})};};
+     await a.startStory('I want legal insurance.');assert.equal(calls,1);assert.equal(a.state.draftStory,'I want legal insurance.');assert.match(a.state.error,status===504?/provider timed out/:/Request limit reached/);
+   }
+ });
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

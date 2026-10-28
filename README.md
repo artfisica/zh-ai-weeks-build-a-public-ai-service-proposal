@@ -99,6 +99,10 @@ The proxy pins one provider and one model, checks the page's origin for browser 
    - `UPSTREAM_MODEL`: `swiss-ai/Apertus-v1.5-70B`
 3. Codespace: repo → Code → Codespaces → Create codespace on main. The Codespaces start hook explicitly runs `AUTO_UPDATE=1 PUBLISH_PROXY_URL=1 bash proxy/start.sh`: it fast-forwards a clean checkout, starts the checked-out proxy, checks readiness, makes the demo port public and updates discovery when needed. Opening the existing Codespace retains this automatic demo setup. For a manual restart without publication, use `bash proxy/start.sh`. Two minutes later the page connects on its own.
 
+For an Apertus key issued by **PublicAI** (`platform.publicai.co`), use that provider's settings instead of Swisscom's: `APERTUS_API_KEY` = your PublicAI key, `UPSTREAM_BASE` = `https://api.publicai.co/v1`, `UPSTREAM_MODEL` = `swiss-ai/apertus-v1.5-70b`, and `UPSTREAM_PROVIDER` = `publicai`. Model IDs are case-sensitive. Store these as personal Codespaces secrets with repository access. After changing saved secrets, fully stop and reopen the Codespace; restarting only the proxy does not refresh the terminal's environment. Do not put keys in repository files or screenshots. A temporary terminal `export` does not update saved secrets.
+
+The green connection indicator confirms proxy readiness, not that the upstream accepts a generation request. If the upstream rejects credentials, check that the key, endpoint and model belong to the same provider. Generation makes at most two validation attempts, plus a bounded coverage check for a narrow life-transition map; progress identifies repair and coverage calls. Model output remains unreviewed guidance, including when a map renders successfully. Live validation and remaining quality limits are recorded in [the generation review](docs/GENERATION-REVIEW-2026-10-28.md).
+
 Set Settings → Codespaces → Default idle timeout to 240 minutes.
 
 ## Each time, before someone uses it
