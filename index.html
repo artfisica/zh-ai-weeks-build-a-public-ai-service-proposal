@@ -1014,7 +1014,7 @@
       const questions=change.archivedQuestions || previous.questions || [];
       questions.forEach(q => {
         const next = tree.questions.find(x => x.id === q.id);
-        if (!next ? preserveAll || !(q.id in confirmedAnswers) && !(change.archivedTarget && q.id in viewedAnswers()) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
+        if (!next ? preserveAll || !(q.id in confirmedAnswers) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
       });
       const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs);
       const texts = change.archivedQtexts || (state.mode === 'explore' ? state.exploreQtexts : state.qtexts);
