@@ -16,6 +16,30 @@ test.beforeEach(async({page,context})=>{
 test.afterEach(async({context})=>{expect(context.__runtimeErrors).toEqual([]);});
 async function draw(page){await page.locator('[data-start-form] textarea').fill(story);await page.locator('[data-start-form] button').click();await expect(page.locator('.journey-map')).toBeVisible();}
 async function alternative(page){await page.locator('[data-var="destination"]').click();await page.locator('[data-propose="destination"][data-value="Gland"]').click();await expect(page.locator('.map-comparison')).toBeVisible();}
+test('A malformed answer shows repair progress and sends the failed answer for one repair',async({page})=>{
+  const failed='{"variables":[]}, {"branches":[]}';let calls=0,repair;
+  await page.route('https://fixture.invalid/chat',async route=>{
+    if(++calls===1)return route.fulfill({json:{choices:[{message:{content:failed}}]}});
+    repair=route;
+  });
+  await page.locator('[data-start-form] textarea').fill('What steps are needed to obtain legal insurance?');
+  await page.locator('[data-start-form] button').click();
+  await expect(page.locator('#tree-host').getByRole('status')).toContainText('one retry');
+  const messages=repair.request().postDataJSON().messages;
+  expect(messages[2]).toEqual({role:'assistant',content:failed});
+  expect(messages.at(-1).content).toContain('multiple JSON objects');
+  await repair.fulfill({json:{choices:[{message:{content:JSON.stringify(map())}}]}});
+  await expect(page.locator('.journey-map')).toBeVisible();expect(calls).toBe(2);
+});
+test('Provider authentication failure explains configuration and preserves the draft',async({page})=>{
+  let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>{calls++;return route.fulfill({status:502,json:{error:'upstream 401'}});});
+  await page.locator('[data-start-form] textarea').fill('What steps are needed to obtain legal insurance?');
+  await page.locator('[data-start-form] button').click();
+  await expect(page.locator('#tree-host .err')).toContainText('provider rejected the API credentials');
+  await expect(page.locator('[data-start-form] textarea')).toHaveValue('What steps are needed to obtain legal insurance?');
+  await expect(page.locator('[data-start-form] button')).toBeEnabled();expect(calls).toBe(1);
+});
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
   await alternative(page);await expect(page.locator('.sentence')).toContainText('Saint-Cergue');
@@ -46,7 +70,7 @@ test('Print plan includes all branches and Chromium exports a PDF',async({page,b
 test('Generation failure leaves a retryable draft and a working connection',async({page})=>{
   await page.route('https://fixture.invalid/chat',route=>route.fulfill({status:502,json:{error:'upstream unreachable'}}));
   await page.locator('[data-start-form] textarea').fill(story);await page.locator('[data-start-form] button').click();
-  await expect(page.locator('.empty [role="alert"]')).toContainText('502');await expect(page.locator('[data-start-form] textarea')).toHaveValue(story);
+  await expect(page.locator('.empty [role="alert"]')).toContainText('provider could not be reached');await expect(page.locator('[data-start-form] textarea')).toHaveValue(story);
   await expect(page.locator('#conn-label')).toContainText('fixture');
 });
 

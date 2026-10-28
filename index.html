@@ -755,7 +755,15 @@
   async function chat(messages, maxTokens) {
     const { response: r, data: j } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, conn.tokenRequired && conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {}), body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) });
     if (r.status === 401) { document.getElementById('conn-panel').hidden = false; conn.status = 'error'; conn.error = t('Jeton de répétition manquant ou incorrect. Vérifiez la connexion.', 'Rehearsal token missing or incorrect. Check the connection.'); renderConn(); throw new Error(conn.error); }
-    if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 429 ? t(' (limite atteinte)', ' (limit reached)') : ''));
+    if (!r.ok) {
+      const upstream = /^upstream (\d{3})$/.exec(String(j && j.error || ''));
+      let message = 'HTTP ' + r.status;
+      if (upstream && ['401','403'].includes(upstream[1])) message = t('Le fournisseur refuse les identifiants API. Vérifiez que la clé, l’adresse et le modèle appartiennent au même fournisseur, puis redémarrez le proxy.', 'The provider rejected the API credentials. Check that the key, endpoint and model belong to the same provider, then restart the proxy.');
+      else if (r.status === 429) message = t('Limite de requêtes atteinte. Attendez avant de réessayer.', 'Request limit reached. Wait before trying again.');
+      else if (r.status === 504) message = t('Le fournisseur a dépassé le délai. Votre texte et votre carte sont conservés.', 'The provider timed out. Your text and map are preserved.');
+      else if (j && j.error === 'upstream unreachable') message = t('Le fournisseur est injoignable. Votre texte et votre carte sont conservés.', 'The provider could not be reached. Your text and map are preserved.');
+      throw Object.assign(new Error(message), { transport: true });
+    }
     return { text: (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '', prov: j.provenance || { provider: 'proxy', model: '' } };
   }
   let connectionId = 0;
@@ -780,13 +788,14 @@
   }
 
   // ---- Asking Apertus for the map ----
-  const SCHEMA = '{"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence or empty","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":["only for choice"]}],"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one or two sentences","depends_on":["variable or question ids"],"sources":[{"id":"catalog id","claim":"claim id that supports this step, or null"}],"authority":"confederation|canton|commune","confirm_with":"office name or null"}]}],"note":"one sentence to the person"}';
+  const SCHEMA = '{"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one sentence","depends_on":["variable or question ids"],"sources":[],"authority":"confederation|canton|commune|other","confirm_with":"office or provider name, or null"}]}],"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":[]}],"note":"one sentence to the person"}';
   function systemPrompt(selection = CATALOG) {
     return (LANG === 'en'
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
-      '\nReturn ONLY a JSON object of this exact shape:\n' + SCHEMA +
-      '\nRules: one to five branches, two or three steps each where useful. Do not create a branch merely to reach a count. Keep "why" under 25 words and "title" under 12 words. Choose branches among these families, keeping only those the situation triggers: registration and residence permit; housing (buy, sell, rent, building or renovation permit); money (taxes, subsidies, fees, insurance); school and childcare; work and social insurance; health; transport and vehicles; energy and utilities; neighbours and commune life. Steps are concrete actions the person takes, in a sensible chronological order, with the office that handles them. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers the general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s office page for Gland or a Vaud page for a Geneva-only action. "variables" are ONLY facts literally stated in the sentence (quote them in "span") that would change the map if different; never infer nationality, permit, family or income that the sentence does not state, put those in "questions" instead (commune of arrival, owner/tenant, permit type, nationality, children, employment...); give each 1 or 2 realistic alternatives. "questions" are facts NOT stated that would change the map; ask at most 4. For each step, "sources" MUST be an array of zero to three entries with an "id" chosen from these catalog ids and a "claim" id or null; return an empty array when none fits. Do not return the old single "source" field:\n' + catalogForPrompt(selection) +
+      '\nReturn ONE JSON object, starting with "branches", of this exact shape. All four fields belong inside the SAME object; never split them into separate objects:\n' + SCHEMA +
+      '\nAnswer the requested topic, even when no catalogue source covers it. Keep a focused request to one branch with one to three short preparation actions; use more branches only for distinct needs explicitly triggered by the situation. Empty sources are allowed; an empty branches array is not a useful map. Missing location or details should become questions, not prevent an initial map. If the service is ambiguous, ask what the person means and give only neutral clarification or comparison actions; do not substitute a different service. Legal insurance means legal-expenses protection, not health, vehicle or liability insurance. Private services may use authority "other" and a private provider in confirm_with. Do not invent a municipal obligation or an official source for a private purchase.' +
+      '\nRules: one to five branches, one to three steps each where useful. Keep "why" under 25 words and "title" under 12 words. For a multi-area situation, separate distinct needs into branches: for example a move with a child can affect registration, school and housing. Do not bury every area in one long branch or invent tasks to reach a count. Steps are concrete preparation actions in a sensible order. When a requirement is not supported by a catalogue note, write an action to ASK the appropriate office or provider whether it applies, not an instruction claiming it is mandatory. Never invent documents, fees, deadlines, eligibility, notification duties or permit requirements, including in questions or the note. For a private insurance purchase, do not add a commune notification without a supporting catalogue note. Questions ask only for missing PERSONAL facts or preferences that change the map; do not ask the resident to supply regulations, deadlines or an office’s document list. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s page for Gland or a Vaud page for Geneva. "variables" are ONLY facts literally stated (quote them in "span"); never infer nationality, permit, family or income. Missing relevant personal facts go in "questions" (at most 4). Give variables 1 or 2 plausible alternatives. depends_on contains ONLY variable or question ids, never step ids or invented prerequisites. For each step, "sources" contains zero to three objects {"id":"catalog id","claim":"note id or null"}; return [] when none fits. No old single "source" field. Catalogue:\n' + catalogForPrompt(selection) +
       '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. claim is the short note ID (for example "c1"), not the note text. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same branch ids AND step ids for matching paths and actions in the previous map. Copy every field of an unchanged step exactly, including why, sources and confirm_with. Do not ask again about a fact in the sentence or answered questions. Current values override any older wording in the previous map. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
@@ -848,14 +857,17 @@
           if (lastValid) return { text: lastValid, truncated: true };
           throw new Error(t('réponse illisible (parenthèses)', 'unreadable answer (brackets)'));
         }
-        if (!stack.length) return { text: raw.slice(s, i + 1), truncated: false };
+        if (!stack.length) {
+          if (/^(?:,\s*)?[\[{]/.test(raw.slice(i + 1).trim())) throw new Error(t('plusieurs objets JSON ; une seule carte est requise', 'multiple JSON objects; return one map object'));
+          return { text: raw.slice(s, i + 1), truncated: false };
+        }
         keepIfValid(i + 1);
       } else if (ch === ',') keepIfValid(i);
     }
     if (!lastValid) throw new Error(t('réponse coupée avant une étape complète', 'answer cut off before a complete step'));
     return { text: lastValid, truncated: true };
   }
-  const treeKey = (story, vars, answers) => hash('review8-continuity1|' + CATALOG_VERSION + '|' + new Date().toISOString().slice(0,10) + '|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
+  const treeKey = (story, vars, answers) => hash('review9-generation2|' + CATALOG_VERSION + '|' + new Date().toISOString().slice(0,10) + '|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
   async function fetchTree(story, vars, answers, prev, change) {
     const effectiveStory = change && prev ? storyWithVars(story, vars, prev.variables) : story;
     const selection = selectCatalog(effectiveStory, vars, answers), allowedIds = new Set(selection.map(c => c.id));
@@ -865,11 +877,16 @@
     const cached = state.trees[key];
     if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change).length === 0) return cached.tree; }
     const prompt = userPrompt(effectiveStory, vars, answers, prev, change);
-    let retryReason = "";
+    let retryReason = "", previousResponse = "";
     for (let attempt = 0; attempt < 2; attempt++) {
       if (generation !== requestId) throw new Error('cancelled');
-      const retry = attempt ? '\nRepair the previous response: ' + (retryReason || 'it was not parseable as a complete map') + '. Return the FULL map, retaining every existing branch and action not affected by the changed input. Keep their original branch ids and step ids, not just their titles. Do not move an action into a different branch. Include all required fields; use short explanations and no text outside JSON.' : '';
-      const res = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + retry }], 3000);
+      const messages = [{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt }];
+      if (attempt) {
+        set({ loading: t('La première réponse n’a pas pu être utilisée. Apertus répare la carte — une seule nouvelle tentative…', 'The first answer could not be used. Apertus is repairing the map — one retry…') });
+        messages.push({ role: 'assistant', content: previousResponse.slice(0, 10000) }, { role: 'user', content: 'Repair this response: ' + retryReason + '. Return ONE complete JSON object starting with branches, with at least one named branch containing an action with a title. Include variables, questions and note inside that same object. Empty sources are allowed. Retain every existing branch and action not affected by the changed input, with their original branch ids and step ids. Do not move an action into another branch. Keep the person’s requested topic. Use short explanations, no text outside JSON.' });
+      }
+      const res = await chat(messages, 3000);
+      previousResponse = res.text;
       try {
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
@@ -879,6 +896,7 @@
         const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
         if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
           try {
+            set({ loading: t('La carte est dessinée. Apertus vérifie les démarches liées à ce changement…', 'The map is drafted. Apertus is checking the related steps…') });
             const reviewed = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
             const reviewJSON = extractJSON(reviewed.text.replace(/```json|```/g, '').trim());
             if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers, allowedIds), tree, effectiveStory); res.prov = reviewed.prov; }
@@ -1001,12 +1019,12 @@
     if (state.tree) { await stageStory(text); return; }
     if (!live()) { set({ error: t('Apertus n’est pas connecté : la carte ne peut pas être dessinée.', 'Apertus is not connected: the map cannot be drawn.') }); return; }
     state.draftStory = text;
-    const id = beginRequest(t('Apertus lit votre situation et dessine les pistes… (10 à 30 secondes)', 'Apertus is reading your situation and drawing the paths… (10 to 30 seconds)'));
+    const id = beginRequest(t('Apertus prépare votre carte… Vous pouvez annuler et garder votre texte.', 'Apertus is preparing your map… You can cancel and keep your text.'));
     try {
       const tree = await fetchTree(text, [], {}, null, null); if (!stillCurrent(id)) return;
       set({ story: text, draftStory: '', tree, vars: tree.variables, loading: '', pending: null, note: { text: tree.note, prov: tree.prov }, editing: false }, true);
       if (window.innerWidth < 900) document.getElementById('tree-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: t('Apertus n’a pas renvoyé une carte lisible (', 'Apertus did not return a readable map (') + (e.message || 'error') + t('). Réessayez ou reformulez.', '). Try again or rephrase.') }); }
+    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.transport ? e.message : t('Apertus n’a pas pu produire une carte exploitable : ', 'Apertus could not produce a usable map: ') + (e.message || 'error') + t('. Votre texte est conservé. Réessayez.', '. Your text is preserved. Try again.') }); }
   }
   function currentVars() { return state.mode === 'explore' && state.exploreVars ? state.exploreVars : state.vars; }
   async function propose(varId, to) {
