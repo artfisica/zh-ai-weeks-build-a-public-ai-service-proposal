@@ -40,6 +40,27 @@ test('Provider authentication failure explains configuration and preserves the d
   await expect(page.locator('[data-start-form] textarea')).toHaveValue('What steps are needed to obtain legal insurance?');
   await expect(page.locator('[data-start-form] button')).toBeEnabled();expect(calls).toBe(1);
 });
+test('An additional insurance request asks for clarification and preserves the existing answer',async({page})=>{
+  await draw(page);
+  await page.evaluate(()=>{const key='public-ai-commune.v5',saved=JSON.parse(localStorage.getItem(key));saved.answers={insurance_scope:'Tenancy issues'};saved.qtexts={insurance_scope:'Which disputes need cover?'};saved.questionDefs={insurance_scope:{id:'insurance_scope',text:'Which disputes need cover?',why:'Your needs',type:'text',options:[]}};localStorage.setItem(key,JSON.stringify(saved));});
+  await page.reload();await expect(page.locator('#conn-label')).toContainText('fixture');
+  let calls=0;const next=map();next.branches.push({id:'life',name:'Life insurance',steps:[{id:'life_cover',short:'Discuss life cover',title:'Discuss life cover with a provider',why:'Clarify your needs',depends_on:[],sources:[],authority:'other',confirm_with:'Insurance provider'}]});
+  await page.route('https://fixture.invalid/chat',route=>{calls++;expect(route.request().postDataJSON().messages[1].content).toContain('"insurance_scope":"Tenancy issues"');return route.fulfill({json:{choices:[{message:{content:JSON.stringify(next)}}]}});});
+  await page.locator('[data-converse-form] input').fill('can I have also a live insurance? how?');await page.locator('[data-converse-form] button').click();
+  await expect(page.locator('#story')).toContainText('Did you mean life insurance?');expect(calls).toBe(0);
+  await page.getByRole('button',{name:'Yes, add life insurance',exact:true}).click();
+  await expect(page.locator('.map-comparison')).toContainText('1 added');await expect(page.locator('[data-answered="insurance_scope"]')).toContainText('Tenancy issues');expect(calls).toBe(1);
+  await page.getByRole('button',{name:'Adopt',exact:true}).click();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).answers.insurance_scope)).toBe('Tenancy issues');
+  await expect(page.locator('[data-lane="life"], [data-lane-select="life"]').first()).toBeVisible();
+});
+test('An incomplete initial map has an actionable completion button',async({page})=>{
+  const raw=JSON.stringify(map()),cut=raw.slice(0,raw.indexOf('"school_contact"')+12);let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:++calls===1?cut:raw}}]}}));
+  await draw(page);await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);await expect(page.locator('.journey-map')).toBeVisible();expect(calls).toBe(2);
+});
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
   await alternative(page);await expect(page.locator('.sentence')).toContainText('Saint-Cergue');

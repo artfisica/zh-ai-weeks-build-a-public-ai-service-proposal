@@ -24,7 +24,7 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
  await test('Start over rejects late responses and clears in-memory caches',async()=>{const h=harness(),a=saved(h);let resolve;a.state.trees.old=a.state.tree;h.context.fetch=async()=>new Promise(r=>{resolve=r});const operation=a.stageStory(story.replace('Saint-Cergue','Geneva'));await Promise.resolve();a.reset();resolve(h.reply(map('Geneva')));await operation;assert.equal(a.state.story,'');assert.equal(a.state.tree,null);assert.equal(a.state.pending,null);assert.equal(Object.keys(a.state.trees).length,0);assert.equal(a.state.loading,'');});
  await test('Cancel rejects late results while keeping the original map',async()=>{const h=harness(),a=saved(h);let resolve;h.context.fetch=async()=>new Promise(r=>{resolve=r});const operation=a.stageStory(story.replace('Saint-Cergue','Geneva'));await Promise.resolve();h.click('[data-action]',{action:'cancel-request'});resolve(h.reply(map('Geneva')));await operation;assert.equal(a.state.pending,null);assert.equal(a.state.story,story);assert.ok(a.state.tree);assert.equal(a.state.loading,'');});
  await test('A malformed response gets one bounded parse retry',async()=>{const h=harness(),a=saved(h);const calls=h.queue(['{"variables":[]}]',map('Geneva')]);const tree=await a.fetchTree(story.replace('Saint-Cergue','Geneva'),[],{},a.state.tree,null);assert.equal(calls.length,2);assert.equal(tree.incomplete,false);});
- await test('Partial maps keep only completed steps, are labelled incomplete and are not cached',async()=>{const h=harness(),a=saved(h);const raw=JSON.stringify(map('Geneva'));const cut=raw.slice(0,raw.indexOf('"school_contact"')+12);const ex=a.extractJSON(cut);assert.equal(ex.truncated,true);h.queue([cut]);const tree=await a.fetchTree(story.replace('Saint-Cergue','Geneva'),[],{},a.state.tree,null);assert.equal(tree.incomplete,true);assert.ok(tree.branches[0].steps[0].title);assert.equal(Object.keys(a.state.trees).length,0);});
+ await test('Partial maps keep only completed steps, are labelled incomplete and are not cached',async()=>{const h=harness(),a=saved(h);const raw=JSON.stringify(map('Geneva'));const cut=raw.slice(0,raw.indexOf('"school_contact"')+12);const ex=a.extractJSON(cut);assert.equal(ex.truncated,true);h.queue([cut]);const tree=await a.fetchTree(story.replace('Saint-Cergue','Geneva'),[],{},null,null);assert.equal(tree.incomplete,true);assert.ok(tree.branches[0].steps[0].title);assert.equal(Object.keys(a.state.trees).length,0);});
  await test('A short move gets one relevance review; focused maps are not forced to contain three lanes',async()=>{const h=harness(),a=saved(h);const narrow=map();narrow.branches=narrow.branches.slice(0,1);const calls=h.queue([narrow,narrow]);await a.fetchTree('I move from Nyon to Saint-Cergue.',[],{},null,null);assert.equal(calls.length,2);assert.match(calls[1].messages[1].content,/Never invent children/);assert.doesNotMatch(calls[1].messages[1].content,/Return at least 3/);});
  await test('A narrow focused task does not consume a coverage retry',async()=>{const h=harness(),a=saved(h);const narrow=map();narrow.branches=narrow.branches.slice(0,1);const calls=h.queue([narrow]);await a.fetchTree('I want to contact the residents office in Nyon.',[],{},null,null);assert.equal(calls.length,1);});
  await test('Exact unchanged titles and references repair changed IDs without semantic guesses',()=>{const h=harness(),a=saved(h);const next=a.validate(map('Gland'),story.replace('Saint-Cergue','Gland'));next.branches[0].id='registration_renamed';next.branches[0].steps[0].id='renamed_departure';a.reconcileIds(next,a.state.tree);assert.equal(next.branches[0].id,'registration');assert.equal(next.branches[0].steps[0].id,'departure');});
@@ -186,6 +186,59 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
      h.context.fetch=async()=>{calls++;return {ok:false,status,json:async()=>({error:'fixture'})};};
      await a.startStory('I want legal insurance.');assert.equal(calls,1);assert.equal(a.state.draftStory,'I want legal insurance.');assert.match(a.state.error,status===504?/provider timed out/:/Request limit reached/);
    }
+ });
+ await test('An additional goal preserves existing answers and completed steps through Adopt and Undo',async()=>{
+   const h=harness(),a=saved(h,withAnswer());a.state.answers={permit_type:'C permit'};a.state.qtexts={permit_type:'Which permit?'};a.state.questionDefs={permit_type:withAnswer().questions.find(q=>q.id==='permit_type')};
+   a.state.done=[a.doneKey('departure')];const done=a.state.done[0],before=JSON.stringify(a.state.tree),next=withAnswer();
+   next.branches.push({id:'extra_goal',name:'Additional insurance',steps:[step('new_goal','Clarify coverage','Ask the insurer about the additional cover',null)]});
+   const calls=h.queue([next]);await a.converse('can I have also a life insurance? how?');
+   assert.equal(calls.length,1);assert.match(calls[0].messages[1].content,/ADDITIONAL REQUEST/);assert.match(calls[0].messages[1].content,/"permit_type":"C permit"/);
+   assert.equal(a.state.pending.addition,true);assert.equal(a.state.pending.answers.permit_type,'C permit');assert.equal(JSON.stringify(a.state.tree),before);
+   assert.match(a.state.pending.story,/Additional request: can I have also a life insurance/);a.adopt();assert.equal(a.state.answers.permit_type,'C permit');assert.ok(a.state.questionDefs.permit_type);assert.ok(a.state.done.includes(done));a.undo();assert.equal(JSON.stringify(a.state.tree),before);
+ });
+ await test('An unchanged map cannot masquerade as a successfully added goal',async()=>{
+   const h=harness(),a=saved(h);a.state.answers={topic:'Tenancy issues'};const before=JSON.stringify(a.state.tree),calls=h.queue([map(),map()]);
+   await a.converse('Can I also buy life insurance?');assert.equal(calls.length,2);assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.equal(a.state.answers.topic,'Tenancy issues');assert.match(a.state.error,/did not add steps/);
+ });
+ await test('Adding a goal cannot rewrite or remove a step whose dependencies are unknown',async()=>{
+   const h=harness(),a=saved(h);a.state.tree.branches[0].steps[0].depends_on=[];const bad=clone(a.state.tree);bad.branches[0].steps[0].title='An unrelated rewritten step';bad.branches.push({id:'new_goal',name:'New goal',steps:[step('extra','Extra','Ask about extra cover',null)]});
+   h.queue([bad,bad]);await a.converse('Can I also buy life insurance?');assert.equal(a.state.pending,null);assert.match(a.state.error,/alternative omitted existing steps/);
+ });
+ await test('An ordinary question cannot be routed into replacement of an answered question',async()=>{
+   const h=harness(),a=saved(h);a.state.answers={topic:'Tenancy issues'};
+   const calls=h.queue([{kind:'compare',target:{type:'question',id:'topic',value:'Different answer'},story:'A rewritten situation',answer:'Some response',steps:[]}]);
+   await a.converse('What is this insurance good for?');assert.equal(calls.length,1);assert.equal(a.state.pending,null);assert.equal(a.state.answers.topic,'Tenancy issues');assert.equal(a.state.story,story);assert.match(h.element('story').innerHTML,/catalogue does not establish an answer/);
+ });
+ await test('Incomplete comparison responses are repaired once and never offered for adoption',async()=>{
+   const h=harness(),a=saved(h),raw=JSON.stringify(map('Geneva')),cut=raw.slice(0,raw.indexOf('"school_contact"')+12),before=JSON.stringify(a.state.tree);
+   const calls=h.queue([cut,cut]);await a.stageStory(story.replace('Saint-Cergue','Geneva'));assert.equal(calls.length,2);assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.match(a.state.error,/comparison response was cut off/);
+ });
+ await test('An incomplete saved map exposes a working Complete map action',async()=>{
+   const h=harness(),a=saved(h);a.state.tree.incomplete=true;a.render();assert.match(h.element('story').innerHTML,/data-action="complete-map"/);
+   h.queue([map()]);h.click('[data-action]',{action:'complete-map'});while(a.state.loading)await new Promise(r=>setImmediate(r));assert.equal(a.state.tree.incomplete,false);
+ });
+ await test('Answer-only changes use compact buttons and explain that mapped steps are unchanged',async()=>{
+   const h=harness(),a=saved(h);a.state.answers={topic:'Tenancy issues'};h.queue([map()]);await a.proposeAnswer('topic','A very long alternate answer about multiple concerns');
+   assert.match(h.element('tree-host').innerHTML,/Only your answer changes/);assert.match(h.element('story').innerHTML,/>Keep my situation<|>Use this proposal</);assert.doesNotMatch(h.element('story').innerHTML,/>Adopt A very long/);
+ });
+ await test('The reported live-insurance typo asks for confirmation before any model call or answer change',async()=>{
+   const h=harness(),a=saved(h);a.state.answers={topic:'Tenancy issues'};const before=JSON.stringify(a.state.tree),calls=h.queue([]);
+   await a.converse('can I have also a live insurance? how?');assert.equal(calls.length,0);assert.equal(a.state.pending,null);assert.equal(a.state.answers.topic,'Tenancy issues');assert.match(h.element('story').innerHTML,/Did you mean life insurance/);
+   h.click('[data-action]',{action:'edit-goal'});assert.equal(a.state.goalConfirmation,null);assert.equal(a.state.followDraft,'can I have also a live insurance? how?');assert.equal(JSON.stringify(a.state.tree),before);
+ });
+ await test('Confirming the new insurance goal preserves the tenancy answer and adds a separate path',async()=>{
+   const h=harness(),a=saved(h);a.state.answers={topic:'Tenancy issues'};await a.converse('can I have also a live insurance? how?');const next=map();next.branches.push({id:'life',name:'Life insurance',steps:[step('life_check','Compare cover','Ask about life cover',null)]});const calls=h.queue([next]);h.click('[data-action]',{action:'confirm-goal'});while(a.state.loading)await new Promise(r=>setImmediate(r));
+   assert.equal(calls.length,1);assert.match(calls[0].messages[1].content,/ADDITIONAL REQUEST: can I have also a life insurance/);assert.equal(a.state.pending.answers.topic,'Tenancy issues');assert.ok(a.state.pending.tree.branches.some(b=>b.id==='life'));assert.equal(a.state.goalConfirmation,null);
+ });
+ await test('Nested root fields are repaired instead of silently discarding clarification questions',async()=>{
+   const h=harness(),a=saved(h),bad=map();bad.branches[0].questions=[{id:'q_extra',text:'Which cover?',type:'text'}];const calls=h.queue([bad,map()]);await a.stageStory(story.replace('Saint-Cergue','Gland'));assert.equal(calls.length,2);assert.match(calls[1].messages.at(-1).content,/must be at the root/);assert.ok(a.state.pending);
+ });
+ await test('Retrying a failed additional goal still preserves the original answer context',async()=>{
+   const h=harness(),a=saved(h);a.state.answers={topic:'Tenancy issues'};h.queue([map(),map()]);await a.converse('Can I also buy life insurance?');assert.equal(a.state.suggestedAddition,true);
+   const next=map();next.branches.push({id:'extra',name:'Life insurance',steps:[step('new_cover','Discuss cover','Ask the provider about cover',null)]});h.queue([next]);await a.applySuggestedStory(a.state.suggestedStory);assert.equal(a.state.pending.answers.topic,'Tenancy issues');assert.equal(a.state.pending.addition,true);
+ });
+ await test('An empty HTTP 404 explains Codespace connectivity instead of exposing a JSON parser error',async()=>{
+   const h=harness(),a=saved(h);a.reset();h.context.fetch=async()=>({ok:false,status:404,json:async()=>{throw new SyntaxError('Unexpected end of JSON input');}});await a.startStory('I want insurance.');assert.match(a.state.error,/Codespace is running/);assert.doesNotMatch(a.state.error,/Unexpected end|rephrase/);
  });
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
