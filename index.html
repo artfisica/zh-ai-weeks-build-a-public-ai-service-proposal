@@ -647,6 +647,7 @@
   // ---- State ----
   const scenarioKey = vars => JSON.stringify((vars || []).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0])));
   const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', goalConfirmation: null, vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
+  const scenarioRecord = (answers,qtexts,tree,defs) => JSON.parse(JSON.stringify({answers,qtexts,questions:tree.questions,questionDefs:defs}));
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
   function storyWithVars(story, vars, original) {
@@ -689,7 +690,7 @@
     for (const key of ['done','turns']) if (d[key] && !Array.isArray(d[key])) throw new Error('Invalid saved list');
     if ((d.turns || []).some(u => !u || typeof u.role !== 'string' || typeof u.text !== 'string' || (u.steps && (!Array.isArray(u.steps) || u.steps.some(x => !x || !Number.isInteger(x.li) || typeof x.id !== 'string'))))) throw new Error('Invalid saved conversation');
     for (const key of ['answers','qtexts']) if (Object.values(d[key] || {}).some(v => typeof v !== 'string')) throw new Error('Invalid saved answer value');
-    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); }
+    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); if(entry.questions!==undefined && (!Array.isArray(entry.questions) || entry.questions.some(q=>!validQuestion(q))))throw new Error('Invalid scenario questions'); if(entry.questionDefs!==undefined && (!entry.questionDefs || typeof entry.questionDefs!=='object' || Array.isArray(entry.questionDefs) || Object.values(entry.questionDefs).some(q=>!validQuestion(q))))throw new Error('Invalid scenario question definitions'); }
     if (Object.values(d.questionDefs || {}).some(q => !validQuestion(q))) throw new Error('Invalid saved question definition');
     const tree = normalizeTree(d.tree);
     const done = (d.done || []).map(String).map(key => { const id=key.split('|')[0]; return key === completionKey(tree,d.vars,d.answers || {},id,true) ? completionKey(tree,d.vars,d.answers || {},id) : key; });
@@ -813,11 +814,11 @@
     else if (change && ['fact_addition','fact_replacement'].includes(change.kind)) u += '\nSAME SITUATION, ' + (change.kind === 'fact_addition' ? 'ADDED FACT: Keep all accepted variable definitions unchanged; additional grounded variables are allowed. Copy existing actions with known dependencies exactly. Add related actions rather than rewriting an unrelated old action. ' : 'REPLACED FACT: Change only facts explicitly replaced in the new situation. ') + 'Keep confirmed answers and their meanings. Retain unaffected actions with exactly the same fields and ids. New facts may affect related actions. Updated situation: ' + story + '\nAccepted variable definitions: ' + JSON.stringify(currentVars());
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
     if (change && prev) {
-      const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
-      u += '\nRetain unaffected question definitions and existing question ids. Retain all ' + prev.branches.length + ' existing branches and ' + prev.questions.length + ' existing questions, even above the normal initial-map limits. Ask at most four NEW questions.' + (['addition','completion'].includes(change.kind) ? '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) : '') + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(prev.questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(prev.questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
+      const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs), questions=change.archivedQuestions || prev.questions;
+      u += '\nRetain unaffected question definitions and existing question ids. ' + (['addition','completion'].includes(change.kind) ? 'Retain all ' + prev.branches.length + ' existing branches and ' + questions.length + ' existing questions, even above the normal initial-map limits.' : 'The prior map has ' + prev.branches.length + ' branches. Retain all unaffected branches/actions, even above initial-map limits. Use the question contract below; omit questions only when explicitly answered or outside a saved target scenario.') + ' Ask at most four NEW questions.' + (['addition','completion'].includes(change.kind) ? '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) : '') + '\nPreserve these existing question definitions exactly: ' + JSON.stringify(questions || []) + '\nIf returning any hidden already-answered question, keep its definition unchanged: ' + JSON.stringify(Object.keys(answers).filter(id=>!(questions || []).some(q=>q.id===id)).map(id=>defs[id]).filter(Boolean));
     }
     if (change && change.kind === 'fact_replacement') u += '\nRequested replacement values (return every id with this exact value): ' + JSON.stringify(change.expectedValues || {});
-    if (change && change.archivedTarget) u += '\nReturning to a saved scenario. Use its supplied confirmed answers. Previously answered questions absent from those answers may be omitted; retain unrelated unanswered questions. Do not copy answers from the previous scenario.';
+    if (change && change.archivedTarget) u += '\nReturning to a saved scenario. Use its supplied confirmed answers. Use its saved question definitions below when available. Questions outside that saved scenario may be omitted; retain its unanswered questions. Do not copy answers from the previous scenario.';
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
@@ -1010,14 +1011,15 @@
       });
     }
     {
-      (previous.questions || []).forEach(q => {
+      const questions=change.archivedQuestions || previous.questions || [];
+      questions.forEach(q => {
         const next = tree.questions.find(x => x.id === q.id);
         if (!next ? preserveAll || !(q.id in confirmedAnswers) && !(change.archivedTarget && q.id in viewedAnswers()) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
       });
-      const defs = state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs;
-      const texts = state.mode === 'explore' ? state.exploreQtexts : state.qtexts;
-      Object.keys(viewedAnswers()).forEach(id => {
-        if ((previous.questions || []).some(q=>q.id===id)) return;
+      const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs);
+      const texts = change.archivedQtexts || (state.mode === 'explore' ? state.exploreQtexts : state.qtexts);
+      Object.keys(change.archivedTarget ? confirmedAnswers : viewedAnswers()).forEach(id => {
+        if (questions.some(q=>q.id===id)) return;
         const next = tree.questions.find(q=>q.id===id), old = defs[id];
         if (next && (old ? ['text','why','type'].some(k=>next[k]!==old[k]) || JSON.stringify(next.options)!==JSON.stringify(old.options) : texts[id] && next.text!==texts[id])) gaps.push('answer/' + id);
       });
@@ -1130,6 +1132,8 @@
       if ((j.target || (Array.isArray(j.changes) ? j.changes : []).some(c => c && ownsAnswer(viewedAnswers(),c.id))) && ['compare','whatif'].includes(j.kind) && !/\b(instead|rather|replace|switch|change|what if|et si|plutôt|changer|remplacer)\b/i.test(text)) {
         j.kind = 'question'; j.story = baseStory; j.target = null; j.changes = [];
       }
+      const requestedChanges=(Array.isArray(j.changes)?j.changes:[]).concat(j.target?[j.target]:[]);
+      if(requestedChanges.some(c=>c && typeof c.value==='string' && (currentVars().some(v=>v.id===c.id && v.value!==c.value) || ownsAnswer(viewedAnswers(),c.id) && viewedAnswers()[c.id]!==c.value) && !literalFact(text,c.value))) {set({loading:'',followDraft:text,error:t('La nouvelle valeur proposée n’est pas dans votre message. Votre carte est conservée.','The proposed new value was not stated in your message. Your map is preserved.')});return;}
       if (j.target && typeof j.target.value === 'string' && ['compare','whatif'].includes(j.kind)) {
         set({ loading: '' });
         if (currentVars().some(v => v.id === j.target.id)) { await propose(j.target.id, j.target.value); return; }
@@ -1162,17 +1166,17 @@
       // Any proposed changed situation gets a map, even if the model mislabels a "what if" as a question.
       if (newStory !== baseStory) {
         const addingFact = (j.update === 'add_fact' || ['fact','both'].includes(j.kind)) && j.update !== 'replace_fact' && !explicitReplacement && !correction && !changes.length;
-        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes : null,answerUpdates); return;
+        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes : null,answerUpdates,text); return;
       }
       if (['compare', 'fact', 'both'].includes(j.kind) && !answerText) set({ error: t('Le changement n’a pas été compris. Touchez un mot souligné ou réécrivez la phrase pour comparer.', 'The change was not understood. Touch an underlined word or rewrite the sentence to compare.') });
       else if (found.length) set({ sel: Object.assign({ alt: false }, found[0]) });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
-  async function stageStory(text, addition = false, intent = 'fact_replacement', requestedChanges = null, answerUpdates = {}) {
+  async function stageStory(text, addition = false, intent = 'fact_replacement', requestedChanges = null, answerUpdates = {}, requestText = null) {
     text = String(text || '').trim(); if (!text || text === viewedStory()) return;
     if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
     const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
-    const fresh = intent === 'new_situation', request = text, before = viewedStory();
+    const fresh = intent === 'new_situation', request = text, before = viewedStory(), originalRequest=requestText===null?text:String(requestText);
     const changedIds = !addition && intent === 'fact_replacement' ? (requestedChanges ? requestedChanges.map(c=>c.id) : currentVars().filter(v=>!literalFact(text,v.value)).map(v=>v.id)) : [];
     const expectedValues = {};
     for (const id of changedIds) {
@@ -1185,7 +1189,7 @@
           if (text.startsWith(prefix) && text.endsWith(suffix)) value=text.slice(prefix.length,suffix ? -suffix.length : undefined).trim();
         }
       }
-      if (!v || !value || !literalFact(text,value)) { set({pending:null,loading:'',editing:true,editDraft:text,error:t('Le remplacement n’est pas assez précis. Utilisez un fait souligné pour le changer ; votre carte est conservée.','The replacement is unclear. Use an underlined fact to change it; your map is preserved.')}); return; }
+      if (!v || !value || !literalFact(text,value) || !literalFact(originalRequest,value)) { set(Object.assign({pending:null,loading:'',error:t('Le remplacement proposé n’est pas vérifiable dans vos mots. Utilisez un fait souligné ; votre carte est conservée.','The proposed replacement could not be verified in your words. Use an underlined fact; your map is preserved.')},requestText===null?{editing:true,editDraft:text}:{followDraft:originalRequest})); return; }
       expectedValues[id]=value;
     }
     if (Object.values(answerUpdates).some(value=>!literalFact(text,value))) { set({pending:null,loading:'',error:t('Confirmez la réponse directement dans la question. Votre carte est conservée.','Confirm the answer directly in the question. Your map is preserved.')}); return; }
@@ -1200,9 +1204,9 @@
       const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, change); if (!stillCurrent(id)) return;
       if (exploring) set({ exploreStory:text,exploreVars:tree.variables,exploreTree:tree,exploreAnswers:answers,exploreQtexts:qtexts,exploreQuestionDefs:defs,loading:'',sel:null });
       else set({ activeLane:(diffBranches(state.tree.branches,tree.branches).find(r=>r.cmp.some(c=>c.kind!=='same')) || {}).id || state.activeLane,pending:{kind:'story',addition,intent,story:text,vars:tree.variables,tree,answers,qtexts,questionDefs:defs,requiredAnswers:Object.keys(answerUpdates).filter(id=>answers[id]!==viewedAnswers()[id]),confirmedAnswers:[],from:t('ma situation','my situation'),to:t('ce chemin','this path')},suggestedStory:'',loading:'',sel:null });
-    } catch(e) { if(stillCurrent(id))set({loading:'',suggestedStory:addition ? request : text,suggestedAddition:addition,suggestedIntent:intent,suggestedChanges:changedIds.map(id=>({id,value:expectedValues[id]})),suggestedAnswerUpdates:answerUpdates,error:e.message || 'error'}); }
+    } catch(e) { if(stillCurrent(id))set({loading:'',suggestedStory:addition ? request : text,suggestedAddition:addition,suggestedIntent:intent,suggestedChanges:changedIds.map(id=>({id,value:expectedValues[id]})),suggestedAnswerUpdates:answerUpdates,suggestedRequestText:originalRequest,error:e.message || 'error'}); }
   }
-  async function applySuggestedStory(text) { await stageStory(text,!!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',state.suggestedChanges || null,state.suggestedAnswerUpdates || {}); }
+  async function applySuggestedStory(text) { const same=text===state.suggestedStory;await stageStory(text,!!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',same?state.suggestedChanges || null:null,state.suggestedAnswerUpdates || {},same?state.suggestedRequestText || null:null); }
   async function startStory(text) {
     text = text.trim(); if (!text || state.loading) return;
     if (state.tree) { await stageStory(text); return; }
@@ -1222,13 +1226,16 @@
     const story = storyWithVars(viewedStory(), vars, original), previous = exploring ? state.exploreTree : state.tree;
     const archived = !exploring && state.answerSets[scenarioKey(vars)];
     const answers = Object.assign({},archived ? archived.answers : viewedAnswers()), qtexts = Object.assign({},archived ? archived.qtexts : exploring ? state.exploreQtexts : state.qtexts);
-    const answerChanges = [...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]);
+    const historyTarget=archived && state.history.slice().reverse().find(snapshot=>scenarioKey(snapshot.vars)===scenarioKey(vars));
+    const archivedQuestions=archived && (archived.questions || historyTarget && historyTarget.tree.questions), archivedDefs=archived && (archived.questionDefs || historyTarget && historyTarget.questionDefs);
+    const questionChanges=archivedQuestions ? previous.questions.filter(q=>{const target=archivedQuestions.find(t=>t.id===q.id) || (archivedDefs || {})[q.id];return !target ? !ownsAnswer(answers,q.id) : ['text','type'].some(k=>q[k]!==target[k]) || JSON.stringify(q.options)!==JSON.stringify(target.options);}).map(q=>q.id) : [];
+    const answerChanges = [...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]).concat(questionChanges);
     const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
     try {
-      const tree = await fetchTree(story, vars, answers, previous, { id:varId,from:v.value,to,archivedTarget:!!archived,answerChanges }); if (!stillCurrent(id)) return;
+      const tree = await fetchTree(story, vars, answers, previous, { id:varId,from:v.value,to,archivedTarget:!!archived,archivedQuestions,archivedDefs,archivedQtexts:archived && archived.qtexts,answerChanges }); if (!stillCurrent(id)) return;
       const nextVars=vars.map(x=>x.id!==varId ? x : Object.assign({},x,{alternatives:[...new Set([v.value,...((tree.variables.find(n=>n.id===varId) || {}).alternatives || []),...(v.alternatives || [])])].filter(a=>a!==to).slice(0,3)}));
       if (exploring) set({ exploreVars: nextVars, exploreStory: story, exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
-      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars:nextVars, tree, answers, qtexts }, loading: '' });
+      else set({ activeLane: (diffBranches(state.tree.branches,tree.branches).find(r => r.cmp.some(c => c.kind !== 'same')) || {}).id || state.activeLane, pending: { kind: 'variable', id: varId, from: v.value, to, story, vars:nextVars, tree, answers, qtexts,questionDefs:archived ? Object.assign({},state.questionDefs,archivedDefs || {},Object.fromEntries((archivedQuestions || []).map(q=>[q.id,q]))) : state.questionDefs }, loading: '' });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
   const pendingAnswersConfirmed = p => !p || (p.requiredAnswers || []).every(id=>(p.confirmedAnswers || []).includes(id));
@@ -1240,7 +1247,7 @@
   function adopt() {
     const p = state.pending; if (!p || state.loading || !pendingAnswersConfirmed(p)) return; remember();
     const next = p.answers ? { answers: p.answers, qtexts: p.qtexts || {} } : (state.answerSets[scenarioKey(p.vars)] || { answers: {}, qtexts: {} });
-    const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers: state.answers, qtexts: state.qtexts } });
+    const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: scenarioRecord(state.answers,state.qtexts,state.tree,state.questionDefs) });
     const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
     const resetContext = p.intent === 'new_situation';
     set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : p.questionDefs || state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
@@ -1294,7 +1301,7 @@
     try {
       const tree = await fetchTree(viewedStory(), currentVars(), answers, previous, null); if (!stillCurrent(id)) return;
       if (exploring) set({ exploreTree: tree, exploreAnswers: answers, exploreQtexts: qtexts, loading: '' });
-      else { remember(); set({ prevTree: previous, tree, answers, qtexts, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: { answers, qtexts } }), pending: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
+      else { remember(); set({ prevTree: previous, tree, answers, qtexts, answerSets: Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: scenarioRecord(answers,qtexts,tree,state.questionDefs) }), pending: null, loading: '', note: { text: tree.note, prov: tree.prov } }, true); }
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
   }
 
@@ -1373,9 +1380,11 @@
     if (d.previewOn) {
       const c = count(d);
       const parked = Object.keys(s.answers).filter(id => !(id in (s.pending.answers || {}))).length;
+      const omittedQuestions=d.tree.questions.filter(q=>!ownsAnswer(s.answers,q.id) && !ownsAnswer(s.pending.answers || {},q.id) && !s.pending.tree.questions.some(next=>next.id===q.id));
+      const questionPreview=omittedQuestions.length ? '<div class="small">' + t('Questions hors du chemin proposé : ','Questions outside the proposed path: ') + omittedQuestions.map(q=>esc(q.text)).join(' · ') + '</div>' : '';
       const revisedAnswers = Object.keys(s.pending.answers || {}).filter(id=>s.pending.answers[id]!==s.answers[id]);
       const answerPreview = (revisedAnswers.length ? '<div class="small proposed-answers">' + t('Réponses proposées : ', 'Proposed answers: ') + revisedAnswers.map(id=>'<p>' + esc((s.pending.qtexts || {})[id] || id) + '<br><b>' + esc(s.pending.answers[id]) + '</b>' + ((s.pending.requiredAnswers || []).includes(id) ? '<br><button type="button" class="btn" data-action="confirm-answer" data-question="' + esc(id) + '" aria-pressed="' + (s.pending.confirmedAnswers || []).includes(id) + '">' + ((s.pending.confirmedAnswers || []).includes(id) ? t('Annuler la confirmation','Undo confirmation') : t('Confirmer la réponse','Confirm answer')) + '</button>' : '') + '</p>').join('') + (!pendingAnswersConfirmed(s.pending) ? '<p>' + t('Confirmez la réponse à chaque question avant d’adopter ce chemin.','Confirm the answer to each question before adopting this path.') + '</p>' : '') + '</div>' : '') + (parked ? '<div class="small">' + parked + t(' réponse(s) actuelle(s) ne font pas partie de ce chemin proposé.', ' current answer(s) are not part of this proposed path.') + '</div>' : '');
-      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + questionPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
     }
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     const note = d.previewOn ? { text: s.pending.tree.note, prov: s.pending.tree.prov } : d.exploreOn && d.tree ? { text: d.tree.note, prov: d.tree.prov } : s.note && s.note.text ? s.note : null;
