@@ -811,6 +811,7 @@
     if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal. Preserve all existing branches, actions, personal facts and confirmed answers exactly; the new request does not replace an old answer. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
     else if (change && change.kind === 'completion') u += '\nCOMPLETE THE PARTIAL MAP. Retain every existing branch id and name, and copy every existing action exactly, including its id and all fields. Add the missing branches, actions and questions. Do not replace, rename, remove or relocate any existing action. Preserve the stated personal facts and confirmed answers.';
     else if (change) u += '\nThe person now considers "' + change.to + '" instead of "' + change.from + '" for ' + change.id + '. Rebuild the map for that. Keep the ids and texts of steps that do not depend on it exactly as in the previous map.';
+    if (change && ['addition','completion'].includes(change.kind)) u += '\nPreserve these accepted variable definitions exactly: ' + JSON.stringify(vars) + '\nPreserve these existing question definitions exactly (answered questions remain hidden by the app): ' + JSON.stringify(prev.questions || []);
     if (prev) u += '\nPrevious map (keep unchanged step ids stable): ' + JSON.stringify({ branches: prev.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, short: s.short, title: s.title, why: s.why, depends_on: s.depends_on, sources: referencesForModel(s.sources), authority: s.authority, confirm_with: s.confirm_with })) })) });
     return u;
   }
@@ -932,6 +933,16 @@
     const known = new Set([...(previous.variables || []).map(v => v.id), ...(previous.questions || []).map(q => q.id), ...Object.keys(viewedAnswers())]);
     const gaps = [];
     const preserveAll = ['addition','completion'].includes(change.kind);
+    if (preserveAll) {
+      currentVars().forEach(v => {
+        const next = tree.variables.find(x => x.id === v.id);
+        if (!next || ['value','span','label'].some(k => next[k] !== v[k]) || JSON.stringify(next.alternatives) !== JSON.stringify(v.alternatives)) gaps.push('fact/' + v.id);
+      });
+      (previous.questions || []).forEach(q => {
+        const next = tree.questions.find(x => x.id === q.id);
+        if (!next || ['text','why','type'].some(k => next[k] !== q[k]) || JSON.stringify(next.options) !== JSON.stringify(q.options)) gaps.push('question/' + q.id);
+      });
+    }
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
       if (preserveAll && (!branch || branch.name !== b.name)) gaps.push(b.id);

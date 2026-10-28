@@ -71,6 +71,14 @@ test('Completion rejects dropped partial actions and a successful extension can 
   await page.getByRole('button',{name:'Complete map',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Undo change',exact:true}).click();await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^Announce departure/})).toBeVisible();
 });
+test('Completion cannot silently swap accepted origin and destination facts',async({page})=>{
+  const raw=JSON.stringify(map()),cut=raw.slice(0,raw.indexOf('"school_contact"')+12),bad=map();bad.variables.find(v=>v.id==='origin').value='Saint-Cergue';bad.variables.find(v=>v.id==='origin').span='Saint-Cergue';let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>route.fulfill({json:{choices:[{message:{content:++calls===1?cut:JSON.stringify(bad)}}]}}));
+  await draw(page);await page.getByRole('button',{name:'Complete map',exact:true}).click();
+  await expect(page.locator('#story')).toContainText('fact/origin');expect(calls).toBe(3);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).vars.find(v=>v.id==='origin').value)).toBe('Nyon');
+  await expect(page.getByRole('button',{name:'Complete map',exact:true})).toBeVisible();
+});
 test('Generate, compare, Keep, Adopt and Undo preserve the accepted situation',async({page},info)=>{
   await draw(page);await page.screenshot({path:info.outputPath('initial.png'),fullPage:true,animations:'disabled'});
   await alternative(page);await expect(page.locator('.sentence')).toContainText('Saint-Cergue');
