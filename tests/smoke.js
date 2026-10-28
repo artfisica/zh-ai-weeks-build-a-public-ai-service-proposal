@@ -357,5 +357,8 @@ function saved(h,raw=map(),text=story){const a=h.app;Object.assign(a.state,{stor
    const h=harness(),a=saved(h),next=map();next.variables.push({id:'workplace',label:'Workplace',value:'Geneva',span:'Geneva',alternatives:[]});next.branches[2].steps.push(step('work_journey','Check work journey','Check the journey to work in Geneva',null,['workplace']));h.queue([{kind:'fact',update:'add_fact',story:story+' I also work in Geneva.'},next]);await a.converse('I also work in Geneva.');assert.ok(a.state.pending.tree.branches[2].steps.some(s=>s.id==='work_journey'));a.keep();
    const bad=map('Gland');bad.branches[0].steps[0].depends_on=['destination'];const calls=h.queue([bad,map('Gland')]);await a.propose('destination','Gland');assert.equal(calls.length,2);assert.match(calls[1].messages.at(-1).content,/registration\/departure/);assert.ok(a.state.pending);
  });
+ await test('A factual addition cannot rename an accepted branch while leaving its actions unchanged',async()=>{
+   const h=harness(),a=saved(h),bad=map();bad.branches[0].name='Employment instead of registration';a.state.done=[a.doneKey('departure')];const before=JSON.stringify(a.state.tree),calls=h.queue([{kind:'fact',update:'add_fact',story:story+' I also work in Geneva.'},bad,bad]);await a.converse('I also work in Geneva.');assert.equal(calls.length,3);assert.equal(a.state.pending,null);assert.equal(JSON.stringify(a.state.tree),before);assert.equal(a.isDone('departure'),true);assert.match(a.state.error,/registration/);
+ });
  console.log('\n'+checks+' regression checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

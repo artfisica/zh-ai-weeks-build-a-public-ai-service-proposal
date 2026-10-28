@@ -188,3 +188,9 @@ test('Adding a job rejects repeated unrelated departure rewrites and retains its
   await page.locator('[data-converse-form] input').fill('I also work in Geneva.');await page.locator('[data-converse-form] button').click();await expect(page.locator('#story')).toContainText('registration/departure');expect(calls).toBe(3);await expect(page.locator('.map-comparison')).toHaveCount(0);await expect(page.getByRole('button',{name:'Adopt',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:/^Announce departure/}).click();await expect(page.locator('[data-done="departure"]')).toContainText('Done');await expect(page.locator('.sentence')).not.toContainText('Geneva');
 });
+
+test('Adding a fact repairs an existing branch rename before adoption',async({page})=>{
+  await draw(page);const bad=map();bad.branches[0].name='Employment';let calls=0;
+  await page.route('https://fixture.invalid/chat',route=>{const response=++calls===1?{kind:'fact',update:'add_fact',story:story+' I also work in Geneva.',answer:'',steps:[]}:calls===2?bad:map();if(calls===3)expect(route.request().postDataJSON().messages.at(-1).content).toContain('registration');return route.fulfill({json:{choices:[{message:{content:JSON.stringify(response)}}]}});});
+  await page.locator('[data-converse-form] input').fill('I also work in Geneva.');await page.locator('[data-converse-form] button').click();await expect(page.locator('.map-comparison')).toBeVisible();expect(calls).toBe(3);await page.getByRole('button',{name:'Adopt',exact:true}).click();expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('public-ai-commune.v5')).tree.branches[0].name)).toBe('Registration');
+});

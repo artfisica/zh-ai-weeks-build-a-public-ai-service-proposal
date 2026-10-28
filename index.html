@@ -1011,7 +1011,7 @@
     });
     previous.branches.forEach(b => {
       const branch = tree.branches.find(x => x.id === b.id);
-      if (preserveAll && (!branch || branch.name !== b.name)) gaps.push(b.id);
+      if ((preserveAll || addedFact) && (!branch || branch.name !== b.name)) gaps.push(b.id);
       if (preserveAll && branch) {
         const ids = new Set(b.steps.map(st=>st.id));
         if (JSON.stringify(branch.steps.filter(st=>ids.has(st.id)).map(st=>st.id)) !== JSON.stringify(b.steps.map(st=>st.id))) gaps.push(b.id + '/order');
