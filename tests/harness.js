@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 function harness(options = {}) {
-  const html = fs.readFileSync(process.env.APP_HTML || path.join(__dirname, '..', 'index.html'), 'utf8');
+  const html = typeof options.html==='string'?options.html:fs.readFileSync(process.env.APP_HTML || path.join(__dirname, '..', 'index.html'), 'utf8');
   let script = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
   script = script.replace('  load(); renderConn(); render();', '  globalThis.__app = {Journey:typeof Journey==="undefined"?null:Journey,readCommand:typeof readCommand==="undefined"?null:readCommand,patchContext:typeof patchContext==="undefined"?null:patchContext,state,conn,validate,sourceBlock,diffBranches,renderStory,renderTree,renderDetail,mapLabelLines,doneKey,isDone,converse,applySuggestedStory,storyWithVars,answersFor,scenarioKey,adopt,keep,systemPrompt,userPrompt,followSystem,extractJSON,fetchTree,startStory,stageStory,propose,proposeAnswer,answer,derive,render,reset,undo,leaveExplore,printPlan,setLang,reconcileIds,cancelRequests,connect,catalogById,selectCatalog,refreshSources,completeMap,confirmProposedAnswer,recoverInputs:typeof recoverInputs==="undefined"?null:recoverInputs}; if(globalThis.__beforeLoad)globalThis.__beforeLoad(globalThis.__app); load(); renderConn(); render();');
   const elements = new Map(), events = new Map(), storage = new Map(options.storage || []), session = new Map();

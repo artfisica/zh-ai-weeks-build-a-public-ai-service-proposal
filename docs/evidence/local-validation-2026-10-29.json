@@ -2,9 +2,9 @@
   "baseline": "42c625569003a9dc73c57613888b95fc595c32d8",
   "command": "npm run test:all -- --workers=4",
   "result": "passed",
-  "nodeTests": 112,
+  "nodeTests": 123,
   "storageRenderingRegressions": 30,
-  "browserTests": 128,
+  "browserTests": 132,
   "browserConfigurations": [
     "Chromium desktop",
     "Chromium mobile",
@@ -28,8 +28,8 @@
     "before": "Both new Node regressions failed before correction.",
     "browserAssertionCorrection": "The first browser rerun passed 98/100; two new-test failures expected the desktop branch heading in mobile SVG text. The assertion now checks the localized mobile action and saved branch title."
   },
-  "appSha256": "f5876753a4f92e3e8d38307128868f497dafcfc83b4fa0289a02c960aa335103",
-  "contractSha256": "058d59ecfc32e5b277a2237784cb8bdf91e04af6a09d71e0831497abf6facb98",
+  "appSha256": "5b579f14410b0e23ad586275ae1cb7e4156954d29b74d9c503ef8dd9f60d2a01",
+  "contractSha256": "58a78bd394b760271e1b743e2796dc76af1f7996cf48442e0a6ad124e28f8131",
   "independentReviewAmendment": {
     "reviewedCommit": "26a9008c9d266e1f2ba83732f4ab59d0e220a55a",
     "findings": [
@@ -42,20 +42,32 @@
     ],
     "newCases": 2,
     "additionalProviderCalls": 0,
-    "liveRetest": "blocked by exhausted original allowance; request for separate capped allowance pending",
+    "liveRetest": "Fresh core journey passed; independent twelve-case corpus passed nine and failed three; fixes await final-build live verification.",
     "separateAvailabilityFollowUp": [
       "published discovery mismatch",
       "interactive recorded outage example"
     ]
   },
   "latestReviewCorrections": {
-    "reviewedCommit": "6789e7694a7f693f6e9c5651c32b90e05a479fe6",
+    "reviewedCommit": "cb4d32766dbb57047e288f160428974d5ee77ebf",
     "findings": [
-      "model-assisted extraction on fact additions",
-      "reject mixed added-goal insertions into existing branches"
+      "revalidate previous input values in every displayed action field",
+      "derive resumed stages from verified successes and matching durable checkpoints"
     ],
-    "before": "Both new regressions failed before correction.",
-    "after": "Both pass in Node and across all four browser configurations.",
-    "additionalProviderCalls": 0
+    "additionalCorrections": [
+      "resolve unique exact evidence spans with incorrect provider offsets",
+      "French recent-past and future-rental cues",
+      "freeze evaluated HTML and record hashes",
+      "honour authorised total request allowance without resetting history"
+    ],
+    "liveRetest": "pending public forwarding availability; previous full core pass is a different recorded build"
+  },
+  "runLog": "local-validation-2026-10-29.log",
+  "precedingBrowserRun": {
+    "passed": 127,
+    "failed": 5,
+    "failure": "30-second timeouts",
+    "individualSafariRerunPassed": 4,
+    "completeFourWorkerRerunPassed": 132
   }
 }
