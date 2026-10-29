@@ -12,7 +12,7 @@ This is **not a full live acceptance pass**. The shared 40-request allowance is 
 
 ## Deterministic verification
 
-`npm run test:all` covers inline syntax, generated contracts/catalogue, 30 storage/rendering regressions, 94 Node tests, and browser journeys in Chromium desktop/mobile, Firefox and WebKit mobile. All 96 browser checks passed (24 journeys across four configurations). Catalogue review-change checks against the baseline and `git diff --check` also run before submission.
+`npm run test:all` covers inline syntax, generated contracts/catalogue, 30 storage/rendering regressions, 96 Node tests, and browser journeys in Chromium desktop/mobile, Firefox and WebKit mobile. All 100 browser checks passed (25 journeys across four configurations). Catalogue review-change checks against the baseline and `git diff --check` also run before submission.
 
 The [baseline failure](evidence/omitted-facts-before.txt) reproduces the supplied-facts omission against original main using the new test. Raw operation regressions cover unknown dependencies, step prerequisites, contradictory intent, invented replacement values, unknown targets, stale revisions/responses, cancellation, bounded repairs, question-specific confirmation, previous nationality and completed departure, destination/workplace distinction, source archives, goal preservation, no-op detection, language switching and saved-plan recovery.
 
@@ -41,4 +41,8 @@ The proxy implementation and published `proxy-url.json` are unchanged. Published
 
 ## Final checks and review
 
-Final local checks passed: 94 Node tests, 30 storage/rendering regressions, 96 browser checks, generated contract/catalogue checks, catalogue review-change validation and whitespace checks. PR checks and latest-commit review must be inspected before any future merge. This task does not authorise merging or publishing.
+Final local checks passed: 96 Node tests, 30 storage/rendering regressions, 100 browser checks, generated contract/catalogue checks, catalogue review-change validation and whitespace checks. PR checks and latest-commit review must be inspected before any future merge. This task does not authorise merging or publishing.
+
+## PR review corrections
+
+Review of `4efbf4a` found [stale alternatives on scenario restore](https://github.com/artfisica/zh-ai-weeks-build-a-public-ai-service-proposal/pull/10#discussion_r4408036225) and [archived labels restored in the wrong language](https://github.com/artfisica/zh-ai-weeks-build-a-public-ai-service-proposal/pull/10#discussion_r4408036228). Both were reproduced with failing regressions before correction. Restoration now rebuilds alternatives and records scenario language. A cross-language restoration localizes app-owned action labels and validates translation of the archived question/definition inventory, keeping source archives, answers and completion. Failure leaves accepted work intact; translated completion identities are added only on adoption. The existing bounded question-label stage is shared with the language switch. No further live provider calls were made.

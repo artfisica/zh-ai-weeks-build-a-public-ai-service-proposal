@@ -1,10 +1,10 @@
 {
   "baseline": "42c625569003a9dc73c57613888b95fc595c32d8",
-  "command": "npm run test:all -- --workers=4",
+  "command": "npm run test:all -- --workers=4; npm run test:browser -- --workers=4",
   "result": "passed",
-  "nodeTests": 94,
+  "nodeTests": 96,
   "storageRenderingRegressions": 30,
-  "browserTests": 96,
+  "browserTests": 100,
   "browserConfigurations": [
     "Chromium desktop",
     "Chromium mobile",
@@ -18,5 +18,14 @@
     "reviewed-note changes against baseline",
     "git diff --check"
   ],
-  "distinction": "Deterministic fixture results; not a live Apertus acceptance pass."
+  "distinction": "Deterministic fixture results; not a live Apertus acceptance pass.",
+  "reviewCorrections": {
+    "reviewedCommit": "4efbf4aa9fe726e3245dbcd28adf4f7fb0306ced",
+    "findings": [
+      "restore alternatives",
+      "localize archived scenarios"
+    ],
+    "before": "Both new Node regressions failed before correction.",
+    "browserAssertionCorrection": "The first browser rerun passed 98/100; two new-test failures expected the desktop branch heading in mobile SVG text. The assertion now checks the localized mobile action and saved branch title."
+  }
 }

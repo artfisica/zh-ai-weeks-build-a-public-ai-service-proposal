@@ -899,7 +899,7 @@ const Journey = (() => {
   // ---- State ----
   const scenarioKey = vars => JSON.stringify((vars || []).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0])));
   const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', goalConfirmation: null, vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
-  const scenarioRecord = (answers,qtexts,tree,defs) => JSON.parse(JSON.stringify({answers,qtexts,questions:tree.questions,questionDefs:defs,tree}));
+  const scenarioRecord = (answers,qtexts,tree,defs) => JSON.parse(JSON.stringify({answers,qtexts,questions:tree.questions,questionDefs:defs,tree,language:LANG}));
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
   function storyWithVars(story, vars, original) {
@@ -1450,8 +1450,23 @@ const Journey = (() => {
     const answerChanges = [...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]).concat(questionChanges);
     const savedTree=archived && (archived.tree || historyTarget && historyTarget.tree);
     if(savedTree && scenarioKey(savedTree.variables)===scenarioKey(vars)){
-      const tree=normalizeTree(JSON.parse(JSON.stringify(savedTree)));tree.acceptedRevision=Journey.revision(previous,currentVars(),viewedAnswers());
-      set({pending:{kind:'variable',id:varId,from:v.value,to,story,vars,tree,answers,qtexts,questionDefs:archivedDefs || {}},loading:'',error:''});return;
+      const id=beginRequest(t('Préparation de votre scénario conservé…','Preparing your saved scenario…'));
+      try {
+        const saved=normalizeTree(JSON.parse(JSON.stringify(savedTree))),completed=saved.branches.flatMap(b=>b.steps).filter(step=>state.done.includes(completionKey(saved,saved.variables,answers,step.id))).map(step=>step.id);
+        vars=factAlternatives(vars).map(f=>({...f,label:Journey.roles[f.type]?Journey.roles[f.type][LANG==='fr'?2:1]:f.label}));
+        let tree=saved,defs=JSON.parse(JSON.stringify(archivedDefs || {}));
+        if((archived.language || 'en')!==LANG){
+          tree=Journey.localize(saved,vars,LANG);
+          const inventory=Object.values(Object.assign({},defs,Object.fromEntries(saved.questions.map(q=>[q.id,q])))),translated=await translateQuestionLabels(inventory);
+          defs=Object.fromEntries(inventory.map((q,i)=>[q.id,{...q,text:translated[i].text,options:translated[i].options,why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')} ]));
+          tree.questions=saved.questions.map(q=>defs[q.id]);
+          for(const key of Object.keys(qtexts))if(defs[key])qtexts[key]=defs[key].text;
+        }
+        if(!stillCurrent(id))return;
+        tree.variables=vars;tree.acceptedRevision=Journey.revision(previous,currentVars(),viewedAnswers());
+        const restoredDone=completed.map(step=>completionKey(tree,vars,answers,step));
+        set({pending:{kind:'variable',id:varId,from:v.value,to,story,vars,tree,answers,qtexts,questionDefs:defs,restoredDone},loading:'',error:''});
+      }catch(e){if(stillCurrent(id))set({loading:'',error:t('Le scénario conservé n’a pas pu être préparé. Votre carte est intacte.','The saved scenario could not be prepared. Your map is preserved.')});}return;
     }
 
     const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
@@ -1474,7 +1489,7 @@ const Journey = (() => {
     const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: scenarioRecord(state.answers,state.qtexts,state.tree,state.questionDefs) });
     const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
     const resetContext = p.intent === 'new_situation';
-    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : p.questionDefs || state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
+    set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : p.questionDefs || state.questionDefs, done: resetContext ? [] : [...new Set([...state.done,...(p.restoredDone || [])])], pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
   }
   async function refreshSources() {
     if(!state.tree || state.loading)return;
@@ -1879,6 +1894,15 @@ const Journey = (() => {
     if (focusId && ['ask','edit','suggest'].includes(focusId) && !state.loading) { const next = document.getElementById(focusId); if (next && typeof next.focus === 'function') { next.focus(); if (caret && typeof next.setSelectionRange === 'function') next.setSelectionRange(caret[0],caret[1]); } }
     document.getElementById('announcer').textContent = state.loading || state.error || (conn.status === 'error' ? conn.error : '') || (d.previewOn ? t('Le chemin alternatif est prêt. Rien n’est appliqué.', 'The alternative path is ready. Nothing is applied.') : '');
   }
+  async function translateQuestionLabels(questions) {
+    if(!questions.length)return [];
+    let translated=null,failed='';
+        for(let attempt=0;attempt<2;attempt++){
+          const response=await chat([{role:'system',content:'QUESTION_LABELS_V1. Translate the supplied personal question text and options into '+(LANG==='fr'?'French':'English')+'. Return ONLY {"questions":[{"id":"unchanged id","text":"translated question","options":["translated options in same order"]}]}. Do not change meaning, ask for identifying details, add requirements or add/remove questions.'},{role:'user',content:JSON.stringify(questions)+(attempt?'\nRepair: '+failed:'')}],900);
+          try{const raw=JSON.parse(extractJSON(response.text).text);if(!Array.isArray(raw.questions)||raw.questions.length!==questions.length)throw new Error('Retain the question inventory');translated=raw.questions;for(let i=0;i<translated.length;i++){const q=translated[i],old=questions[i];if(q.id!==old.id || typeof q.text!=='string'||!Array.isArray(q.options)||q.options.length!==old.options.length||q.options.some(o=>typeof o!=='string')||/full.*address|permit number|medical|mandatory|adresse complète|numéro.*permis|obligatoire/i.test(q.text))throw new Error('Only the existing question labels may be translated');}break;}catch(e){failed=e.message;if(attempt)throw e;}
+        }
+    return translated;
+  }
   async function setLang(language) {
     if(state.loading||state.pending||LANG===language)return;
     const old=LANG,exploring=state.mode==='explore',previous=exploring?state.exploreTree:state.tree;LANG=language;
@@ -1886,13 +1910,7 @@ const Journey = (() => {
     try{localStorage.setItem(LANG_KEY,LANG);}catch(_){}renderConn();render();if(!previous)return;
     const id=beginRequest(t('Apertus traduit les questions personnelles…','Apertus is translating the personal questions…'));
     try{
-      const tree=Journey.localize(previous,currentVars(),LANG);let translated=null,failed='';
-      if(tree.questions.length){
-        for(let attempt=0;attempt<2;attempt++){
-          const response=await chat([{role:'system',content:'QUESTION_LABELS_V1. Translate the supplied personal question text and options into '+(LANG==='fr'?'French':'English')+'. Return ONLY {"questions":[{"id":"unchanged id","text":"translated question","options":["translated options in same order"]}]}. Do not change meaning, ask for identifying details, add requirements or add/remove questions.'},{role:'user',content:JSON.stringify(previous.questions)+(attempt?'\nRepair: '+failed:'')}],900);
-          try{const raw=JSON.parse(extractJSON(response.text).text);if(!Array.isArray(raw.questions)||raw.questions.length!==previous.questions.length)throw new Error('Retain the question inventory');translated=raw.questions;for(let i=0;i<translated.length;i++){const q=translated[i],old=previous.questions[i];if(q.id!==old.id || typeof q.text!=='string'||!Array.isArray(q.options)||q.options.length!==old.options.length||q.options.some(o=>typeof o!=='string')||/full.*address|permit number|medical|mandatory|adresse complète|numéro.*permis|obligatoire/i.test(q.text))throw new Error('Only the existing question labels may be translated');}break;}catch(e){failed=e.message;if(attempt)throw e;}
-        }
-      }
+      const tree=Journey.localize(previous,currentVars(),LANG),translated=await translateQuestionLabels(previous.questions);
       if(!stillCurrent(id))return;
       if(translated)tree.questions=tree.questions.map((q,i)=>({...q,text:translated[i].text,options:translated[i].options,why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')}));
       tree.key=hash(previous.key+'|'+LANG);delete tree.acceptedRevision;
