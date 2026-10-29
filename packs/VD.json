@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "VD",
-  "version": 2,
+  "version": 3,
   "entries": [
     {
       "id": "vd-address",
@@ -41,7 +41,11 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "online_registration"
+      ],
+      "contactFor": []
     },
     {
       "id": "vd-tax-communes",
@@ -66,7 +70,9 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [],
+      "contactFor": []
     },
     {
       "id": "vd-vote-directive",
@@ -91,7 +97,9 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [],
+      "contactFor": []
     },
     {
       "id": "mobilis",
@@ -116,7 +124,11 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "transport"
+      ],
+      "contactFor": []
     },
     {
       "id": "jestime",
@@ -141,7 +153,9 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [],
+      "contactFor": []
     },
     {
       "id": "vd-root",
@@ -154,7 +168,11 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "school"
+      ],
+      "contactFor": []
     }
   ]
 }

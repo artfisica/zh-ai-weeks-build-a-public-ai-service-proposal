@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "VD-saint-cergue",
-  "version": 2,
+  "version": 3,
   "entries": [
     {
       "id": "stcergue-arrival",
@@ -28,7 +28,13 @@
         "canton": "VD",
         "commune": "saint-cergue"
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "arrival"
+      ],
+      "contactFor": [
+        "arrival"
+      ]
     }
   ]
 }

@@ -18,6 +18,7 @@ function validatePacks(packs) {
       if(!nonempty(c.url))throw new Error('Missing URL');
       const url=new URL(c.url);if(url.protocol!=='https:' || url.username || url.password)throw new Error('HTTPS source URL required: '+c.id);
       if(!nonempty(c.title) || !nonempty(c.covers) || !Array.isArray(c.claims))throw new Error('Missing source fields: '+c.id);
+      for(const key of ['services','contactFor'])if(c[key]!==undefined&&(!Array.isArray(c[key])||c[key].some(v=>!['departure','arrival','online_registration','school','housing','renovation','energy','permit','insurance','business','volunteering','transport','other'].includes(v))))throw new Error('Invalid service applicability: '+c.id);
       const notes=new Set();for(const k of c.claims){
         if(!k || !/^c\d+$/.test(k.id) || notes.has(k.id) || !nonempty(k.text) || !nonempty(k.fr))throw new Error('Invalid note: '+c.id);notes.add(k.id);
         if(!['regulation','practice','community'].includes(k.kind) || !['draft','reviewed','disputed','retired'].includes(k.status))throw new Error('Invalid note status: '+c.id);

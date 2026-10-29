@@ -1,0 +1,10 @@
+{
+  "evidence": "Fragment supplied in the independent review of PR #10 at 26a9008; not a fabricated full provider response.",
+  "fragment": {
+    "branch": "registration",
+    "target": "registration/registration_arrival",
+    "action": {
+      "id": "registration/registration_arrival"
+    }
+  }
+}

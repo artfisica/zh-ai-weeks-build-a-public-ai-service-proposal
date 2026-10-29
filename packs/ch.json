@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "ch",
-  "version": 2,
+  "version": 3,
   "entries": [
     {
       "id": "ch-move",
@@ -26,7 +26,13 @@
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "departure",
+        "arrival",
+        "housing"
+      ],
+      "contactFor": []
     },
     {
       "id": "ch-move-checklist",
@@ -51,7 +57,13 @@
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "departure",
+        "arrival",
+        "housing"
+      ],
+      "contactFor": []
     },
     {
       "id": "sem-b-eu",
@@ -78,7 +90,11 @@
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "permit"
+      ],
+      "contactFor": []
     },
     {
       "id": "sem-third",
@@ -105,7 +121,11 @@
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "permit"
+      ],
+      "contactFor": []
     },
     {
       "id": "ch-root",
@@ -118,7 +138,11 @@
         "canton": null,
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "permit"
+      ],
+      "contactFor": []
     }
   ]
 }

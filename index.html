@@ -225,6 +225,7 @@ const Journey = (() => {
     const add=(type,value,at)=>{if(!value||facts.some(f=>f.type===type))return;facts.push({type,value,span:value,evidence:{start:at,end:at+value.length},confidence:'explicit'});};
     const place="([\\p{Lu}][\\p{L}’'\\-]*(?:[ \\u00a0]+(?:[\\p{Lu}][\\p{L}’'\\-]*|sur|sous|de|du|la|les)){0,3})";
     const match=(type,prefix)=>{const m=new RegExp(prefix+place,'u').exec(text);if(m){const value=m[1].trim().replace(/\s+(?:I|We|Je|My)$/,'');add(type,value,m.index+m[0].indexOf(m[1]));}};
+    match('current_commune',"(?:[Nn]ous habitons à |[Nn]ous vivons à |[Nn]otre famille habite à |[Ww]e live in )");
     match('current_commune',"(?:\\bI (?:live|reside) in |\\bje vis (?:seule? )?(?:à|a) |\\bJe vis (?:seule? )?(?:à|a) |[Jj]['’]habite (?:à|a) |[Jj]e réside à )");
     match('destination_commune',"(?:\\b(?:move|moving|relocate|relocating) to |[Dd]éménag(?:er|e|ement) (?:à|vers) |m['’]installer à )");
     match('housing_location',"(?:\\b(?:chalet|house|home|flat) in )");
@@ -234,7 +235,15 @@ const Journey = (() => {
     for(const [type,re] of Object.entries(patterns)){const m=re.exec(text);if(m)add(type,m[0],m.index);}
     // Location is not nationality. Third-person citizenship needs interpretation.
     const citizenship=/\b(?:I am |I'm |Je suis |je suis )(Swiss|French|Spanish|Suisse|Français|Française|EU\/EFTA)\b/u.exec(text);if(citizenship)add('citizenship',citizenship[1],citizenship.index+citizenship[0].indexOf(citizenship[1]));
+    const extra={housing_status:/\b(?:[Ww]e rent our home|[Ww]e rent|[Nn]ous sommes propriétaires|[Nn]ous sommes locataires|[Nn]ous louons)\b/u,children:/\b(?:(?:two|three|four|\d+) children(?: aged [\d ,and]+)?|(?:our|their|my) (?:daughter|son)(?: is \d+)?|(?:notre|leur|ma|mon) (?:fille|fils)(?: a \d+ ans)?|(?:nos|leurs) enfants)\b/iu,permit:/\b(?:residence permit [BCLFGNS]|permis [BCLFGNS])\b/iu};for(const [type,re] of Object.entries(extra)){const m=re.exec(text);if(m)add(type,m[0],m.index);}
     const valid=validateFacts(facts,text,language);return {facts:valid,questions:expectedQuestions(valid,language),needs:needs(text)};
+  }
+  function factCoverage(text,facts) {
+    // Role cues deliberately differ from extraction grammar: a partial match
+    // must not hide another explicitly mentioned personal circumstance.
+    if(!/\b(?:I|we|my|our|she|he|they|their|her|his|nous|notre|nos|je|mon|ma|mes|elle|il|ils|elles|leur)\b/iu.test(text))return {supplied:[],missing:[]};
+    const cues={current_commune:/\b(?:I|we|they|she|he) (?:lives?|resides?)|\b(?:sister|mother|father|brother) (?:lives?|resides?)|habit(?:e|ons|ent)|(?:je|nous|ils|elles) viv(?:ons|ent)|je vis/iu,destination_commune:/\b(?:move|moving|relocat)|déménag|emménag/iu,workplace:/\b(?:my |our |her |his )?workplace (?:is|in)|\bwork(?:ing)? in|travaill(?:e|er|ons|ent) [àa]/iu,current_country:/\b(?:coming|arriving|arrive|come) from|viens de|venons de|arriv.*(?:de |d['’])/iu,housing_status:/\b(?:owns?|rents?|propriétaire|propriétaires|locataire|locataires|louons|louer)\b/iu,children:/\b(?:child|children|kids|daughter|son|baby|enfant|enfants|fille|fils|bébé)\b/iu,permit:/\b(?:permit|permis) [BCLFGNS]\b|\b[BCLFGNS] permit\b/iu,citizenship:/\b(?:I am|I'm|she is|he is|they are|je suis|elle est|il est|nous sommes) (?:Swiss|French|Spanish|Suisse|Français|Française|suisses|EU\/EFTA)\b/iu};
+    const supplied=Object.entries(cues).filter(([,re])=>re.test(text)).map(([type])=>type),missing=supplied.filter(type=>!facts.some(f=>f.type===type));return {supplied,missing};
   }
   function needs(text) {
     const found=[];const rules={registration:/\b(move|moving|arriv|coming|relocat|déménag|emménag)/i,school:/\b(child|children|school|enfant|école|scolair)/i,housing:/\b(home|house|rent|roof|chalet|flat|housing|logement|chambre|louer|toit|propriétaire)/i,renovation:/\b(roof|renovat|insulat|toit|isol|travaux)/i,energy:/\b(solar|energy|solaire|énergie)/i,volunteering:/\b(firefighter|volunteer|pompier|bénévol)/i,insurance:/\b(insurance|assurance)/i,business:/\b(business|entreprise|commerce)/i,transport:/\b(transport|car|voiture|journey|trajet)/i};for(const [key,re] of Object.entries(rules))if(re.test(text))found.push(key);return found;
@@ -325,7 +334,7 @@ const Journey = (() => {
   function validAction(a){if(!a||!id(a.id)||typeof a.title!=='string'||!a.title.trim()||Object.keys(a).some(k=>!actionFields.includes(k))||!Array.isArray(a.depends_on)||!Array.isArray(a.sources)||a.sources.some(r=>!r||Object.keys(r).some(k=>!['id','claim'].includes(k))))fail('Only action content and nominal references may be proposed');return copy(a);}
   function requiredTargets(previous,context) {
     if(!['replace_fact'].includes(context.kind))return [];
-    return previous.branches.flatMap(b=>b.steps.filter(s=>s.depends_on.some(id=>{const before=(previous.variables || []).find(f=>f.id===id),after=context.facts.find(f=>f.id===id);return context.changedIds.includes(id)&&before&&after&&before.value!==after.value&&literal(s.title+' '+s.short,before.value);})).map(s=>b.id+'/'+s.id));
+    return previous.branches.flatMap(b=>b.steps.filter(s=>s.depends_on.some(id=>{const before=(previous.variables || []).find(f=>f.id===id),after=context.facts.find(f=>f.id===id);return context.changedIds.includes(id)&&before&&after&&before.value!==after.value&&literal(s.title+' '+s.short,before.value);})).map(s=>({branch:b.id,target:s.id})));
   }
   function bindInputs(input,facts,answers={},only=null) {
     const tree=copy(input),known=new Set(facts.map(f=>f.id).concat(tree.questions.map(q=>q.id),Object.keys(answers)));
@@ -343,7 +352,13 @@ const Journey = (() => {
     if(!proposal||proposal.revision!==expectedRevision||Object.keys(proposal).some(k=>!['revision','operations'].includes(k))||!Array.isArray(proposal.operations)||proposal.operations.length>24)fail('Stale revision or invalid proposal envelope');
     let tree=copy(previous);const touched=new Set(),allIds=new Set(tree.branches.flatMap(b=>b.steps.map(s=>s.id))),changed=context.changedIds || [];
     const assertKeys=(op,keys)=>{if(Object.keys(op).some(k=>!keys.includes(k)))fail('Unauthorised proposal field');};
-    for(const op of proposal.operations){
+    for(const supplied of proposal.operations){
+      let op=supplied;
+      if(op&&['replace_action','remove_action'].includes(op.op)&&typeof op.target==='string'&&op.target.includes('/')){
+        const branch=previous.branches.find(b=>b.id===op.branch),target=branch&&branch.steps.find(s=>op.target===branch.id+'/'+s.id);
+        if(!target)fail('Unknown qualified branch/action target');
+        op={...op,target:target.id};if(op.action){if(![target.id,branch.id+'/'+target.id].includes(op.action.id))fail('Replacement action does not match the exact target');op.action={...op.action,id:target.id};}
+      }
       if(!op||!['add_branch','add_action','replace_action','remove_action','add_question','remove_question'].includes(op.op))fail('Unknown proposal operation');
       if(op.op==='add_branch'){
         assertKeys(op,['op','branch']);const b=op.branch;if(!b||!id(b.id)||typeof b.name!=='string'||!Array.isArray(b.steps)||!b.steps.length||Object.keys(b).some(k=>!['id','name','need','steps'].includes(k))||tree.branches.some(x=>x.id===b.id))fail('Invalid added branch');
@@ -364,45 +379,65 @@ const Journey = (() => {
       if(['add_goal','add_fact','completion'].includes(context.kind)||unaffected(prior,previous,context)||!prior.depends_on.some(d=>changed.includes(d)))fail('The alternative omitted existing steps or rewrote unrelated work: '+key);
       touched.add(key);if(op.op==='remove_action')branch.steps.splice(index,1);else{const action=validAction(op.action);if(action.id!==prior.id)fail('Replacing an action must retain its id');if(prior.purpose && action.purpose && prior.purpose!==action.purpose)fail('An existing action must retain its purpose');if(prior.purpose)action.purpose=prior.purpose;branch.steps[index]=action;}
     }
-    for(const key of requiredTargets(previous,context))if(!touched.has(key))fail('The proposal still names the old value in an affected action: '+key);
+    for(const target of requiredTargets(previous,context)){const key=target.branch+'/'+target.target;if(!touched.has(key))fail('The proposal still names the old value in an affected action: '+JSON.stringify(target));}
     const accepted=new Set(previous.branches.flatMap(b=>b.steps.map(actionIdentity)));
     const added=proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps:o.op==='add_action'?[o.action]:[]);
     if(context.kind==='add_goal' && (!proposal.operations.some(o=>o.op==='add_branch') || proposal.operations.filter(o=>o.op==='add_branch').some(o=>!o.branch.steps.some(s=>!accepted.has(actionIdentity(s))))))fail('An additional goal needs a new action in a distinct branch');
     if(context.kind==='completion' && !added.some(s=>!accepted.has(actionIdentity(s))))fail('Completion needs a new action; the map remains incomplete');
     tree.branches=tree.branches.filter(b=>b.steps.length);if(!tree.branches.length)fail('A proposal cannot erase the journey');tree.variables=copy(context.facts);
-    const newIds=new Set(proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps.map(s=>s.id):o.action?[o.action.id]:[]));tree=normalizePrerequisites(tree,newIds);dependencies(tree,context.facts,context.answers);return tree;
+    const newIds=new Set(proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps.map(s=>s.id):o.action?[o.action.id.includes('/')?o.action.id.split('/').at(-1):o.action.id]:[]));tree=normalizePrerequisites(tree,newIds);dependencies(tree,context.facts,context.answers);return tree;
   }
   const purposes={departure:['Ask {place} how to announce departure','Demander à {place} comment annoncer le départ'],arrival:['Ask {place} how to register arrival','Demander à {place} comment annoncer l’arrivée'],online_registration:['Ask whether online registration covers this move','Demander si l’annonce en ligne couvre ce déménagement'],school:['Ask about school arrangements for your child','Demander les possibilités de scolarisation de votre enfant'],housing:['Check housing options and what applies to your home','Examiner les options pour votre logement'],renovation:['Ask which conditions apply to the planned works','Demander quelles conditions concernent les travaux envisagés'],energy:['Ask about options for the proposed energy work','Demander les possibilités pour les travaux énergétiques'],permit:['Ask which residence process applies to your circumstances','Demander quelle procédure de séjour correspond à votre situation'],insurance:['Compare coverage and ask which options fit your needs','Comparer les couvertures et les options adaptées'],business:['Ask which process applies to the proposed business','Demander quelle procédure concerne l’activité envisagée'],volunteering:['Ask the local fire service how to join','Demander au service du feu local comment le rejoindre'],transport:['Check transport options for your journey','Examiner les options de transport pour votre trajet'],other:['Ask what applies to this part of your situation','Demander ce qui concerne cette partie de votre situation']};
   const shortLabels={departure:['Departure from {place}','Départ de {place}'],arrival:['Arrival in {place}','Arrivée à {place}'],online_registration:['Online registration option','Option d’annonce en ligne'],school:['School and childcare','École et accueil'],housing:['Housing options','Options de logement'],renovation:['Planned renovation','Rénovation envisagée'],energy:['Energy options','Options énergétiques'],permit:['Residence questions','Questions de séjour'],insurance:['Compare coverage','Comparer les couvertures'],business:['Business questions','Questions sur l’activité'],volunteering:['Joining the fire service','Rejoindre le service du feu'],transport:['Transport options','Options de transport'],other:['Check applicability','Vérifier l’applicabilité']};
   const explanations={departure:['Your current commune identifies the starting contact. A different destination does not itself change this starting point.','Votre commune actuelle identifie le premier interlocuteur. Une autre destination ne change pas à elle seule ce point de départ.'],arrival:['The proposed destination changes the local arrival contact and the questions to verify there. Individual conditions remain unconfirmed.','La destination proposée change le contact local et les questions à vérifier à l’arrivée. Les conditions individuelles restent à confirmer.'],school:['Your child’s needs and proposed home location frame the school or childcare questions. Placement and conditions remain unconfirmed.','Les besoins de votre enfant et le domicile envisagé précisent les questions sur l’école ou l’accueil. La place et les conditions restent à confirmer.'],housing:['Your stated housing situation frames the options to compare. This map does not establish contract or property obligations.','Votre situation de logement précise les options à comparer. Cette carte ne détermine pas les obligations liées au bail ou au bien.'],renovation:['The planned work and property location frame the question to the local service. Whether permission applies has not been established.','Les travaux envisagés et le lieu du bien précisent la question au service local. La nécessité d’une autorisation n’est pas établie.'],energy:['The proposed energy work opens options to compare. Permission, eligibility and financial support remain unverified.','Les travaux énergétiques envisagés ouvrent des options à comparer. Autorisations, admissibilité et aides restent à vérifier.'],permit:['Your stated residence circumstances frame this question. Country of departure is not citizenship and no eligibility decision is established.','Votre situation de séjour précise cette question. Le pays de provenance n’est pas la nationalité et aucune décision d’admissibilité n’est établie.'],insurance:['Your chosen risks and coverage needs frame this comparison. No coverage or eligibility is established by this map.','Les risques et couvertures souhaités précisent cette comparaison. Cette carte ne confirme aucune couverture ni admissibilité.'],business:['Your proposed activity and location frame the questions to verify. Permission to trade and required documents have not been established.','L’activité et le lieu envisagés précisent les questions à vérifier. Le droit d’exercer et les pièces nécessaires ne sont pas établis.'],volunteering:['Your interests and location frame how to ask about joining. Eligibility, documents and medical conditions remain unverified.','Vos intérêts et le lieu précisent la demande pour rejoindre le service. Admissibilité, pièces et conditions médicales restent à vérifier.'],transport:['The proposed journey frames which transport options to inspect. This map has not calculated a live route, timetable or fare.','Le trajet envisagé précise les options à examiner. Cette carte ne calcule aucun itinéraire, horaire ou tarif en direct.']};
-  function purposeFor(step,branch){if(purposes[step.purpose])return step.purpose;const text=[step.title,branch.name,branch.need].join(' ');if(/departure|départ|deregister/i.test(step.title))return 'departure';if(/arrival|arriv|register.*(?:in|at)|inscri/i.test(step.title))return 'arrival';if(/online|eDéménagement/i.test(step.title))return 'online_registration';return needs(text).find(n=>purposes[n]) || (/permit|permis|residen/i.test(text)?'permit':'other');}
+  function purposeFor(step,branch){if(purposes[step.purpose])return step.purpose;const text=[step.title,branch.name,branch.need].join(' ');if(/departure|départ|deregister/i.test(step.title))return 'departure';if(/arrival|arriv|register.*(?:in|at)|inscri/i.test(step.title))return 'arrival';if(/online|eDéménagement/i.test(step.title))return 'online_registration';if(purposes[branch.need])return branch.need;const branchPurpose=needs(branch.name || '').find(n=>purposes[n]);if(branchPurpose)return branchPurpose;return needs(text).find(n=>purposes[n]) || (/permit|permis|residen/i.test(text)?'permit':'other');}
+  function sourceApplies(source,purpose) {
+    return !!source&&Array.isArray(source.services)&&source.services.includes(purpose);
+  }
+  function residentQuestion(q) {
+    const text=String(q.text || '');
+    if(/\b(?:require|deadline|regulat|mandatory|obligat|documents?|medical)\b|délai|règlement|autorisation|exige/iu.test(text))return false;
+    return /(?:what|which).*?(?:citizenship|nationality)|quelle.*nationalité|(?:what|which).*permit.*(?:hold|have)|quel.*permis.*(?:avez|déten)|(?:how old|how many|what age|quel âge|combien)|(?:when|quand).*(?:move|moving|plan|expect|déménag|prévoi)|(?:what|which|quel).*(?:coverage|risks|disputes|business|activity|couverture|risques|activité)|(?:where|which commune|what commune|dans quelle commune|où).*(?:live|living|move|plan|work|habit|déménag|travaill)|prefer|préfér|(?:do you|will you|are you).*(?:rent|own|live|car|child|school|work)|(?:voulez|avez|vivez|travaillez|envisagez)/iu.test(text);
+  }
   function safeMap(input,{language='en',catalogue=[],facts=input.variables || [],answers={},onlyActions=null,onlyQuestions=null}={}){
     const tree=copy(input),fr=language==='fr',f=key=>facts.find(f=>f.id===key),values=facts.map(f=>f.value).join(' '),citizenship=answers.nationality || (f('nationality') || {}).value || '';
-    const safeQuestions=[];for(const q of tree.questions || []){
+    const verificationTasks=[...(tree.verificationTasks || [])],safeQuestions=[];for(const q of tree.questions || []){
       if(onlyQuestions && !onlyQuestions.has(q.id)){safeQuestions.push(q);continue;}
       if(/full (?:street )?address|permit number|passport|street name|adresse (?:complète|exacte)|numéro (?:de|du) permis|(?:what|which) (?:documents|papers)|medical|médical|certificate|certificat|required documents|mandatory|obligatoire|date of birth|date de naissance|which (?:office|web|page|regulation)|find (?:the|a) (?:office|page)|competent office|quel.*(?:bureau|page|règlement)/i.test(q.text || ''))continue;
       if(facts.some(f=>f.type==='current_country')&&!facts.some(f=>f.type==='current_commune')&&/which commune.*(?:leave|depart)|quelle commune.*(?:quitt|départ)/i.test(q.text))continue;
-      safeQuestions.push({...q,why:fr?'Cette réponse aide à préciser les pistes concernées ci-dessous.':'This personal answer helps refine the affected paths below.'});
-    }tree.questions=safeQuestions;
+      if(!residentQuestion(q)){
+        const purpose=purposeFor({title:q.text}, {name:q.text}),action=tree.branches.flatMap(b=>b.steps.map(step=>({step,branch:b}))).find(({step,branch})=>purposeFor(step,branch)===purpose);
+        verificationTasks.push({id:q.id,actionId:action? action.step.id:null,text:purpose==='school'?(fr?'Vérifier le calendrier applicable à la scolarisation.':'Check the timing applicable to school arrangements.'):purposes[purpose][fr?1:0].replace('{place}',(f('destination')||{}).value || (fr?'la commune':'the commune')),origin:'application',reason:fr?'C’est une vérification institutionnelle, pas une information à fournir par le résident.':'This is an institutional verification task, not a fact the resident must supply.'});continue;
+      }
+      safeQuestions.push({...q,textOrigins:{text:{kind:expectedQuestions(facts,language).some(u=>u.id===q.id)?'application':'model'},why:{kind:'application'}},why:fr?'Cette réponse aide à préciser les pistes concernées ci-dessous.':'This personal answer helps refine the affected paths below.'});
+    }tree.questions=safeQuestions;tree.verificationTasks=verificationTasks;
+    const tasks=new Map(verificationTasks.map(task=>[task.id,task]));for(const branch of tree.branches)for(const step of branch.steps){if(onlyActions&&!onlyActions.has(step.id))continue;step.depends_on=step.depends_on.filter(id=>!tasks.has(id));}
     for(const b of tree.branches)for(const s of b.steps){if(onlyActions && !onlyActions.has(s.id))continue;
       const purpose=purposeFor(s,b),place=(f(purpose==='departure'?'origin':'destination') || {}).value || (fr?'la commune':'the commune');
-      const refs=(s.sources || []).filter(r=>{if(r.id==='sem-b-eu'&&!/^(?:EU\/EFTA|UE\/AELE)$/i.test(citizenship.trim()))return false;if(r.id==='sem-third'&&!/third.country|non.?EU|état.*tiers/i.test(citizenship))return false;return catalogue.some(c=>c.id===r.id);});if(!refs.length){const placeValue=(f(purpose==='departure'?'origin':'destination') || f('home_location') || f('origin') || {}).value || '';const slug=placeValue.toLowerCase().replace(/\s+/g,'-');let entry=['departure','arrival','online_registration'].includes(purpose)?catalogue.find(c=>c.jurisdiction && c.jurisdiction.commune===slug):null;if(!entry)entry=catalogue.find(c=>c.id===(purpose==='permit'?'sem-residence':purpose==='transport'?'otd':['departure','arrival','online_registration'].includes(purpose)&&!f('origin_country')?'ch-move':'vd-root'));if(entry)refs.push({id:entry.id,claim:null});}s.sources=refs;s.source=refs[0] && refs[0].id || null;
+      const refs=(s.sources || []).filter(r=>{if(r.id==='sem-b-eu'&&!/^(?:EU\/EFTA|UE\/AELE)$/i.test(citizenship.trim()))return false;if(r.id==='sem-third'&&!/third.country|non.?EU|état.*tiers/i.test(citizenship))return false;return catalogue.some(c=>c.id===r.id&&sourceApplies(c,purpose));});if(!refs.length){const placeValue=(f(purpose==='departure'?'origin':'destination') || f('home_location') || f('origin') || {}).value || '';const slug=placeValue.toLowerCase().replace(/\s+/g,'-');let entry=['departure','arrival','online_registration'].includes(purpose)?catalogue.find(c=>c.jurisdiction && c.jurisdiction.commune===slug):null;if(!entry){const fallback=purpose==='transport'?'otd':purpose==='school'?'vd-root':['departure','arrival'].includes(purpose)&&!f('origin_country')?'ch-move':purpose==='online_registration'?'vd-address':null;entry=fallback&&catalogue.find(c=>c.id===fallback&&sourceApplies(c,purpose));}if(entry)refs.push({id:entry.id,claim:null});}s.sources=refs;s.source=refs[0] && refs[0].id || null;
       // Pilot notes are drafts. A URL or model-selected claim never authorises
       // an obligation. Only an exact, reviewed, applicable action could do so.
       const supported=refs.map(r=>{const c=catalogue.find(c=>c.id===r.id),claim=(c.claims || []).find(k=>k.id===r.claim);return {c,claim};}).find(({claim})=>claim && claim.status==='reviewed' && claim.actionText && claim.conditions && claim.conditions.every(c=>facts.some(f=>f.type===c.type&&f.value===c.value)) && claim.actionText[language]===s.title && claim.explanation && claim.explanation[language]===s.why);
-      if(!supported){const neutral=/^(?:Ask|Check|Compare|Contact|Demander|Vérifier|Comparer|Contacter)\b/iu.test(s.title) && !/must|required|mandatory|approval|medical|documents|deadline|\d|oblig|autorisa|médic|délai/i.test(s.title);s.title=neutral?s.title:purposes[purpose][fr?1:0].replace('{place}',place);s.short=shortLabels[purpose][fr?1:0].replace('{place}',place);s.why=fr?'Cette piste prépare une question, pas une obligation confirmée. Les conditions, documents et délais applicables restent à vérifier.':'This prepares a question, not a confirmed obligation. Applicable conditions, documents and timing remain unverified.';if(explanations[purpose])s.why=explanations[purpose][fr?1:0];s.mode='verify';s.purpose=purpose;s.sourceGaps=[{reason:fr?'Applicabilité non établie par une note relue.':'Applicability is not established by a reviewed note.',question:s.title}];}
-      const entry=refs.map(r=>catalogue.find(c=>c.id===r.id)).find(Boolean);s.authority=entry?entry.level:'other';s.confirm_with=entry ? entry.title : fr?'Point d’entrée officiel à confirmer':'Official entry point not yet established';
+      if(!supported){const neutral=/^(?:Ask|Check|Compare|Contact|Demander|Vérifier|Comparer|Contacter)\b/iu.test(s.title) && !/must|required|mandatory|approval|medical|documents|deadline|\d|oblig|autorisa|médic|délai/i.test(s.title);s.title=neutral?s.title:purposes[purpose][fr?1:0].replace('{place}',place);s.short=shortLabels[purpose][fr?1:0].replace('{place}',place);s.why=fr?'Cette piste prépare une question, pas une obligation confirmée. Les conditions, documents et délais applicables restent à vérifier.':'This prepares a question, not a confirmed obligation. Applicable conditions, documents and timing remain unverified.';if(explanations[purpose])s.why=explanations[purpose][fr?1:0];s.mode='verify';s.purpose=purpose;s.textOrigins={title:{kind:neutral?'model':'application'},short:{kind:'application'},why:{kind:'application'},confirm_with:{kind:'application'}};s.sourceGaps=[{reason:fr?'Applicabilité non établie par une note relue.':'Applicability is not established by a reviewed note.',question:s.title}];}
+      const entry=refs.map(r=>catalogue.find(c=>c.id===r.id)).find(Boolean);s.authority=entry?entry.level:'other';s.confirm_with=entry&&Array.isArray(entry.contactFor)&&entry.contactFor.includes(purpose)?entry.title:fr?'Interlocuteur compétent à confirmer':'Competent contact not yet established';if(s.textOrigins)s.textOrigins.confirm_with=entry&&entry.contactFor&&entry.contactFor.includes(purpose)?{kind:'catalogue',sourceId:entry.id}:{kind:'application'};
       if(/EU|EFTA|UE\/AELE/i.test(b.name)&&!/EU|EFTA|UE|AELE/i.test(citizenship))b.name=fr?'Séjour et résidence':'Residence';
     }
+    tree.textOrigins={...(tree.textOrigins || {}),note:{kind:'application'}};
     tree.note=fr?'Les pistes préparent vos questions. Les sources proposées et leurs conditions attendent une relecture humaine.':'These paths prepare your questions. Suggested sources and their applicability await human review.';
     return tree;
   }
   function localize(input,facts,language) {
     const tree=copy(input),fr=language==='fr',labels={registration:['Registration','Annonces de départ et d’arrivée'],school:['School','Scolarité'],housing:['Housing','Logement'],renovation:['Renovation','Rénovation'],energy:['Energy','Énergie'],volunteering:['Volunteering','Bénévolat'],insurance:['Insurance','Assurance'],business:['Business','Activité professionnelle'],transport:['Transport','Transport'],residence:['Residence','Séjour'],other:['Your next questions','Vos prochaines questions']};
-    for(const branch of tree.branches){if(labels[branch.need])branch.name=labels[branch.need][fr?1:0];for(const step of branch.steps){if(step.mode!=='verify')continue;const purpose=purposeFor(step,branch),place=(facts.find(f=>f.id===(purpose==='departure'?'origin':'destination')) || {}).value || (fr?'la commune':'the commune');step.title=purposes[purpose][fr?1:0].replace('{place}',place);step.short=shortLabels[purpose][fr?1:0].replace('{place}',place);step.why=fr?'Cette piste prépare une question, pas une obligation confirmée. Les conditions applicables restent à vérifier.':'This prepares a question, not a confirmed obligation. Applicable conditions remain unverified.';}}
+    for(const branch of tree.branches){if(labels[branch.need])branch.name=labels[branch.need][fr?1:0];for(const step of branch.steps){if(step.mode!=='verify')continue;step.textOrigins={...(step.textOrigins || {}),title:{kind:'application'},short:{kind:'application'},why:{kind:'application'}};const purpose=purposeFor(step,branch),place=(facts.find(f=>f.id===(purpose==='departure'?'origin':'destination')) || {}).value || (fr?'la commune':'the commune');step.title=purposes[purpose][fr?1:0].replace('{place}',place);step.short=shortLabels[purpose][fr?1:0].replace('{place}',place);step.why=fr?'Cette piste prépare une question, pas une obligation confirmée. Les conditions applicables restent à vérifier.':'This prepares a question, not a confirmed obligation. Applicable conditions remain unverified.';}}
+    tree.textOrigins={...(tree.textOrigins || {}),note:{kind:'application'}};
     tree.note=fr?'Les pistes préparent vos questions. Les sources proposées et leurs conditions attendent une relecture humaine.':'These paths prepare your questions. Suggested sources and their applicability await human review.';return tree;
   }
-  return {roles,literal,extract,validateFacts,needs,expectedNeeds,expectedQuestions,parseEnvelope,validateCommand,revision,dependencies,normalizePrerequisites,unaffected,requiredTargets,bindInputs,actionIdentity,applyProposal,safeMap,localize};
+  function stampProvenance(tree,provider,onlyActions=null,onlyQuestions=null){
+    const stamp=origin=>origin&&origin.kind==='model'?{...origin,provider:copy(provider || {})}:origin;
+    for(const branch of tree.branches)for(const step of branch.steps){if(onlyActions&&!onlyActions.has(step.id))continue;step.textOrigins=Object.fromEntries(Object.entries(step.textOrigins || {title:{kind:'model'},short:{kind:'model'},why:{kind:'model'}}).map(([field,origin])=>[field,stamp(origin)]));}
+    for(const q of tree.questions){if(onlyQuestions&&!onlyQuestions.has(q.id))continue;q.textOrigins=Object.fromEntries(Object.entries(q.textOrigins || {text:{kind:'model'},why:{kind:'model'}}).map(([field,origin])=>[field,stamp(origin)]));}return tree;
+  }
+  return {roles,literal,extract,validateFacts,factCoverage,sourceApplies,residentQuestion,stampProvenance,needs,expectedNeeds,expectedQuestions,parseEnvelope,validateCommand,revision,dependencies,normalizePrerequisites,unaffected,requiredTargets,bindInputs,actionIdentity,applyProposal,safeMap,localize};
 })();
 
   // END GENERATED JOURNEY CONTRACT
@@ -421,7 +456,7 @@ const Journey = (() => {
   // ---- The only place a link can come from. Apertus picks by id; anything else is shown as "no linked page yet". ----
   // BEGIN GENERATED CATALOGUE
   // Edit packs/*.json and run node tools/catalogue.js --write.
-  const CATALOG_VERSION = "22f81fd2298843e1";
+  const CATALOG_VERSION = "f153e8a7a9891086";
   const CATALOG = [
   {
     "id": "gland-cdh",
@@ -449,8 +484,16 @@ const Journey = (() => {
       "commune": "gland"
     },
     "exact": true,
+    "services": [
+      "departure",
+      "arrival"
+    ],
+    "contactFor": [
+      "departure",
+      "arrival"
+    ],
     "pack": "VD-gland",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "nyon-cdh",
@@ -478,8 +521,16 @@ const Journey = (() => {
       "commune": "nyon"
     },
     "exact": true,
+    "services": [
+      "departure",
+      "arrival"
+    ],
+    "contactFor": [
+      "departure",
+      "arrival"
+    ],
     "pack": "VD-nyon",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "stcergue-arrival",
@@ -507,8 +558,14 @@ const Journey = (() => {
       "commune": "saint-cergue"
     },
     "exact": true,
+    "services": [
+      "arrival"
+    ],
+    "contactFor": [
+      "arrival"
+    ],
     "pack": "VD-saint-cergue",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "vd-address",
@@ -549,8 +606,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [
+      "online_registration"
+    ],
+    "contactFor": [],
     "pack": "VD",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "vd-tax-communes",
@@ -576,8 +637,10 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [],
+    "contactFor": [],
     "pack": "VD",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "vd-vote-directive",
@@ -603,8 +666,10 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [],
+    "contactFor": [],
     "pack": "VD",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "mobilis",
@@ -630,8 +695,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": false,
+    "services": [
+      "transport"
+    ],
+    "contactFor": [],
     "pack": "VD",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "jestime",
@@ -657,8 +726,10 @@ const Journey = (() => {
       "commune": null
     },
     "exact": false,
+    "services": [],
+    "contactFor": [],
     "pack": "VD",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "vd-root",
@@ -672,8 +743,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": false,
+    "services": [
+      "school"
+    ],
+    "contactFor": [],
     "pack": "VD",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "ch-move",
@@ -699,8 +774,14 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [
+      "departure",
+      "arrival",
+      "housing"
+    ],
+    "contactFor": [],
     "pack": "ch",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "ch-move-checklist",
@@ -726,8 +807,14 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [
+      "departure",
+      "arrival",
+      "housing"
+    ],
+    "contactFor": [],
     "pack": "ch",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "sem-b-eu",
@@ -755,8 +842,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [
+      "permit"
+    ],
+    "contactFor": [],
     "pack": "ch",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "sem-third",
@@ -784,8 +875,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": true,
+    "services": [
+      "permit"
+    ],
+    "contactFor": [],
     "pack": "ch",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "ch-root",
@@ -799,8 +894,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": false,
+    "services": [
+      "permit"
+    ],
+    "contactFor": [],
     "pack": "ch",
-    "packVersion": 2
+    "packVersion": 3
   },
   {
     "id": "otd",
@@ -826,8 +925,12 @@ const Journey = (() => {
       "commune": null
     },
     "exact": false,
+    "services": [
+      "transport"
+    ],
+    "contactFor": [],
     "pack": "other",
-    "packVersion": 1
+    "packVersion": 2
   }
 ];
   // END GENERATED CATALOGUE
@@ -857,9 +960,9 @@ const Journey = (() => {
       const unknownDestination=role==='destination'&&!fact&&tree.variables.some(v=>v.id==='origin_country');
       if (!places.length) places = mentionedPlaces(tree.variables.filter(v => st.depends_on.includes(v.id)).map(v => v.value).join(' '));
       st.sourceGaps = (st.sourceGaps || []).filter(g => !g.id || catalogById(g.id));
-      st.sources = st.sources.filter(ref => { const scope = pageScope(ref.id); if (!scope || !unknownDestination && (!places.length || places.some(p => (!scope.commune || p.commune === scope.commune) && (!scope.canton || p.canton === scope.canton)))) return true; st.sourceGaps.push({ id: ref.id, reason: t('Référence écartée : la page concerne ', 'Reference withheld: this page covers ') + (scope.commune || scope.canton) + t(', alors que l’étape concerne ', ', while the step names ') + places.map(p => p.names[0]).join(', ') + '.' }); return false; });
+      st.sources = st.sources.filter(ref => { if(st.purpose&&!Journey.sourceApplies(catalogById(ref.id),st.purpose)){st.sourceGaps.push({id:ref.id,reason:t('Sujet non couvert par cette référence.','This reference does not cover this service.')});return false;}const scope = pageScope(ref.id); if (!scope || !unknownDestination && (!places.length || places.some(p => (!scope.commune || p.commune === scope.commune) && (!scope.canton || p.canton === scope.canton)))) return true; st.sourceGaps.push({ id: ref.id, reason: t('Référence écartée : la page concerne ', 'Reference withheld: this page covers ') + (scope.commune || scope.canton) + t(', alors que l’étape concerne ', ', while the step names ') + places.map(p => p.names[0]).join(', ') + '.' }); return false; });
       st.source = st.sources.length ? st.sources[0].id : null;
-      if(st.mode==='verify'){const contact=st.source && catalogById(st.source);st.confirm_with=contact?contact.title:t('Point d’entrée officiel à confirmer','Official entry point not yet established');}
+      if(st.mode==='verify'){const contact=st.sources.map(r=>catalogById(r.id)).find(c=>c&&Array.isArray(c.contactFor)&&c.contactFor.includes(st.purpose));st.confirm_with=contact?contact.title:t('Interlocuteur compétent à confirmer','Competent contact not yet established');st.authority=contact?contact.level:'other';}
     }));
     return tree;
   }
@@ -1014,6 +1117,7 @@ const Journey = (() => {
   const saveConn = () => { try { sessionStorage.setItem(CONN_KEY, JSON.stringify({ proxyUrl: conn.proxyUrl })); } catch (e) {} };
   const live = () => conn.status === 'ok';
   const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : t('Texte préparé', 'Prepared text');
+  function textOriginLabel(object,field){const origin=object&&object.textOrigins&&object.textOrigins[field];return !origin?t('Origine du texte non enregistrée','Text origin not recorded'):origin.kind==='application'?t('Texte préparé par l’application','Application-prepared text'):origin.kind==='catalogue'?t('Note du catalogue','Catalogue note'):origin.kind==='model'?provLabel(origin.provider):t('Origine du texte non enregistrée','Text origin not recorded');}
   async function chat(messages, maxTokens) {
     const op=operation;
     if(op && (op.calls>=4 || Date.now()>=op.deadline))throw new Error(t('Limite de cette demande atteinte. Votre texte et votre carte sont conservés.','This operation reached its request or time limit. Your text and map are preserved.'));
@@ -1156,13 +1260,13 @@ const Journey = (() => {
   }
   async function understandFacts(text) {
     const result=Journey.extract(text,LANG);
-    if(result.facts.length || !/\b(?:I live|I reside|I own|my child|I hold|I am coming|je vis|je suis propriétaire)|[Jj]['’]habite/i.test(text)) return factAlternatives(result.facts);
+    if(!Journey.factCoverage(text,result.facts).missing.length)return factAlternatives(result.facts);
     let failed='';
     for(let attempt=0;attempt<2;attempt++){
       set({loading:attempt?t('Apertus vérifie les faits manquants…','Apertus is checking missing facts…'):t('Apertus identifie les faits de votre situation…','Apertus is identifying your personal facts…')});
-      const messages=[{role:'system',content:'UNDERSTAND_V1. Extract only explicitly supplied personal facts. Return {"facts":[{"type":"current_commune|destination_commune|workplace|current_country|housing_status|children|permit|citizenship|household|transport","value":"literal value","span":"exact quote","evidence":{"start":0,"end":5},"confidence":"explicit|confirm"}]}. Offsets use JavaScript UTF-16 characters. Distinguish workplace from destination. Country of departure is never citizenship. Do not ask for full addresses, names, permit numbers or documents. No inferred facts.'},{role:'user',content:text+(attempt?'\nRepair the extraction: '+failed:'')}];
+      const messages=[{role:'system',content:'UNDERSTAND_V1. Extract only explicitly supplied personal facts. Return {"facts":[{"type":"current_commune|destination_commune|workplace|current_country|housing_status|children|permit|citizenship|household|transport","value":"literal value","span":"exact quote","evidence":{"start":0,"end":5},"confidence":"explicit|confirm"}]}. Offsets use JavaScript UTF-16 characters. Distinguish workplace from destination. Country of departure is never citizenship. Do not ask for full addresses, names, permit numbers or documents. No inferred facts.'},{role:'user',content:text+'\nAlready grounded facts: '+JSON.stringify(result.facts)+'\nMissing roles to extract: '+JSON.stringify(Journey.factCoverage(text,result.facts).missing)+(attempt?'\nRepair the extraction: '+failed:'')}];
       const response=await chat(messages,900);
-      try{const raw=JSON.parse(extractJSON(response.text).text),facts=Journey.validateFacts(raw.facts,text,LANG);if(!facts.length)throw new Error('The supplied personal facts were omitted');if(facts.some(f=>f.confidence==='confirm'))throw new Error('Please confirm the personal facts in a short explicit sentence');return factAlternatives(facts);}catch(e){failed=e.message;if(attempt)throw new Error(t('Précisez les faits utiles (commune actuelle, destination, logement ou permis). Votre texte est conservé.','Please state the useful facts explicitly (current commune, destination, housing or permit). Your text is preserved.'));}
+      try{const raw=JSON.parse(extractJSON(response.text).text),supplied=Journey.validateFacts(raw.facts,text,LANG),facts=result.facts.slice();for(const fact of supplied){const old=facts.find(f=>f.type===fact.type);if(old&&old.value!==fact.value)throw new Error('Conflicting personal fact: '+fact.type);if(!old)facts.push(fact);}const missing=Journey.factCoverage(text,facts).missing;if(missing.length)throw new Error('The supplied personal facts were omitted: '+missing.join(', '));if(facts.some(f=>f.confidence==='confirm'))throw new Error('Please confirm the personal facts in a short explicit sentence');return factAlternatives(facts);}catch(e){failed=e.message;if(attempt)throw new Error(t('Précisez les faits utiles (commune actuelle, destination, logement ou permis). Votre texte est conservé.','Please state the useful facts explicitly (current commune, destination, housing or permit). Your text is preserved.'));}
     }
   }
   function canonicalBranches(tree,story,facts) {
@@ -1179,9 +1283,9 @@ const Journey = (() => {
   }
   async function fetchProposal(story,facts,answers,previous,change,selection) {
     const generation=requestId,context=patchContext(previous,facts,answers,change),revision=Journey.revision(previous,currentVars(),viewedAnswers());
-    const accepted={branches:previous.branches.map(b=>({...b,steps:b.steps.map(s=>({...s,sources:referencesForModel(s.sources),source:undefined,sourceGaps:undefined}))})),questions:previous.questions};
-    const allowed=previous.branches.flatMap(b=>b.steps.filter(s=>!Journey.unaffected(s,previous,context)&&s.depends_on.some(d=>context.changedIds.includes(d))).map(s=>b.id+'/'+s.id));
-    const prompt='CHANGE_PROPOSAL_V1\nRevision: '+revision+'\nRequested change: '+JSON.stringify(change || {kind:context.kind,changedAnswers:context.changedIds})+'\nSituation: '+story+'\nFacts owned by the app: '+JSON.stringify(facts)+'\nConfirmed answers: '+JSON.stringify(answers)+'\nAccepted map: '+JSON.stringify(accepted)+'\nOnly these existing actions may be replaced or removed: '+JSON.stringify(allowed)+'\nAffected actions that still name the old value must be addressed explicitly: '+JSON.stringify(Journey.requiredTargets(previous,context))+'\nReturn small operations, not a map. An unrelated action is copied by the app; do not return it. New branches must serve a distinct resident need, not a separate website. With an added fact or goal, add related work without rewriting existing actions. Unknown or empty dependencies never establish unaffected work. Model output cannot contain personal facts, confirmed answers, completion, history, source records or reviewer metadata. No-op is allowed when no demonstrated change can be established; it is not proof that administrative consequences are absent.\nSources: '+catalogForPrompt(selection);
+    const accepted={branches:previous.branches.map(b=>({...b,steps:b.steps.map(s=>({...s,sources:referencesForModel(s.sources),source:undefined,sourceGaps:undefined,textOrigins:undefined}))})),questions:previous.questions};
+    const allowed=previous.branches.flatMap(b=>b.steps.filter(s=>!Journey.unaffected(s,previous,context)&&s.depends_on.some(d=>context.changedIds.includes(d))).map(s=>({branch:b.id,target:s.id})));
+    const prompt='CHANGE_PROPOSAL_V1\nRevision: '+revision+'\nRequested change: '+JSON.stringify(change || {kind:context.kind,changedAnswers:context.changedIds})+'\nSituation: '+story+'\nFacts owned by the app: '+JSON.stringify(facts)+'\nConfirmed answers: '+JSON.stringify(answers)+'\nAccepted map: '+JSON.stringify(accepted)+'\nOnly these existing actions may be replaced or removed: '+JSON.stringify(allowed)+'\nAffected actions that still name the old value must be addressed explicitly: '+JSON.stringify(Journey.requiredTargets(previous,context))+'\nEach authorised address is {branch,target}. Copy branch and target separately; action.id equals target. Never concatenate them or invent an action ID.\nReturn small operations, not a map. An unrelated action is copied by the app; do not return it. New branches must serve a distinct resident need, not a separate website. With an added fact or goal, add related work without rewriting existing actions. Unknown or empty dependencies never establish unaffected work. Model output cannot contain personal facts, confirmed answers, completion, history, source records or reviewer metadata. No-op is allowed when no demonstrated change can be established; it is not proof that administrative consequences are absent.\nSources: '+catalogForPrompt(selection);
     const goalExample={...JSON.parse(patchSchema).operations[0].action,id:'new_goal_action',purpose:Journey.needs(change && change.to || '').find(n=>['insurance','business','housing','school','transport'].includes(n)) || 'other',title:'Ask which options fit the additional goal',short:'Compare options',why:'Clarify personal needs and verify applicable conditions',depends_on:[],prerequisites:[],sources:[],authority:'other',confirm_with:null};
     const stageSchema=context.kind==='add_goal'?JSON.stringify({revision:'supplied revision',operations:[{op:'add_branch',branch:{id:'new_goal',name:'Additional goal',need:goalExample.purpose,steps:[goalExample]}}]}):patchSchema;
     const stageRule=context.kind==='add_goal'?'This is an ADDITIONAL GOAL. Return ONLY add_branch operations (plus personal add_question if necessary). The existing registration branch and other accepted branches are copied by the app. Do not use add_action in an existing branch. ':'';
@@ -1189,7 +1293,7 @@ const Journey = (() => {
     for(let attempt=0;attempt<2;attempt++){
       set({loading:attempt?t('La proposition nécessite une correction — une tentative…','The proposal needs a correction — one retry…'):t('Apertus propose uniquement les changements concernés…','Apertus is proposing only the affected changes…')});
       const messages=[{role:'system',content:(LANG==='fr'?'Write in French. ':'Write in English. ')+stageRule+'Return ONLY JSON of this shape: '+stageSchema+(context.kind==='add_goal'?' Allowed operations: add_branch {op,branch:{id,name,need,steps}}; add_question {op,question:{id,text,why,type,options}}. ':' Allowed operations: replace_action and remove_action only for authorised targets; add_action {op,branch,after:existing action id or null (null appends at the end of the branch),action}; add_branch {op,branch:{id,name,need,steps}}; add_question {op,question:{id,text,why,type,options}}; remove_question {op,target} only for explicitly answered questions. For completion add a genuinely new action. ')+ 'depends_on contains actual fact/question IDs only; prerequisites contains earlier action IDs only. Use neutral preparation questions. Never assert approval, deadlines, documents, medical clearances, nationality or eligibility. Ask necessary personal questions, never ask the resident to find an office or supply a full address.'},{role:'user',content:prompt}];
-      if(attempt)messages.push({role:'assistant',content:prior.slice(0,10000)},{role:'user',content:'Repair this proposal: '+failed+'. '+stageRule+'Return one proposal for revision '+revision+'. Do not reproduce unchanged work.'});
+      if(attempt)messages.push({role:'assistant',content:prior.slice(0,10000)},{role:'user',content:'Repair this proposal: '+failed+'. '+stageRule+'Return one proposal for revision '+revision+'. Addresses must use separate branch and target fields exactly as authorised: '+JSON.stringify(allowed)+'. action.id must equal the bare target, without branch/. Do not reproduce unchanged work.'});
       const response=await chat(messages,2200);prior=response.text;
       if(generation!==requestId)throw new Error('cancelled');
       try{
@@ -1201,16 +1305,18 @@ const Journey = (() => {
         const addedBranches=new Set(proposal.operations.filter(o=>o.op==='add_branch').map(o=>o.branch.id));
         const labels=Journey.localize({branches:tree.branches.filter(b=>addedBranches.has(b.id)),questions:[]},facts,LANG);
         tree.branches.forEach(b=>{if(addedBranches.has(b.id)){const label=labels.branches.find(x=>x.id===b.id);b.name=label && label.name || t('Nouvelle piste','New path');if(context.kind==='add_goal')b.name=t('Nouvel objectif : ','Additional goal: ')+String(change.to).slice(0,100);}});
-        const newIds=new Set(proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps.map(s=>s.id):o.action?[o.action.id]:[]));
+        const newIds=new Set(proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps.map(s=>s.id):o.action?[o.action.id.includes('/')?o.action.id.split('/').at(-1):o.action.id]:[]));
         const newQuestions=new Set(proposal.operations.filter(o=>o.op==='add_question').map(o=>o.question.id));
         let cleaned=Journey.safeMap(tree,{language:LANG,catalogue:selection,facts,answers,onlyActions:newIds,onlyQuestions:newQuestions});
         cleaned=Journey.bindInputs(cleaned,facts,answers,newIds);
         const preserved=new WeakSet();
         cleaned.branches.forEach(b=>b.steps.forEach(st=>{if(!newIds.has(st.id)){preserved.add(st);return;}st.sources=(st.sources || []).filter(r=>selection.some(c=>c.id===r.id)).map(r=>({id:r.id,claim:claimId(r.id,r.claim)}));st.source=st.sources[0] && st.sources[0].id || null;}));
-        tree=constrainSources(cleaned,newIds);recordSources(tree,selection,preserved);
+        const affectedIds=new Set(context.changedIds.length?previous.branches.flatMap(b=>b.steps.filter(step=>!Journey.unaffected(step,previous,context)).map(step=>step.id)):[]),scopeIds=new Set([...newIds,...affectedIds]);
+        tree=constrainSources(cleaned,scopeIds);recordSources(tree,selection,preserved);
+        tree.impacts=[...(previous.impacts || []).filter(i=>!affectedIds.has(i.id)),...Array.from(affectedIds,id=>({id,inputs:context.changedIds.slice(),status:'reassess',origin:'application'}))].filter(i=>tree.branches.some(b=>b.steps.some(step=>step.id===i.id)));
         Journey.dependencies(tree,facts,answers);
         for(const id of context.changedIds){const before=previous.variables.find(f=>f.id===id),after=facts.find(f=>f.id===id);if(!before||!after||before.value===after.value||previous.variables.filter(f=>f.value===before.value).length!==1)continue;tree.questions=tree.questions.map(q=>({...q,text:q.text.split(before.value).join(after.value)}));}
-        tree.variables=JSON.parse(JSON.stringify(facts));tree.catalogueVersion=CATALOG_VERSION;tree.sourceSelection=selection.map(c=>c.id);tree.prov=response.prov;tree.incomplete=false;tree.key=hash(revision+'|'+JSON.stringify(proposal));tree.acceptedRevision=revision;
+        tree.variables=JSON.parse(JSON.stringify(facts));tree.catalogueVersion=CATALOG_VERSION;tree.sourceSelection=selection.map(c=>c.id);tree.prov=response.prov;Journey.stampProvenance(tree,response.prov,newIds,newQuestions);tree.incomplete=false;tree.key=hash(revision+'|'+JSON.stringify(proposal));tree.acceptedRevision=revision;
         return tree;
       }catch(e){failed=e.message;if(attempt)throw Object.assign(new Error(t('La proposition n’a pas pu être vérifiée. Votre carte et vos réponses sont conservées. Précisez le changement ou réessayez.','The proposal could not be verified. Your map and answers are preserved. Clarify the change or try again.')),{detail:failed});}
     }
@@ -1248,14 +1354,14 @@ const Journey = (() => {
         tree.variables = JSON.parse(JSON.stringify(vars));
         tree = canonicalBranches(Journey.safeMap(Journey.normalizePrerequisites(tree),{language:LANG,catalogue:selection,facts:vars,answers}),effectiveStory,vars);
         tree.branches.forEach(b=>b.steps.forEach(st=>{const questions=tree.questions.filter(q=>q.id==='nationality' && ['arrival','permit'].includes(st.purpose) || q.id==='residence_commune' && st.purpose==='arrival');st.depends_on=[...new Set(st.depends_on.concat(questions.map(q=>q.id)))];}));
-        tree=Journey.bindInputs(tree,vars,answers);
+        tree=constrainSources(Journey.bindInputs(tree,vars,answers));
         Journey.dependencies(tree,vars,answers);
         const missingNeeds=Journey.expectedNeeds(effectiveStory,vars).filter(need=>!tree.branches.some(b=>b.need===need));
         if(missingNeeds.length)throw new Error('Missing explicit resident needs: '+missingNeeds.join(', '));
         recordSources(tree,selection);
         tree.catalogueVersion = CATALOG_VERSION; tree.sourceSelection = selection.map(c => c.id);
         tree.incomplete = ex.truncated;
-        tree.prov = res.prov; tree.key = key;
+        tree.prov = res.prov; Journey.stampProvenance(tree,res.prov); tree.key = key;
         // An incomplete map must be fetched again when the person presses Redraw.
         if (!ex.truncated && generation === requestId) { state.trees[key] = { tree, fingerprint }; const keys = Object.keys(state.trees); if (keys.length > 20) delete state.trees[keys[0]]; }
         return tree;
@@ -1452,13 +1558,13 @@ const Journey = (() => {
     if(savedTree && scenarioKey(savedTree.variables)===scenarioKey(vars)){
       const id=beginRequest(t('Préparation de votre scénario conservé…','Preparing your saved scenario…'));
       try {
-        const saved=normalizeTree(JSON.parse(JSON.stringify(savedTree))),completed=saved.branches.flatMap(b=>b.steps).filter(step=>state.done.includes(completionKey(saved,saved.variables,answers,step.id))).map(step=>step.id);
+        const rawSaved=JSON.parse(JSON.stringify(savedTree)),completed=rawSaved.branches.flatMap(b=>b.steps).filter(step=>state.done.includes(completionKey(rawSaved,rawSaved.variables,answers,step.id))).map(step=>step.id),saved=normalizeTree(rawSaved);
         vars=factAlternatives(vars).map(f=>({...f,label:Journey.roles[f.type]?Journey.roles[f.type][LANG==='fr'?2:1]:f.label}));
         let tree=saved,defs=JSON.parse(JSON.stringify(archivedDefs || {}));
         if((archived.language || 'en')!==LANG){
           tree=Journey.localize(saved,vars,LANG);
           const inventory=Object.values(Object.assign({},defs,Object.fromEntries(saved.questions.map(q=>[q.id,q])))),translated=await translateQuestionLabels(inventory);
-          defs=Object.fromEntries(inventory.map((q,i)=>[q.id,{...q,text:translated[i].text,options:translated[i].options,why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')} ]));
+          defs=Object.fromEntries(inventory.map((q,i)=>[q.id,{...q,text:translated[i].text,options:translated[i].options,textOrigins:{...(q.textOrigins || {}),text:{kind:'model',provider:translated[i].provider},why:{kind:'application'}},why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')} ]));
           tree.questions=saved.questions.map(q=>defs[q.id]);
           for(const key of Object.keys(qtexts))if(defs[key])qtexts[key]=defs[key].text;
         }
@@ -1542,12 +1648,12 @@ const Journey = (() => {
 
   // ---- Diff by id ----
   const same = (a, b) => a.short === b.short && JSON.stringify(a.prerequisites || [])===JSON.stringify(b.prerequisites || []) && JSON.stringify(a.depends_on || []) === JSON.stringify(b.depends_on || []) && a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && sourcesIdentity(a.sources) === sourcesIdentity(b.sources) && JSON.stringify(a.sourceGaps || []) === JSON.stringify(b.sourceGaps || []);
-  function diffBranches(A, B) {
+  function diffBranches(A, B, impacts = []) {
     const ids = A.map(b => b.id); B.forEach((b, i) => { if (!ids.includes(b.id)) ids.splice(Math.min(i, ids.length), 0, b.id); });
     return ids.map(id => {
       const a = A.find(b => b.id === id) || null, b = B.find(x => x.id === id) || null;
       const steps = a ? a.steps.map(s => s.id) : []; if (b) b.steps.forEach((s, i) => { if (!steps.includes(s.id)) steps.splice(Math.min(i, steps.length), 0, s.id); });
-      return { id, name: (b || a).name, added: !a, removed: !b, cmp: steps.map(sid => { const sa = a && a.steps.find(s => s.id === sid) || null, sb = b && b.steps.find(s => s.id === sid) || null; return { id: sid, a: sa, b: sb, kind: !sa ? 'added' : !sb ? 'removed' : same(sa, sb) ? 'same' : 'changed' }; }) };
+      return { id, name: (b || a).name, added: !a, removed: !b, cmp: steps.map(sid => { const sa = a && a.steps.find(s => s.id === sid) || null, sb = b && b.steps.find(s => s.id === sid) || null; return { id: sid, a: sa, b: sb, impact:impacts.some(impact=>impact.id===sid)?'reassess':'independent',kind: !sa ? 'added' : !sb ? 'removed' : same(sa, sb) ? 'same' : 'changed' }; }) };
     });
   }
   function derive() {
@@ -1557,9 +1663,9 @@ const Journey = (() => {
     if (!tree) return { exploreOn, tree: null, rows: [], previewOn: false };
     const previewOn = !exploreOn && !!s.pending;
     let rows;
-    if (previewOn) rows = diffBranches(tree.branches, s.pending.tree.branches);
+    if (previewOn) rows = diffBranches(tree.branches, s.pending.tree.branches,s.pending.tree.impacts || []);
     else if (!exploreOn && s.prevTree) rows = diffBranches(s.prevTree.branches, tree.branches).filter(r => !r.removed).map(r => ({ id: r.id, name: r.name, cmp: r.cmp.filter(c => c.kind !== 'removed').map(c => ({ id: c.id, a: c.b, b: null, kind: c.kind === 'same' ? 'same' : 'applied-' + c.kind })) }));
-    else rows = tree.branches.map(b => ({ id: b.id, name: b.name, cmp: b.steps.map(st => ({ id: st.id, a: st, b: null, kind: 'same' })) }));
+    else rows = tree.branches.map(b => ({ id: b.id, name: b.name, cmp: b.steps.map(st => ({ id: st.id, a: st, b: null, kind: 'same',impact:(tree.impacts || []).some(impact=>impact.id===st.id)?'reassess':'independent' })) }));
     return { exploreOn, tree, rows, previewOn, answers: exploreOn ? s.exploreAnswers : s.answers, qtexts: exploreOn ? s.exploreQtexts : s.qtexts };
   }
   function completionKey(tree, vars, answers, id, legacy = false) {
@@ -1623,22 +1729,22 @@ const Journey = (() => {
       const questionPreview=omittedQuestions.length ? '<div class="small">' + t('Questions hors du chemin proposé : ','Questions outside the proposed path: ') + omittedQuestions.map(q=>esc(q.text)).join(' · ') + '</div>' : '';
       const revisedAnswers = Object.keys(s.pending.answers || {}).filter(id=>s.pending.answers[id]!==s.answers[id]);
       const answerPreview = (revisedAnswers.length ? '<div class="small proposed-answers">' + t('Réponses proposées : ', 'Proposed answers: ') + revisedAnswers.map(id=>'<p>' + esc((s.pending.qtexts || {})[id] || id) + '<br><b>' + esc(s.pending.answers[id]) + '</b>' + ((s.pending.requiredAnswers || []).includes(id) ? '<br><button type="button" class="btn" data-action="confirm-answer" data-question="' + esc(id) + '" aria-pressed="' + (s.pending.confirmedAnswers || []).includes(id) + '">' + ((s.pending.confirmedAnswers || []).includes(id) ? t('Annuler la confirmation','Undo confirmation') : t('Confirmer la réponse','Confirm answer')) + '</button>' : '') + '</p>').join('') + (!pendingAnswersConfirmed(s.pending) ? '<p>' + t('Confirmez la réponse à chaque question avant d’adopter ce chemin.','Confirm the answer to each question before adopting this path.') + '</p>' : '') + '</div>' : '') + (parked ? '<div class="small">' + parked + t(' réponse(s) actuelle(s) ne font pas partie de ce chemin proposé.', ' current answer(s) are not part of this proposed path.') + '</div>' : '');
-      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + questionPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' sont communes.', ' are shared.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + questionPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') +c.reassess+t(' restent à réexaminer ; ',' still need reassessment; ')+(c.same-c.reassess)+t(' n’ont pas de dépendance déclarée au changement.',' have no declared dependency on the changed input.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
     }
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     const note = d.previewOn ? { text: s.pending.tree.note, prov: s.pending.tree.prov } : d.exploreOn && d.tree ? { text: d.tree.note, prov: d.tree.prov } : s.note && s.note.text ? s.note : null;
-    html += '<div class="spacer"></div>' + (note && note.text ? '<div class="note"><div class="who live"><i></i>' + esc(provLabel(note.prov)) + '</div><div>' + esc(note.text) + '</div></div>' : '');
+    html += '<div class="spacer"></div>' + (note && note.text ? '<div class="note"><div class="who live"><i></i>' + esc(textOriginLabel(d.previewOn?s.pending.tree:d.tree,'note')) + '</div><div>' + esc(note.text) + '</div></div>' : '');
     if (d.tree && d.tree.incomplete) html += '<div class="err">' + t('Réponse coupée : cette carte est incomplète.', 'Answer cut off: this map is incomplete.') + ' <button type="button" class="btn" data-action="complete-map">' + t('Compléter la carte', 'Complete map') + '</button></div>';
     if (s.error) html += '<div class="err">' + esc(s.error) + '</div>';
     const turns = (d.exploreOn ? s.exploreTurns : s.turns).slice(-6);
     if (s.goalConfirmation) html += '<div class="banner" role="status"><p>' + t('Voulez-vous dire une assurance vie ? Votre assurance juridique et votre réponse restent inchangées.', 'Did you mean life insurance? Your legal-insurance map and existing answer will stay unchanged.') + '</p><div class="row"><button type="button" class="btn primary" data-action="confirm-goal">' + t('Oui, ajouter une assurance vie', 'Yes, add life insurance') + '</button><button type="button" class="btn" data-action="edit-goal">' + t('Modifier ma demande', 'Edit my request') + '</button></div></div>';
-    if (turns.length) html += '<div class="chat">' + turns.map(u => u.role === 'you' ? '<div class="turn you">' + esc(u.text) + '</div>' : '<div class="turn guide"><div class="who live"><i></i>' + esc(u.catalogueOnly ? t('Sélection des étapes : ', 'Step selection: ') + provLabel(u.prov) : provLabel(u.prov)) + (u.notCovered ? ' · ' + t('non couvert', 'not covered') : '') + '</div><div>' + esc(u.text) + '</div><div class="small">' + t('Ces notes sont préparées, non relues. Apertus a choisi les étapes ; vérifiez leurs pages avant d’agir.', 'These notes are prepared and unreviewed. Apertus selected the steps; check their pages before acting.') + '</div>' + ((u.steps || []).length ? '<div class="chips">' + u.steps.map(x => { const b = d.tree && d.tree.branches[x.li]; const st = b && b.steps.find(y => y.id === x.id); return st ? '<button type="button" class="chip" data-sel="' + x.li + '|' + esc(x.id) + '|0">' + esc(st.short) + '</button>' : ''; }).join('') + '</div>' : '') + '</div>').join('') + '</div>';
+    if (turns.length) html += '<div class="chat">' + turns.map(u => u.role === 'you' ? '<div class="turn you">' + esc(u.text) + '</div>' : '<div class="turn guide"><div class="who live"><i></i>' + esc(t('Texte préparé par l’application','Application-prepared text')) + (u.notCovered ? ' · ' + t('non couvert', 'not covered') : '') + '</div><div>' + esc(u.text) + '</div><div class="small">' + t('Texte préparé avec des notes du catalogue non relues ; la demande a été interprétée par le modèle connecté. Vérifiez les pages avant d’agir.', 'Prepared guidance with draft catalogue notes; request interpretation used the connected model. Check the pages before acting.') + '</div>' + ((u.steps || []).length ? '<div class="chips">' + u.steps.map(x => { const b = d.tree && d.tree.branches[x.li]; const st = b && b.steps.find(y => y.id === x.id); return st ? '<button type="button" class="chip" data-sel="' + x.li + '|' + esc(x.id) + '|0">' + esc(st.short) + '</button>' : ''; }).join('') + '</div>' : '') + '</div>').join('') + '</div>';
     if (s.suggestedStory) html += '<form class="ask" data-suggest-form><label for="suggest" class="hint">' + t('La carte n’a pas pu être dessinée. Vous pouvez corriger ce chemin proposé et réessayer.', 'The map could not be drawn. You can edit this proposed path and try again.') + '</label><textarea id="suggest" name="text">' + esc(s.suggestedStory) + '</textarea><div class="field"><button type="submit">' + t('Prévisualiser à nouveau', 'Preview again') + '</button><button type="button" data-action="dismiss-suggestion">' + t('Ignorer', 'Dismiss') + '</button></div></form>';
     html += '<form class="ask" data-converse-form><label for="ask" class="hint">' + t('Posez une question ou ajoutez un objectif', 'Ask a question or add a goal') + '</label><div class="field"><input id="ask" name="text" type="text" autocomplete="off" value="' + esc(s.followDraft || '') + '" placeholder="' + t('Je travaille aussi à Genève… / Que dois-je apporter ?', 'I also work in Geneva… / What do I bring?') + '"' + (live() && !s.loading ? '' : ' disabled') + '><button type="submit"' + (live() && !s.loading ? '' : ' disabled') + ' aria-label="' + t('Envoyer', 'Send') + '">→</button></div></form>';
     html += s.editing ? '<form class="ask" data-story-form><label for="edit" class="hint">' + t('Réécrire la phrase (prévisualise un autre chemin)', 'Rewrite the sentence (preview another path)') + '</label><textarea class="story-edit" id="edit" name="text">' + esc(s.editDraft || viewedStory()) + '</textarea><div class="field"><button type="submit">' + t('Comparer', 'Compare') + '</button></div></form>' : '<button type="button" class="link-btn" data-action="edit-story" style="align-self:flex-start">' + t('Réécrire la phrase', 'Rewrite the sentence') + '</button>';
     document.getElementById('story').innerHTML = html;
   }
-  function count(d) { const c = { changed: 0, added: 0, removed: 0, same: 0 }; d.rows.forEach(r => r.cmp.forEach(x => { c[x.kind === 'same' ? 'same' : x.kind]++; })); return c; }
+  function count(d) { const c = { changed: 0, added: 0, removed: 0, same: 0,reassess:0 }; d.rows.forEach(r => r.cmp.forEach(x => { c[x.kind === 'same' ? 'same' : x.kind]++;if(x.kind==='same'&&x.impact==='reassess')c.reassess++; })); return c; }
 
   // ---- Tree ----
   let labelContext = null;
@@ -1704,7 +1810,8 @@ const Journey = (() => {
         for (let i = Math.max(0, first); i < m; i++) { const k = row.cmp[i].kind; if (k === 'removed') continue; route.push({ x: pts[i].x, y: k === 'same' ? pts[i].y : pts[i].y + 48 }); }
         out += '<path class="grow" d="' + pathThrough(start, route, null) + '" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6"/>';
       }
-      const tag = d.previewOn ? (row.added ? t('nouvelle piste', 'new path') : row.removed ? t('disparaîtrait', 'would disappear') : affected ? t('changerait', 'would change') : t('étapes communes', 'shared steps')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
+      const reassess=row.cmp.some(c=>c.impact==='reassess'&&c.kind==='same');
+      const tag = d.previewOn ? (row.added ? t('nouvelle piste', 'new path') : row.removed ? t('disparaîtrait', 'would disappear') : affected ? t('changerait', 'would change') : reassess?t('à réexaminer','needs reassessment'):t('aucune dépendance déclarée au fait modifié','no declared dependency on changed input')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
       const nameX = X0 + (m - 1) * XSTEP + 70, lastY = pts[m - 1].y + (mainPts.length ? 0 : 48);
       const nameLines = mapLabelLines(row.name, 24, 3, 16);
       const nameY = lastY + 5 - (nameLines.length - 1) * 9;
@@ -1715,10 +1822,11 @@ const Journey = (() => {
         if (k !== 'added') {
           const st = c.a, changed = k.indexOf('applied-') === 0, done = isDone(st.id), removed = k === 'removed';
           const selected = s.sel && s.sel.li === li && s.sel.id === c.id && !s.sel.alt;
-          const sub = !d.previewOn && c.id === nextId && !d.exploreOn && !changed ? t('prochaine étape', 'next step') : k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
+          const sub = c.impact==='reassess'&&k==='same'?t('à réexaminer','reassess'):!d.previewOn && c.id === nextId && !d.exploreOn && !changed ? t('prochaine étape', 'next step') : k === 'changed' ? t('changerait', 'would change') : removed ? t('disparaîtrait', 'would disappear') : k === 'applied-changed' ? t('modifiée', 'modified') : k === 'applied-added' ? t('ajoutée', 'added') : done ? t('faite', 'done') : '';
           out += '<g data-sel="' + li + '|' + esc(c.id) + '|0" tabindex="0" role="button" aria-label="' + esc(st.short + (sub ? ' ' + sub : '') + ' — ' + st.title) + '"' + (removed ? ' opacity="0.55"' : '') + '>';
           out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="23" fill="transparent"/>';
           if (!selected && c.id === nextId && !d.exploreOn) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="none" stroke="' + ACCENT + '" stroke-width="1.5"/>';
+          if(c.impact==='reassess'&&k==='same')out+='<circle cx="'+p.x+'" cy="'+p.y+'" r="18" fill="none" stroke="'+ACCENT+'" stroke-dasharray="3 4"/>';
           if (selected) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="19" fill="none" stroke="#1B1A17" stroke-width="1.5" stroke-dasharray="3 3"/>';
           if (k === 'changed' || removed) out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="' + ACCENT + '" opacity="0.14"/>';
           const ring = (LV()[st.authority] || LV().other).bg;
@@ -1757,7 +1865,7 @@ const Journey = (() => {
     if (missingRecords || d.tree.catalogueVersion !== CATALOG_VERSION || sourceRecords.some(ref=>ref.changed)) html += '<div class="catalogue-update"><p>' + (d.tree.catalogueVersion && !missingRecords ? t('Le catalogue a changé. Les notes conservées correspondent à la carte d’origine.', 'The catalogue has changed. Recorded notes belong to the original map.') : t('La version d’origine des sources n’a pas été enregistrée.', 'The original source version was not recorded.')) + '</p><button type="button" class="btn" data-action="refresh-sources"' + (live() && !state.loading ? '' : ' disabled') + '>' + t('Comparer avec les sources actuelles','Compare current sources') + '</button></div>';
     if (d.previewOn) {
       const evidenceGap = !c.changed && !c.added && !c.removed ? '<p class="small">'+t('Aucun changement d’étape n’est démontré par cette proposition. Le catalogue ne permet pas de conclure à l’absence de conséquences ; les questions de vérification restent ouvertes.','This proposal demonstrates no step change. The catalogue cannot establish that there are no consequences; verification questions remain open.')+'</p>' : '';
-      const summary = p.answerChange && !c.changed && !c.added && !c.removed ? t('Seule votre réponse change ; les étapes restent identiques. Rien n’est appliqué.', 'Only your answer changes; the mapped steps stay the same. Nothing is applied.') : c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') + c.same + t(' identiques. Rien n’est appliqué.', ' identical. Nothing is applied.');
+      const summary = p.answerChange && !c.changed && !c.added && !c.removed ? t('Seule votre réponse change ; les étapes restent identiques. Rien n’est appliqué.', 'Only your answer changes; the mapped steps stay the same. Nothing is applied.') : c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') +c.reassess+t(' à réexaminer · ',' need reassessment · ')+(c.same-c.reassess)+t(' sans dépendance déclarée au changement. Rien n’est appliqué.',' without declared dependency on changed input. Nothing is applied.');
       html += '<div class="map-comparison"><span>' + summary + evidenceGap + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter', 'Adopt') + '</button></div>';
     }
     if (mobile) html += '<div class="lane-tabs" role="group" aria-label="' + t('Pistes', 'Paths') + '">' + d.rows.map(r => '<button data-lane-select="' + esc(r.id) + '" aria-pressed="' + (r.id === (state.activeLane && d.rows.some(x => x.id === state.activeLane) ? state.activeLane : d.rows[0].id)) + '">' + esc(r.name) + '</button>').join('') + '</div>';
@@ -1771,7 +1879,7 @@ const Journey = (() => {
     row.cmp.forEach((c,i) => { const point = { x, y: y0+i*gap }, alternate = { x: ax, y: point.y };
       if (c.a) { out += line(prior,point,false); prior=point; }
       if (comparing && c.b) { const target = c.kind === 'same' ? point : alternate; out += line(altPrior,target,true); altPrior=target; }
-      const node = (st,p,alt,removed) => { const selected = state.sel && state.sel.li === li && state.sel.id === c.id && state.sel.alt === alt; const done = !alt && isDone(st.id), changed = !alt && c.kind.startsWith('applied-'); return '<g role="button" tabindex="0" data-sel="'+li+'|'+esc(c.id)+'|'+(alt?1:0)+'" aria-label="'+esc(st.short+' — '+st.title)+'"'+(removed?' opacity=".5"':'')+'><rect x="'+(comparing?p.x-78:p.x-23)+'" y="'+(p.y-(comparing?58:28))+'" width="'+(comparing?156:292)+'" height="'+(comparing?86:74)+'" rx="10" fill="transparent"/><circle cx="'+p.x+'" cy="'+p.y+'" r="23" fill="transparent"/>'+(!selected && !alt && c.id === nextId && !d.exploreOn ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="16" fill="none" stroke="'+ACCENT+'" stroke-width="1.5"/>' : '')+(selected?'<circle cx="'+p.x+'" cy="'+p.y+'" r="20" fill="none" stroke="'+ACCENT+'" stroke-dasharray="3 3"/>':'')+'<circle cx="'+p.x+'" cy="'+p.y+'" r="10" fill="'+(changed?ACCENT:done?'#2E6A4B':'white')+'" stroke="'+(changed?'white':alt?ACCENT:(LV()[st.authority]||LV().other).bg)+'" stroke-width="2.5"'+(alt?' stroke-dasharray="4 3"':'')+'/>'+mapText(st.short,comparing?p.x:p.x+26,comparing?p.y-43:p.y-5,'aria-hidden="true" font-size="13" fill="'+(alt?ACCENT:'#1B1A17')+'"'+(comparing?' text-anchor="middle"':''),comparing?18:30,3,16)+'</g>'; };
+      const node = (st,p,alt,removed) => { const selected = state.sel && state.sel.li === li && state.sel.id === c.id && state.sel.alt === alt; const done = !alt && isDone(st.id), changed = !alt && c.kind.startsWith('applied-'); return '<g role="button" tabindex="0" data-sel="'+li+'|'+esc(c.id)+'|'+(alt?1:0)+'" aria-label="'+esc(st.short+(c.impact==='reassess'?t(' — à réexaminer',' — reassess'):'')+' — '+st.title)+'"'+(removed?' opacity=".5"':'')+'><rect x="'+(comparing?p.x-78:p.x-23)+'" y="'+(p.y-(comparing?58:28))+'" width="'+(comparing?156:292)+'" height="'+(comparing?86:74)+'" rx="10" fill="transparent"/><circle cx="'+p.x+'" cy="'+p.y+'" r="23" fill="transparent"/>'+(!selected && !alt && c.id === nextId && !d.exploreOn ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="16" fill="none" stroke="'+ACCENT+'" stroke-width="1.5"/>' : '')+(selected?'<circle cx="'+p.x+'" cy="'+p.y+'" r="20" fill="none" stroke="'+ACCENT+'" stroke-dasharray="3 3"/>':'')+'<circle cx="'+p.x+'" cy="'+p.y+'" r="10" fill="'+(changed?ACCENT:done?'#2E6A4B':'white')+'" stroke="'+(changed?'white':alt?ACCENT:(LV()[st.authority]||LV().other).bg)+'" stroke-width="2.5"'+(alt?' stroke-dasharray="4 3"':'')+'/>'+mapText(st.short,comparing?p.x:p.x+26,comparing?p.y-43:p.y-5,'aria-hidden="true" font-size="13" fill="'+(alt?ACCENT:'#1B1A17')+'"'+(comparing?' text-anchor="middle"':''),comparing?18:30,3,16)+(c.impact==='reassess'&&c.kind==='same'?'<text x="'+(p.x+26)+'" y="'+(p.y+40)+'" font-size="12" fill="'+ACCENT+'">'+t('À réexaminer','Needs reassessment')+'</text>':'')+'</g>'; };
       if(c.a)out+=node(c.a,point,false,c.kind==='removed'); if(d.previewOn&&c.b&&c.kind!=='same')out+=node(c.b,alternate,true,false);
     });
     return '<svg class="journey-map mobile-map" font-family="Arial,sans-serif" viewBox="0 0 360 '+height+'" aria-label="'+esc(row.name)+'">'+out+'</svg>';
@@ -1803,18 +1911,18 @@ const Journey = (() => {
   }
   function planText(d) {
     const p = buildPlan(d);
-    return [t('Ma situation : ', 'My situation: ') + viewedStory(), '', t('Prochaines étapes proposées', 'Suggested next steps')].concat(p.next.map(x => '- ' + x.branch + ': ' + x.title)).concat(p.open.length ? ['', t('Encore à répondre', 'Still to answer')].concat(p.open.map(q => '- ' + q)) : []).concat(['', t('Pages à consulter', 'Pages to consult')]).concat(p.pages.map(c => '- ' + c.title + ' — ' + c.url)).concat(['', t('Carte dessinée par Apertus ; aucune commune n’a relu. Vérifiez sur les pages avant d’agir.', 'Map drawn by Apertus; no commune has reviewed it. Verify on the pages before acting.')]).join('\n');
+    return [t('Ma situation : ', 'My situation: ') + viewedStory(), '', t('Prochaines étapes proposées', 'Suggested next steps')].concat(p.next.map(x => '- ' + x.branch + ': ' + x.title)).concat(p.open.length ? ['', t('Encore à répondre', 'Still to answer')].concat(p.open.map(q => '- ' + q)) : []).concat(['', t('Pages à consulter', 'Pages to consult')]).concat(p.pages.map(c => '- ' + c.title + ' — ' + c.url)).concat(['', t('Carte dessinée par Apertus ; aucune commune n’a relu. Vérifiez sur les pages avant d’agir.', 'Model-proposed paths with application-prepared guidance; no commune has reviewed them. Verify on the pages before acting.')]).join('\n');
   }
   function printPlan(d) {
     if (!d.tree) return;
-    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2><p class="print-meta">Catalogue ' + esc(tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p>'+((st.sourceGaps || []).length?'<p class="print-question">'+esc(st.sourceGaps.map(g=>[g.question,g.reason].filter(Boolean).join(' ')).join(' '))+'</p>':'')+'<div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const {cat,claim,archived,changed} = referenceOf(r); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a><br>' + esc(cat.pack + ' v' + cat.packVersion) + ' · ' + (claim ? esc(claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '<br>' + (archived ? t('Source conservée avec la carte.', 'Source recorded with the map.') : t('Catalogue actuel ; version d’origine non enregistrée.', 'Current catalogue; original source version not recorded.')) + (changed ? ' ' + t('Catalogue actualisé depuis : vérifiez à nouveau.', 'Catalogue updated since: check again.') : '') + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
+    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2><p class="print-meta">Catalogue ' + esc(tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><div class="print-meta">'+esc(textOriginLabel(st,'title'))+'</div><p>' + esc(st.why) + '</p><div class="print-meta">'+esc(textOriginLabel(st,'why'))+'</div>'+((st.sourceGaps || []).length?'<p class="print-question">'+esc(st.sourceGaps.map(g=>[g.question,g.reason].filter(Boolean).join(' ')).join(' '))+'</p>':'')+'<div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const {cat,claim,archived,changed} = referenceOf(r); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a><br>' + esc(cat.pack + ' v' + cat.packVersion) + ' · ' + (claim ? esc(claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '<br>' + (archived ? t('Source conservée avec la carte.', 'Source recorded with the map.') : t('Catalogue actuel ; version d’origine non enregistrée.', 'Current catalogue; original source version not recorded.')) + (changed ? ' ' + t('Catalogue actualisé depuis : vérifiez à nouveau.', 'Catalogue updated since: check again.') : '') + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source suggérée ; correspondance non relue.', 'Suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') +(tree.verificationTasks || []).map(task=>'<p class="print-question">'+esc(task.text)+' '+esc(task.reason)+'</p>').join('')+ '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
     const visual = (document.getElementById('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/) || [''])[0];
     const date = new Date().toLocaleString(LANG === 'fr' ? 'fr-CH' : 'en-GB');
     document.getElementById('print-plan').innerHTML = '<h1>' + t('Mon parcours · document de préparation', 'My journey · preparation document') + '</h1><p>' + esc(viewedStory()) + '</p><p class="print-meta">' + esc(date) + ' · ' + esc(provLabel(d.tree.prov)) + ' · ' + t('Version de la carte : ', 'Map version: ') + esc(d.tree.key || hash(JSON.stringify(d.tree.branches))) + ' · Catalogue ' + esc(d.tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p><p><b>' + t('Étapes proposées par un modèle, non relues par une commune. Ce document prépare vos questions pour le service ou le professionnel compétent ; il ne confirme aucune décision.', 'Model-proposed steps, unreviewed by a commune. This document prepares your questions for the competent office or professional; it confirms no decision.') + '</b></p>' + (visual ? '<p class="print-meta">' + t('Vue de la carte affichée ; toutes les étapes sont détaillées ci-dessous.', 'View of the displayed map; all steps are detailed below.') + '</p>' + visual : '') + treeHTML(d.tree, d.answers || {}, d.qtexts || {}, d.exploreOn) + (d.previewOn ? '<div class="print-alternative"><p>' + esc(state.pending.story) + '</p>' + treeHTML(state.pending.tree, state.pending.answers || {}, state.pending.qtexts || {}, true) + '</div>' : '') + '<h2>' + t('À compléter avec votre interlocuteur', 'Complete with your adviser') + '</h2><p>' + t('Questions, corrections, documents à apporter :', 'Questions, corrections, documents to bring:') + '</p><br><br><br>';
     window.print();
   }
   function renderDetail(d) {
-    const s = state, foot = '<div class="foot"><span><i style="background:#1F4E8C"></i>' + t('Les liens viennent d’un catalogue limité de pages publiques et de l’outil indépendant jestime.ch. Apertus choisit un identifiant ; il ne peut pas inventer d’URL.', 'Links come from a limited catalogue of public pages and the independent jestime.ch tool. Apertus chooses an id; it cannot invent a URL.') + '</span><span><i style="background:#7A766E"></i>' + t('Les notes du catalogue et les correspondances entre étapes et pages attendent une relecture ; aucune commune n’a encore relu le contenu.', 'Catalogue notes and matches between steps and pages await review; no commune has reviewed the content yet.') + '</span><span><i style="background:#2E6A4B"></i>' + t('Les étapes et leurs explications sont écrites par Apertus ; vérifiez sur la page reliée avant d’agir.', 'Steps and explanations are written by Apertus; verify on the linked page before acting.') + '</span></div>';
+    const s = state, foot = '<div class="foot"><span><i style="background:#1F4E8C"></i>' + t('Les liens viennent d’un catalogue limité de pages publiques et de l’outil indépendant jestime.ch. Apertus choisit un identifiant ; il ne peut pas inventer d’URL.', 'Links come from a limited catalogue of public pages and the independent jestime.ch tool. Apertus chooses an id; it cannot invent a URL.') + '</span><span><i style="background:#7A766E"></i>' + t('Les notes du catalogue et les correspondances entre étapes et pages attendent une relecture ; aucune commune n’a encore relu le contenu.', 'Catalogue notes and matches between steps and pages await review; no commune has reviewed the content yet.') + '</span><span><i style="background:#2E6A4B"></i>' + t('Chaque texte indique son origine : application, modèle ou catalogue. Vérifiez les sources avant d’agir.', 'Each text identifies its origin: application, model or catalogue. Check the sources before acting.') + '</span></div>';
     let html = '';
     if (!d.tree) { html = '<div class="eyebrow">' + t('Comment ça marche', 'How it works') + '</div><h2>' + t('Vous racontez. Apertus dessine. Vous changez un mot.', 'You tell. Apertus draws. You change a word.') + '</h2><p class="lead">' + t('La carte montre des pistes parallèles. Chaque point est une étape avec une page suggérée du catalogue, ou une lacune explicite. Touchez un mot souligné pour voir, en pointillé, ce qui changerait avant de décider.', 'The map shows parallel paths. Each point is a step with a suggested catalogue page, or an explicit gap. Touch an underlined word to see, dashed, what would change before deciding.') + '</p>'; document.getElementById('detail').innerHTML = html + foot; return; }
     if (s.sel && s.sel.qAlt && s.pending) {
@@ -1823,7 +1931,7 @@ const Journey = (() => {
     }
     if (s.sel && s.sel.q) {
       const q = d.tree.questions.find(x => x.id === s.sel.q) || ((d.qtexts || {})[s.sel.q] ? { id: s.sel.q, text: d.qtexts[s.sel.q], why: t('Vous pouvez corriger cette réponse ; la carte sera recalculée.', 'You can correct this answer; the map will be recalculated.'), type: 'text', options: [] } : null);
-      if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div><p>'+t('Pistes concernées : ','Affected paths: ')+esc(d.tree.branches.filter(b=>b.steps.some(st=>st.depends_on.includes(q.id))).map(b=>b.name).join(' · ') || t('À préciser avec la prochaine proposition.','To be refined in the next proposal.'))+'</p></div>';
+      if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(textOriginLabel(q,'why')) + '</div><div>' + esc(q.why) + '</div><p>'+t('Pistes concernées : ','Affected paths: ')+esc(d.tree.branches.filter(b=>b.steps.some(st=>st.depends_on.includes(q.id))).map(b=>b.name).join(' · ') || t('À préciser avec la prochaine proposition.','To be refined in the next proposal.'))+'</p></div>';
         if (q.type === 'yesno' && !s.sel.requireDirect) html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
         else if (q.type === 'choice' && q.options.some(o => o.trim()) && !s.sel.requireDirect) html += '<div class="row">' + q.options.filter(o => o.trim()).map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
         else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" value="' + esc(s.sel.suggestedAnswer || '') + '" aria-label="' + esc(q.text) + '" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
@@ -1853,9 +1961,11 @@ const Journey = (() => {
     const k = cmp.kind, viewingAlt = !!(s.sel.alt && cmp.b), st = viewingAlt ? cmp.b : cmp.a, other = viewingAlt ? cmp.a : (d.previewOn ? cmp.b : null);
     const prov = viewingAlt && s.pending ? s.pending.tree.prov : d.tree.prov;
     const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? t('Apparaîtrait', 'Would appear') : t('Proposée', 'Proposed')) + '</span>' : k === 'applied-changed' ? '<span class="pill solid">' + t('Modifiée', 'Modified') + '</span>' : k === 'applied-added' ? '<span class="pill solid">' + t('Ajoutée', 'Added') + '</span>' : k === 'changed' ? '<span class="pill">' + t('Changerait', 'Would change') + '</span>' : k === 'removed' ? '<span class="pill">' + t('Disparaîtrait', 'Would disappear') + '</span>' : '';
-    html = '<div class="head"><div class="eyebrow">' + esc(row.name) + '</div>' + pill + '</div><h2>' + esc(st.title) + '</h2>' + sourceBlock(st);
-    html += '<div class="zone model"><div class="zone-title">' + t('Pourquoi vérifier cette étape', 'Why verify this step') + '</div><div class="who live"><i></i>' + esc(provLabel(prov)) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.map(id => { const v = currentVars().find(v => v.id === id); return v ? v.label || v.value : (state.qtexts[id] || ((d.tree.questions || []).find(q => q.id === id) || {}).text || id); }).join(' · ')) + '</div>' : '') + '</div>';
+    html = '<div class="head"><div class="eyebrow">' + esc(row.name) + '</div>' + pill + '</div><h2>' + esc(st.title) + '</h2><div class="caption">'+esc(textOriginLabel(st,'title'))+'</div>'+(cmp.impact==='reassess'?'<p class="impact-notice">'+t('Ce point dépend du fait modifié. Même si le texte reste valable, le contact ou les conditions doivent être réexaminés.','This action depends on the changed input. Even if its wording still fits, the contact or arrangements need reassessment.')+'</p>':'');
+    html += '<div class="zone model"><div class="zone-title">' + t('Pourquoi vérifier cette étape', 'Why verify this step') + '</div><div class="who live"><i></i>' + esc(textOriginLabel(st,'why')) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.map(id => { const v = currentVars().find(v => v.id === id); return v ? v.label || v.value : (state.qtexts[id] || ((d.tree.questions || []).find(q => q.id === id) || {}).text || id); }).join(' · ')) + '</div>' : '') + '</div>';
+    html+=sourceBlock(st);
     if (!viewingAlt && !d.previewOn && !d.exploreOn && k !== 'removed') { const dn = isDone(st.id); html += '<div class="row"><button type="button" class="btn ' + (dn ? 'done' : '') + '" data-done="' + esc(st.id) + '">' + (dn ? t('Faite — la remettre à faire', 'Done — mark as not done') : t('Je l’ai faite', 'I have done this')) + '</button></div>'; }
+    html+=(d.tree.verificationTasks || []).filter(task=>task.actionId===st.id).map(task=>'<div class="zone verification-task"><b>'+t('À vérifier auprès du service','Verify with the service')+'</b><p>'+esc(task.text)+'</p><p>'+esc(task.reason)+'</p></div>').join('');
     if (other) {
       html += '<p class="comparison-reason">'+t('Cette proposition répond au changement suivant : ','This proposal addresses this change: ')+esc(s.pending ? s.pending.from+' → '+s.pending.to : '')+'. '+t('Les démarches applicables restent à vérifier sur les sources.','Applicable procedures still need verification against the sources.')+'</p>';
       html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? t('Version enregistrée', 'Saved version') : t('Version proposée', 'Proposed version')) + '</div><div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><div class="small">' + esc(other.why) + '</div>' + sourceBlock(other) + '</div>';
@@ -1899,7 +2009,7 @@ const Journey = (() => {
     let translated=null,failed='';
         for(let attempt=0;attempt<2;attempt++){
           const response=await chat([{role:'system',content:'QUESTION_LABELS_V1. Translate the supplied personal question text and options into '+(LANG==='fr'?'French':'English')+'. Return ONLY {"questions":[{"id":"unchanged id","text":"translated question","options":["translated options in same order"]}]}. Do not change meaning, ask for identifying details, add requirements or add/remove questions.'},{role:'user',content:JSON.stringify(questions)+(attempt?'\nRepair: '+failed:'')}],900);
-          try{const raw=JSON.parse(extractJSON(response.text).text);if(!Array.isArray(raw.questions)||raw.questions.length!==questions.length)throw new Error('Retain the question inventory');translated=raw.questions;for(let i=0;i<translated.length;i++){const q=translated[i],old=questions[i];if(q.id!==old.id || typeof q.text!=='string'||!Array.isArray(q.options)||q.options.length!==old.options.length||q.options.some(o=>typeof o!=='string')||/full.*address|permit number|medical|mandatory|adresse complète|numéro.*permis|obligatoire/i.test(q.text))throw new Error('Only the existing question labels may be translated');}break;}catch(e){failed=e.message;if(attempt)throw e;}
+          try{const raw=JSON.parse(extractJSON(response.text).text);if(!Array.isArray(raw.questions)||raw.questions.length!==questions.length)throw new Error('Retain the question inventory');translated=raw.questions;for(let i=0;i<translated.length;i++){const q=translated[i],old=questions[i];if(q.id!==old.id || typeof q.text!=='string'||!Array.isArray(q.options)||q.options.length!==old.options.length||q.options.some(o=>typeof o!=='string')||/full.*address|permit number|medical|mandatory|adresse complète|numéro.*permis|obligatoire/i.test(q.text))throw new Error('Only the existing question labels may be translated');}translated=translated.map(q=>({...q,provider:response.prov}));break;}catch(e){failed=e.message;if(attempt)throw e;}
         }
     return translated;
   }
@@ -1912,7 +2022,7 @@ const Journey = (() => {
     try{
       const tree=Journey.localize(previous,currentVars(),LANG),translated=await translateQuestionLabels(previous.questions);
       if(!stillCurrent(id))return;
-      if(translated)tree.questions=tree.questions.map((q,i)=>({...q,text:translated[i].text,options:translated[i].options,why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')}));
+      if(translated)tree.questions=tree.questions.map((q,i)=>({...q,text:translated[i].text,options:translated[i].options,textOrigins:{...(q.textOrigins || {}),text:{kind:'model',provider:translated[i].provider},why:{kind:'application'}},why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')}));
       tree.key=hash(previous.key+'|'+LANG);delete tree.acceptedRevision;
       const defs=Object.assign({},exploring?state.exploreQuestionDefs:state.questionDefs,Object.fromEntries(tree.questions.map(q=>[q.id,q]))),vars=currentVars().map(f=>({...f,label:Journey.roles[f.type]?Journey.roles[f.type][LANG==='fr'?2:1]:f.label}));
       if(exploring)set({exploreTree:tree,exploreVars:vars,exploreQuestionDefs:defs,loading:'',sel:null});

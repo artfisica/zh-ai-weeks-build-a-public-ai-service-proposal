@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "VD-nyon",
-  "version": 2,
+  "version": 3,
   "entries": [
     {
       "id": "nyon-cdh",
@@ -28,7 +28,15 @@
         "canton": "VD",
         "commune": "nyon"
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "departure",
+        "arrival"
+      ],
+      "contactFor": [
+        "departure",
+        "arrival"
+      ]
     }
   ]
 }

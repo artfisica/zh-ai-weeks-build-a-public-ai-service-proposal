@@ -11,7 +11,7 @@ async function evaluate({ proxy, output, maxCalls = 24, caseIds = cases.map(c =>
   const parsed = new URL(proxy);
   if (parsed.username || parsed.password || parsed.search || parsed.hash || (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['127.0.0.1','localhost','[::1]'].includes(parsed.hostname)))) throw new Error('Use HTTPS or loopback HTTP, without credentials, query or fragment');
   const selected = cases.filter(c => caseIds.includes(c.id));
-  const report = { schemaVersion:2, startedAt:new Date().toISOString(), mode:'live-model', proxyOrigin:parsed.origin,
+  const report = { schemaVersion:3, startedAt:new Date().toISOString(), mode:'live-model', proxyOrigin:parsed.origin,
     releaseApproved:false, humanReview:'pending', maxCalls, calls:0, requestedCases:caseIds, selectionComplete:false, completeSet:false, cases:[] };
   const save = () => {
     fs.writeFileSync(output + '.tmp', JSON.stringify(report,null,2) + '\n', {mode:0o600});
@@ -60,11 +60,11 @@ async function evaluate({ proxy, output, maxCalls = 24, caseIds = cases.map(c =>
       const before=JSON.stringify(a.state.tree),destination=a.state.vars.find(f=>f.id==='destination');
       if(destination){comparison.attempted=true;const at=Date.now();await a.propose(destination.id,'Gland');comparison={attempted:true,successful:!!a.state.pending && a.state.pending.vars.some(f=>f.id===destination.id&&f.value==='Gland')&&JSON.stringify(a.state.tree)===before,milliseconds:Date.now()-at,error:a.state.error || null,changedActions:a.state.pending?a.diffBranches(a.state.tree.branches,a.state.pending.tree.branches).flatMap(b=>b.cmp.filter(c=>c.kind!=='same').map(c=>({id:c.id,kind:c.kind}))):[],proposedTree:a.state.pending && a.state.pending.tree};a.keep();}
     }
-    const expectedNeeds=J.expectedNeeds(scenario.story,a.state.vars),renderedNeeds=a.state.tree?(a.state.tree.branches || []).map(b=>b.need || null):[];
+    const expectedNeeds=scenario.expectedNeeds,expectedFacts=scenario.expectedFacts,missingFacts=expectedFacts.filter(expected=>!a.state.vars.some(f=>f.type===expected.type&&(!expected.value||f.value===expected.value))),renderedNeeds=a.state.tree?(a.state.tree.branches || []).map(b=>b.need || null):[];
     report.cases.push({id:scenario.id,story:scenario.story,language:scenario.language,inspect:scenario.inspect,
       failureToWatch:scenario.failureToWatch,milliseconds:Date.now()-began,
       technicalStatus:a.state.tree && !a.state.tree.incomplete ? 'complete' : a.state.tree ? 'incomplete' : 'failed',
-      error:a.state.error || null,editableFacts,factsEditable:editableFacts.length>0&&editableFacts.every(f=>f.literal),dependenciesResolve,dependencyError,branchCoverage:{expected:expectedNeeds,rendered:renderedNeeds,missing:expectedNeeds.filter(n=>!renderedNeeds.includes(n))},comparison,sourceCorrectness:'human inspection pending',tree:a.state.tree,rawResponses:raw,humanReview:'pending'});
+      error:a.state.error || null,editableFacts,factsEditable:editableFacts.length>0&&editableFacts.every(f=>f.literal)&&!missingFacts.length,factCoverage:{expected:expectedFacts,missing:missingFacts},dependenciesResolve,dependencyError,branchCoverage:{expected:expectedNeeds,rendered:renderedNeeds,missing:expectedNeeds.filter(n=>!renderedNeeds.includes(n))},comparison,sourceCorrectness:'human inspection pending',tree:a.state.tree,rawResponses:raw,humanReview:'pending'});
     save();
     if (report.calls >= maxCalls) break;
   }

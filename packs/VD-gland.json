@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "VD-gland",
-  "version": 1,
+  "version": 2,
   "entries": [
     {
       "id": "gland-cdh",
@@ -28,7 +28,15 @@
         "canton": "VD",
         "commune": "gland"
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "departure",
+        "arrival"
+      ],
+      "contactFor": [
+        "departure",
+        "arrival"
+      ]
     }
   ]
 }
