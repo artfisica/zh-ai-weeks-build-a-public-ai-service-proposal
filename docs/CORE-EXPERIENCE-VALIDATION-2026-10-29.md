@@ -12,7 +12,7 @@ This is **not a full live acceptance pass**. The independent review of `26a9008`
 
 ## Deterministic verification
 
-`npm run test:all` covers inline syntax, generated contracts/catalogue, 30 storage/rendering regressions, 110 Node tests, and browser journeys in Chromium desktop/mobile, Firefox and WebKit mobile. All 120 browser checks passed (30 journeys across four configurations). Catalogue review-change checks against the baseline and `git diff --check` also run before submission.
+`npm run test:all` covers inline syntax, generated contracts/catalogue, 30 storage/rendering regressions, 112 Node tests, and browser journeys in Chromium desktop/mobile, Firefox and WebKit mobile. All 128 browser checks passed (32 journeys across four configurations). Catalogue review-change checks against the baseline and `git diff --check` also run before submission.
 
 The [baseline failure](evidence/omitted-facts-before.txt) reproduces the supplied-facts omission against original main using the new test. Raw operation regressions cover unknown dependencies, step prerequisites, contradictory intent, invented replacement values, unknown targets, stale revisions/responses, cancellation, bounded repairs, question-specific confirmation, previous nationality and completed departure, destination/workplace distinction, source archives, goal preservation, no-op detection, language switching and saved-plan recovery.
 
@@ -41,7 +41,7 @@ The proxy implementation and published `proxy-url.json` are unchanged. Published
 
 ## Final checks and review
 
-Final local checks passed: 110 Node tests, 30 storage/rendering regressions, 120 browser checks, generated contract/catalogue checks, catalogue review-change validation and whitespace checks. PR checks and latest-commit review must be inspected before any future merge. This task does not authorise merging or publishing.
+Final local checks passed: 112 Node tests, 30 storage/rendering regressions, 128 browser checks, generated contract/catalogue checks, catalogue review-change validation and whitespace checks. PR checks and latest-commit review must be inspected before any future merge. This task does not authorise merging or publishing.
 
 ## PR review corrections
 
@@ -61,3 +61,5 @@ The six findings supplied in the independent review are addressed in the propose
 The automated review of `26a9008` independently reported partial extraction and stale sources in preserved affected actions. Those findings are included above. The amendment needs fresh latest-commit review. Additional live validation is blocked by the exhausted original allowance unless the pending request for up to twelve further calls is explicitly approved. No additional request has been made.
 
 Published discovery and an interactive outage example remain a separate availability follow-up before promoting the public link. This amendment does not silently publish an endpoint or claim the recorded full live journey succeeded.
+
+Review of `6789e76` then identified a follow-up path that bypassed model-assisted fact supplementation and a mixed additional-goal proposal that could insert into an existing branch. Both were reproduced before correction. Fact additions now run the same bounded coverage/extraction stage on the original follow-up, and additional goals accept only distinct-branch or personal-question additions. The latest full run passed 112 Node tests, 30 storage/rendering checks and 128 browser checks, including both new pointer-driven regressions. No further provider request was made.

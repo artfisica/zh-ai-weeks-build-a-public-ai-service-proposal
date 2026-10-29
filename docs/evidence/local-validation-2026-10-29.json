@@ -1,10 +1,10 @@
 {
   "baseline": "42c625569003a9dc73c57613888b95fc595c32d8",
-  "command": "npm run test:all -- --workers=4; npm test (final allowance test)",
+  "command": "npm run test:all -- --workers=4",
   "result": "passed",
-  "nodeTests": 110,
+  "nodeTests": 112,
   "storageRenderingRegressions": 30,
-  "browserTests": 120,
+  "browserTests": 128,
   "browserConfigurations": [
     "Chromium desktop",
     "Chromium mobile",
@@ -28,8 +28,8 @@
     "before": "Both new Node regressions failed before correction.",
     "browserAssertionCorrection": "The first browser rerun passed 98/100; two new-test failures expected the desktop branch heading in mobile SVG text. The assertion now checks the localized mobile action and saved branch title."
   },
-  "appSha256": "c0967db5049c5d54aa36dd06acfcb0f0b716593007b91efc094e0334d9676546",
-  "contractSha256": "12f52c72963e87b56d45584d3a9547cfb4165602cf1630a06c151dff6219c89a",
+  "appSha256": "f5876753a4f92e3e8d38307128868f497dafcfc83b4fa0289a02c960aa335103",
+  "contractSha256": "058d59ecfc32e5b277a2237784cb8bdf91e04af6a09d71e0831497abf6facb98",
   "independentReviewAmendment": {
     "reviewedCommit": "26a9008c9d266e1f2ba83732f4ab59d0e220a55a",
     "findings": [
@@ -47,5 +47,15 @@
       "published discovery mismatch",
       "interactive recorded outage example"
     ]
+  },
+  "latestReviewCorrections": {
+    "reviewedCommit": "6789e7694a7f693f6e9c5651c32b90e05a479fe6",
+    "findings": [
+      "model-assisted extraction on fact additions",
+      "reject mixed added-goal insertions into existing branches"
+    ],
+    "before": "Both new regressions failed before correction.",
+    "after": "Both pass in Node and across all four browser configurations.",
+    "additionalProviderCalls": 0
   }
 }
