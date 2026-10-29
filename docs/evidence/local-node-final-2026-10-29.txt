@@ -1,0 +1,173 @@
+
+> test
+> node tools/check.js
+
+inline script syntax passed
+Journey contract generated output passed
+✓ Unknown URLs and claims are discarded; draft provenance stays visible
+✓ A quoted Spain span cannot justify an invented Swiss nationality or a stray letter C
+✓ Diff keeps exact shared steps and draws changed, added and removed steps
+✓ Exact unchanged titles and references repair changed IDs without semantic guesses
+✓ Duplicate IDs cannot select or mark two unrelated steps
+✓ Desktop labels wrap within the map; questions no longer expand its width
+✓ Mobile becomes a vertical tree with one selectable path, not a scaled desktop canvas
+✓ Nyon-only links are withheld on a Gland arrival and the reason is visible
+✓ Vaud-only links are withheld for a named Geneva step; federal moving links remain
+✓ An exact returned catalogue note becomes c1; a model paraphrase cannot become verified evidence
+✓ An altered action cannot inherit completion from an unchanged ID
+✓ Legacy saved maps receive the source-scope guard on reload
+✓ Start over during the initial health check does not break an otherwise healthy connection
+✓ Keyboard activation works on an SVG node even when it has no click() method
+✓ Rendering the story cannot mutate the accepted model map or its shared variable objects
+✓ Simultaneous edits cannot cascade into each other or replace substrings
+✓ Unknown completion dependencies conservatively include the full situation
+✓ Corrupt stored maps recover without a half-loaded situation
+✓ A storage quota failure is visible while the in-memory map remains usable
+✓ Device persistence can be disabled before generation and re-enabled without changing the map
+✓ A stale health check cannot overwrite a newer proxy connection
+✓ Resizing an empty map cannot replace the initial situation form while typing
+✓ Reserved and duplicate model input ids are rejected for bounded repair
+✓ Scenario and completion identities cannot inherit a short-hash collision
+✓ Legacy v2 completion marks migrate with their accepted map and Undo snapshots
+✓ Corrupt archived question definitions recover before any state is installed
+✓ Disabling saving in another tab prevents this tab from recreating the stored plan
+✓ A plan deleted in another tab cannot be silently recreated by a stale open plan
+✓ A model choice question with no usable options still accepts a free-text answer
+✓ A branch-first split response cannot silently lose its following questions and facts
+
+30 regression checks passed.
+Catalogue schema and generated output passed
+✔ Budget survives restart and enforces both limits (91.233459ms)
+✔ Corrupt and malformed budgets fail closed rather than resetting allowance (1043.142625ms)
+✔ A failed persistence attempt blocks subsequent calls (96.358292ms)
+✔ UTC hour and day rollover reset only their own limits (249.792417ms)
+✔ Moving the clock backwards cannot issue a second daily allowance (143.820583ms)
+✔ All pilot notes remain unapproved after separately recorded source-content inspection (5.600792ms)
+✔ Review status cannot be asserted without provenance (2.479458ms)
+✔ Duplicate ids and unsafe source URLs are rejected (1.682916ms)
+✔ Geneva-only generation excludes Vaud and Nyon catalogue ids and records explicit source gaps (183.86475ms)
+✔ No recognised place offers only federal and unscoped references (4.877292ms)
+✔ Changed reviewed wording requires a new approval date and pack version (4.192958ms)
+✔ Saved maps and PDFs keep their original notes and pack versions after a catalogue update (336.444333ms)
+✔ Initial model-supplied source records are replaced by catalogue-stamped metadata (198.058167ms)
+✔ Source records cannot inject active or foreign-publisher links from local storage (18.726459ms)
+✔ Refreshing sources is reversible and sends no archive payloads to a model (55.689ms)
+✔ Explicit canton names and common Saint-Cergue spellings retain relevant references (4.1615ms)
+✔ Catalogue text and jurisdiction types cannot silently coerce into misleading notes (4.762959ms)
+✔ Completion copies unchanged archived sources after catalogue changes without model reproduction (33.027708ms)
+✔ Retired references remain archived on unchanged actions and are withheld from new actions (24.085375ms)
+✔ Changed actions cannot obtain an old archive by supplying a source record (30.102458ms)
+✔ Explicit source refresh replaces archived records reversibly after completion (23.783875ms)
+✔ Unknown generated target IDs are repaired instead of reconciling them onto trusted archive objects (39.25175ms)
+✔ An added goal copies old archives and stamps only its new nominal references (24.239625ms)
+✔ Source aliases cannot rewrite an accepted archive through a proposal (110.946708ms)
+✔ Unchanged references retain accepted order and records without a model reordering them (34.252917ms)
+✔ Legacy missing or invalid archives retain explicit refresh after completion and Undo (113.873875ms)
+✔ Observed personal situations expose typed, literal editable facts before map generation (50.815583ms)
+✔ Extraction rejects unsupported interpretations, overlapping roles and identifier fields (2.13175ms)
+✔ One command type rejects contradictory legacy intent and invented replacements (2.161167ms)
+✔ Input dependencies and ordered action prerequisites are separate validated graphs (1.335625ms)
+✔ Revisioned operations copy accepted objects and reject stale or unauthorised writes (2.783291ms)
+✔ Unsupported obligations cannot leak through action, note or question text (0.88125ms)
+✔ Grounded add-fact values with empty unused targets normalize without authorising replacement (0.801625ms)
+✔ A single redundant object closer at an array boundary is normalized without rewriting data (0.498541ms)
+✔ Natural household paraphrases expose omissions independently of literal fact validity (12.949333ms)
+✔ Qualified action IDs resolve only an exact existing branch/action pair (1.119375ms)
+✔ Private insurance does not inherit government sources authority or a publisher as its contact (3.433833ms)
+✔ Institutional rules become verification tasks rather than questions for the resident (0.480666ms)
+✔ Prepared explanations and model titles retain separate app-owned field provenance (0.441208ms)
+✔ The independently reported registration/registration_arrival fragment resolves exactly (0.891125ms)
+✔ An additional goal rejects mixed proposals that also insert work into an accepted branch (1.077791ms)
+✔ Stale place values in explanations or contact text require explicit replacement operations (0.872958ms)
+✔ Removing the sole stale action in an affected branch does not require that branch to remain (0.176375ms)
+✔ An unresolved action question is current instruction text, not an archived citation (0.268458ms)
+✔ Application-prepared verification tasks follow the affected input without model rewriting (0.161833ms)
+✔ Captured live extraction offsets are derived from unique literal quotations, never invented values (0.708666ms)
+✔ French recent-past and rental intentions do not assert country of origin or current tenure (0.126458ms)
+✔ Replacing a confirmed answer requires fresh action text and keeps unchanged answer references (2.689708ms)
+✔ New actions and questions cannot collide in either proposal order or with accepted inputs (1.679708ms)
+✔ Evaluation saves fictional raw evidence and never asserts human approval (1470.904542ms)
+✔ The versioned evaluation set contains twelve fictional scenarios with independent fact and need expectations (0.817917ms)
+✔ Unavailable Codespaces endpoints produce an explicit blocked report without spending calls (162.289667ms)
+✔ Malformed provider responses are retained as failure evidence and the hard call cap is respected (84.138042ms)
+✔ Invalid evaluation selections and insecure proxy URLs fail before any network call (0.495166ms)
+✔ An explicitly smaller live allowance is enforced without changing the exhausted ledger (42.189958ms)
+✔ An authorised total allowance increase retains the original forty attempts (70.099333ms)
+✔ A missing or exhausted shared ledger fails before any health or model request (37.056542ms)
+✔ Initial map owns all supplied typed facts even when generation omits them (188.532208ms)
+✔ Invalid dependencies are repaired once and cannot enter accepted maps (360.400792ms)
+✔ Central change journey preserves sources, answers and completed departure across Keep Adopt Undo and reload (291.350583ms)
+✔ An added workplace retains confirmed nationality, unrelated source archives and departure completion (43.102833ms)
+✔ A workplace in Gland cannot replace the retained destination even when interpretation first tries it (21.640667ms)
+✔ Contradictory comparison intent is repaired to a grounded change instead of forcing a restart (29.947084ms)
+✔ Invented and unknown replacement values never change accepted context (25.383083ms)
+✔ Additional goals use a separate branch and ambiguous insurance is clarified before any request (26.330666ms)
+✔ A quoted workplace cannot resolve nationality without separate question confirmation (25.036542ms)
+✔ Stale revisions and attempts to mutate departure are repaired once or refused with accepted work intact (54.8995ms)
+✔ Explore applies hypothetical operations without touching saved context and Print retains open questions (56.875584ms)
+✔ Cancellation rejects late proposals and preserves the original request and map (66.21ms)
+✔ One user operation cannot exceed four provider requests across intent and proposal repairs (27.339375ms)
+✔ Proposal question definitions and archived sources are copied by the app without model reproduction (29.304833ms)
+✔ Model proposal cannot write answers (58.78325ms)
+✔ Model proposal cannot write done (24.62675ms)
+✔ Model proposal cannot write history (12.084167ms)
+✔ Model proposal cannot write questionDefs (10.108459ms)
+✔ Model proposal cannot write reviewer (33.576875ms)
+✔ Model proposal cannot write sourceRecords (23.095ms)
+✔ Actions cannot inject reviewed dates or archived evidence through nominal source references (43.093333ms)
+✔ Unknown dependency identifiers cannot establish unaffected work (19.008833ms)
+✔ A proposed action must use actual input dependencies and earlier prerequisites (32.019084ms)
+✔ An earlier action reference is preserved separately as a prerequisite with known transitive inputs (0.632333ms)
+✔ Question-only and echoed completion responses cannot hide an incomplete map (49.462292ms)
+✔ Completion adds missing work without rewriting accepted actions and Undo restores incompleteness (15.064291ms)
+✔ A duplicated old action cannot become a new goal merely through a new id (15.96425ms)
+✔ A zero-change preview explains the evidence gap instead of declaring no consequences (15.255333ms)
+✔ An accepted snapshot changed after generation cannot adopt a stale proposal (15.127167ms)
+✔ Returning to an archived scenario restores its own questions and sources locally without copying the current scenario (19.70675ms)
+✔ Source refresh is an explicit application-owned comparison with reversible archives (19.904458ms)
+✔ The overall operation deadline rejects a response that arrives after its budget (6.954083ms)
+✔ Recognised personal descriptions missing from extraction receive one repair and a correction prompt (2.015917ms)
+✔ An impersonal question may legitimately have no personal facts (3.123583ms)
+✔ Country of arrival never authorises an EU-specific permit path, document duty or identifying question (3.392958ms)
+✔ Language switching preserves source archives, accepted answers, completion and Explore isolation (10.7745ms)
+✔ An omitted insertion hint appends a new workplace action after its named prerequisites (11.464292ms)
+✔ Typed departure scope cannot be made destination-dependent by model declarations (0.295083ms)
+✔ An additional goal receives a distinct-branch schema and one focused repair after a misplaced action (15.932791ms)
+✔ A saved zero-fact plan offers explicit input recovery while retaining answers completion history and Undo (21.278583ms)
+✔ An administrative question points to related accepted actions and source drawers without inventing an answer (10.472625ms)
+✔ Archived scenarios rebuild alternatives so the previous destination can be proposed again (30.987917ms)
+✔ An archived English scenario restores in French with localized definitions and preserved completion sources and Undo (32.561834ms)
+✔ Partial recognition supplements missing personal roles before journey generation within the operation cap (22.349125ms)
+✔ Unknown missing roles never disappear from an otherwise literal partial extraction (6.629834ms)
+✔ A repaired qualified target passes the same source safety checks as a bare target (12.460583ms)
+✔ A generic unchanged school action is marked for reassessment when destination changes (16.270834ms)
+✔ Omitted affected actions cannot retain a municipal source from the previous destination (24.011958ms)
+✔ An insurance proposal cannot acquire a canton contact even when it nominates an unrelated government root (24.965792ms)
+✔ Provider-facing accepted actions omit application field provenance before raw operation replies (28.41975ms)
+✔ A follow-up workplace statement supplements extraction before proposing changes (28.807833ms)
+✔ Resume skips every previously verified mutation, including inherited passes after step five (2.210542ms)
+✔ An old pre-comparison report cannot skip later mutations without a real checkpoint (0.293958ms)
+✔ The recorded last-allowance artifact resumes after the completed workplace checks (40.899667ms)
+✔ A transient preview cannot be mistaken for an accepted checkpoint (0.10675ms)
+✔ Request validation preserves the budget and the process remains available (1626.455542ms)
+✔ Private rehearsal and the root entry point use the maintained proxy (352.266084ms)
+✔ Upstream deadline cancels hang and leaves the proxy usable (1205.142833ms)
+✔ Upstream deadline cancels body-hang and leaves the proxy usable (1278.601583ms)
+✔ Client disconnection cancels the in-flight upstream request (190.826416ms)
+✔ Malformed upstream responses return 502 without terminating the proxy (259.878042ms)
+✔ Provider diagnostics are withheld and oversized responses are bounded (196.352291ms)
+✔ Concurrency rejection does not charge budget (4147.3675ms)
+✔ Invalid port values stop startup instead of silently selecting another port (324.8915ms)
+✔ Startup and restart in a checkout with spaces preserve budget and identify the right process (3717.105833ms)
+✔ A foreign PID is never stopped and the startup lock is released (60.077667ms)
+✔ An occupied port cannot masquerade as this proxy readiness (16880.01475ms)
+✔ Codespace hook explicitly preserves automatic public-port and discovery setup (2473.183208ms)
+✔ Local edits prevent automatic pulls and discovery commits without stopping the demo (2122.453125ms)
+ℹ tests 126
+ℹ suites 0
+ℹ pass 126
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26529.093291
