@@ -3,6 +3,26 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const J=require('../lib/journey-contract');
 const {story,map,clone}=require('./fixtures');
+test('Explicit school requests require a school path without a move',()=>{
+ for(const text of ['I need school and transport information in Nyon.','Je cherche des informations scolaires et de transport.',require('./evaluation-cases.json').find(c=>c.id===10).story]){
+  assert.ok(J.expectedNeeds(text,J.extract(text).facts).includes('school'),text);
+ }
+});
+test('Replacement proposals reject unrelated additions and accept changed-input prerequisites',()=>{
+ const tree=map();tree.branches=tree.branches.slice(0,1);
+ const context={facts:tree.variables.map(f=>f.id==='destination'?{...f,value:'Gland'}:f),answers:{},changedIds:['destination'],kind:'replace_fact'};
+ const arrival={...clone(tree.branches[0].steps[1]),title:'Ask about Gland arrival',short:'Arrival in Gland',sources:[]};
+ const replace={op:'replace_action',branch:'registration',target:'arrival',action:arrival};
+ const extra={...clone(arrival),id:'coverage',title:'Compare insurance coverage',short:'Insurance',purpose:'insurance',depends_on:[],sources:[]};
+ const insertion=action=>({op:'add_action',branch:'registration',after:'arrival',action});
+ const branch=action=>({op:'add_branch',branch:{id:'extra',name:'Additional path',need:'other',steps:[action]}});
+ for(const addition of [insertion(extra),branch(extra)])assert.throws(()=>J.applyProposal(tree,{revision:'r',operations:[replace,addition]},context,'r'),/changed input/);
+ for(const addition of [insertion({...extra,depends_on:['destination']}),branch({...extra,depends_on:['destination']}),insertion({...extra,prerequisites:['arrival']})]){
+  const next=J.applyProposal(tree,{revision:'r',operations:[replace,addition]},context,'r');
+  assert.ok(next.branches.flatMap(b=>b.steps).find(s=>s.id==='coverage').depends_on.includes('destination'));
+ }
+ assert.equal(tree.branches.length,1);assert.equal(tree.branches[0].steps.length,2);
+});
 test('Observed personal situations expose typed, literal editable facts before map generation',()=>{
   for(const text of [story,...require('./evaluation-cases.json').filter(c=>[1,3,4,5,7].includes(c.id)).map(c=>c.story)]){
     const result=J.extract(text);assert.ok(result.facts.length,text);assert.deepEqual(J.validateFacts(result.facts,text),result.facts);
