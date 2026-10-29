@@ -4,12 +4,13 @@ const fs = require('node:fs'),path=require('node:path'),crypto=require('node:cry
 const { harness } = require('../tests/harness');
 const cases = require('../tests/evaluation-cases.json');
 const J=require('../lib/journey-contract');
-const {reserve}=require('./live-budget');
+const {reserve,available}=require('./live-budget');
 
-async function evaluate({ proxy, output, maxCalls = 24, caseIds = cases.map(c => c.id), fetchImpl = fetch }) {
+async function evaluate({ proxy, output, maxCalls = 24, caseIds = cases.map(c => c.id), fetchImpl = fetch, budgetFile = process.env.EVAL_TOTAL_BUDGET_FILE }) {
   if (!Number.isSafeInteger(maxCalls) || maxCalls < 1 || maxCalls > 100 || !Array.isArray(caseIds) || !caseIds.length || new Set(caseIds).size !== caseIds.length || caseIds.some(id => !cases.some(c => c.id === id))) throw new Error('Invalid call cap or case selection');
   const parsed = new URL(proxy);
   if (parsed.username || parsed.password || parsed.search || parsed.hash || (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && ['127.0.0.1','localhost','[::1]'].includes(parsed.hostname)))) throw new Error('Use HTTPS or loopback HTTP, without credentials, query or fragment');
+  available(budgetFile); // Fail before health or model requests if the shared cap is unavailable.
   const selected = cases.filter(c => caseIds.includes(c.id));
   const appHTML=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8'),contract=fs.readFileSync(path.join(__dirname,'../lib/journey-contract.js'));
   const report = { buildSha256:crypto.createHash('sha256').update(appHTML).digest('hex'),contractSha256:crypto.createHash('sha256').update(contract).digest('hex'),schemaVersion:3, startedAt:new Date().toISOString(), mode:'live-model', proxyOrigin:parsed.origin,
@@ -39,7 +40,7 @@ async function evaluate({ proxy, output, maxCalls = 24, caseIds = cases.map(c =>
     h.context.fetch = async (url, options = {}) => {
       if (url.endsWith('/chat')) {
         if (report.calls >= maxCalls) throw new Error('Evaluation call cap reached');
-        reserve(process.env.EVAL_TOTAL_BUDGET_FILE,'case-'+scenario.id);
+        reserve(budgetFile,'case-'+scenario.id);
         report.calls++; save();
       }
       const response = await fetchImpl(url, {...options,headers:{...options.headers,Origin:origin}});
