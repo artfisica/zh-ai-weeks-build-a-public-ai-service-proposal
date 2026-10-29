@@ -11,8 +11,4 @@ jobs:
         with:
           node-version: '24'
       - run: node --check proxy/server.js
-      - run: node tests/check-inline.js
-      - run: node tests/smoke.js
-      - run: node --test tests/proxy.js
-      - run: node --test tests/budget.js
-      - run: node --test tests/startup.js
+      - run: npm test

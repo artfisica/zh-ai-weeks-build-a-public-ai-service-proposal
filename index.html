@@ -48,6 +48,7 @@
   .detail{display:none!important}
   .layout.has-detail .detail{display:flex!important;position:fixed;right:18px;top:76px;width:370px;max-height:calc(100vh - 94px);overflow:auto;z-index:4;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px #1b1a1729}
   .detail-close{align-self:flex-end;border:1px solid var(--line);border-radius:99px;background:white;padding:5px 12px;color:var(--muted)}
+  @media(min-width:901px) and (max-width:1699px){.layout.has-detail .map-tools,.layout.has-detail .map-comparison{margin-right:400px}}
   @media(min-width:1700px){.layout.has-detail{grid-template-columns:300px minmax(0,1fr) 370px}.layout.has-detail .detail{position:sticky;top:16px;width:auto;max-height:calc(100vh - 32px);margin:16px;right:auto}}
   @media (max-width:900px){.layout{grid-template-columns:1fr}.story{border:none;border-bottom:1px solid var(--line)}.story.is-empty{display:none}.layout.has-detail .detail{top:auto;bottom:12px;left:12px;right:12px;width:auto;max-height:75vh}.story{padding:20px!important}}
   .story{padding:28px 24px 20px 28px;border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:16px}
@@ -93,7 +94,7 @@
   #tree-host{min-width:0}
   .map-viewport{overflow:auto;max-width:100%;-webkit-overflow-scrolling:touch;padding:8px 0 12px}
   .map-tools{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  .map-title{font-family:var(--serif);font-size:24px;line-height:1.15}
+  .map-title{margin:0;font-family:var(--serif);font-size:24px;line-height:1.15}
   .map-meta{font-size:12px;color:var(--muted);margin-top:5px}
   .map-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .map-actions button,.lane-tabs button{border:1px solid var(--line);background:var(--white);padding:7px 11px;border-radius:8px;color:var(--ink)}
@@ -200,6 +201,211 @@
 <script>
 (function () {
   'use strict';
+  // BEGIN GENERATED JOURNEY CONTRACT
+// Pure contracts shared by the static app and Node tests. No network or DOM.
+const Journey = (() => {
+  const copy=x=>JSON.parse(JSON.stringify(x));
+  const own=(o,k)=>Object.prototype.hasOwnProperty.call(o || {},k);
+  const fail=message=>{throw new Error(message);};
+  const id=x=>typeof x==='string' && /^[a-z][a-z0-9_]{0,63}$/.test(x) && !own(Object.prototype,x);
+  const roles={current_commune:['origin','Current commune','Commune actuelle'],destination_commune:['destination','Destination commune','Commune de destination'],workplace:['workplace','Workplace','Lieu de travail'],housing_location:['home_location','Home location','Localisation du logement'],current_country:['origin_country','Country coming from','Pays de provenance'],housing_status:['housing','Housing','Logement'],children:['children','Children','Enfants'],permit:['permit','Permit','Permis'],citizenship:['nationality','Citizenship','Nationalité'],household:['household','Household','Ménage'],transport:['transport','Transport','Transport']};
+  const literal=(text,value)=>{const v=String(value || '').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return !!v && new RegExp('(?<![\\p{L}\\p{N}])'+v+'(?![\\p{L}\\p{N}])','iu').test(text);};
+  function validateFacts(input,text,language='en') {
+    if(!Array.isArray(input)||input.length>16)fail('Return at most sixteen typed facts');
+    const seen=new Set();return input.map(f=>{
+      if(!f||!roles[f.type]||seen.has(f.type)||typeof f.value!=='string'||!f.value.trim()||typeof f.span!=='string')fail('Invalid, duplicate or untyped personal fact');
+      const start=f.evidence && f.evidence.start,end=f.evidence && f.evidence.end;
+      if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>text.length||text.slice(start,end)!==f.span||!literal(f.span,f.value))fail('Personal fact has no literal evidence');
+      if(f.confidence && !['explicit','confirm'].includes(f.confidence))fail('Unknown fact confidence');
+      seen.add(f.type);return {id:roles[f.type][0],type:f.type,label:roles[f.type][language==='fr'?2:1],value:f.value.trim(),span:f.span,evidence:{start,end,quote:f.span},alternatives:[],confidence:f.confidence || 'explicit'};
+    });
+  }
+  function extract(text,language='en') {
+    const facts=[];
+    const add=(type,value,at)=>{if(!value||facts.some(f=>f.type===type))return;facts.push({type,value,span:value,evidence:{start:at,end:at+value.length},confidence:'explicit'});};
+    const place="([\\p{Lu}][\\p{L}’'\\-]*(?:[ \\u00a0]+(?:[\\p{Lu}][\\p{L}’'\\-]*|sur|sous|de|du|la|les)){0,3})";
+    const match=(type,prefix)=>{const m=new RegExp(prefix+place,'u').exec(text);if(m){const value=m[1].trim().replace(/\s+(?:I|We|Je|My)$/,'');add(type,value,m.index+m[0].indexOf(m[1]));}};
+    match('current_commune',"(?:\\bI (?:live|reside) in |\\bje vis (?:seule? )?(?:à|a) |\\bJe vis (?:seule? )?(?:à|a) |[Jj]['’]habite (?:à|a) |[Jj]e réside à )");
+    match('destination_commune',"(?:\\b(?:move|moving|relocate|relocating) to |[Dd]éménag(?:er|e|ement) (?:à|vers) |m['’]installer à )");
+    match('housing_location',"(?:\\b(?:chalet|house|home|flat) in )");
+    match('workplace',"(?:\\bwork(?:ing)? in |[Tt]ravaille(?:r)? (?:à|a) )");
+    match('current_country',"(?:\\b(?:coming|arriving|arrive|come) from |[Jj]e viens (?:de |d['’])|[Jj]['’]arrive (?:de |d['’]))");
+    const patterns={housing_status:/\b(?:own my home|own a (?:chalet|house|flat|home)|rent a (?:flat|house|room)|We will rent|we will rent|I rent|je suis propriétaire|Je suis propriétaire|je suis locataire|Je suis locataire)\b/iu,children:/\b(?:my child is (?:\d+|[a-z]+)|My child is (?:\d+|[a-z]+)|(?:an? |my )?(?:\d+|[a-z]+)-year-old child|mon enfant a \d+ ans|with my wife and baby|with my (?:child|children)|avec (?:mon|mes) enfants?)\b/iu,permit:/\b(?:[BCLFGNS] permit|permit [BCLFGNS]|permis [BCLFGNS])\b/iu,household:/\b(?:je vis seule|Je vis seule|I live alone|my wife and baby|My \d+-year-old mother)\b/u,transport:/\b(?:sans voiture|without a car|no car)\b/iu};
+    for(const [type,re] of Object.entries(patterns)){const m=re.exec(text);if(m)add(type,m[0],m.index);}
+    // Location is not nationality. Third-person citizenship needs interpretation.
+    const citizenship=/\b(?:I am |I'm |Je suis |je suis )(Swiss|French|Spanish|Suisse|Français|Française|EU\/EFTA)\b/u.exec(text);if(citizenship)add('citizenship',citizenship[1],citizenship.index+citizenship[0].indexOf(citizenship[1]));
+    const valid=validateFacts(facts,text,language);return {facts:valid,questions:expectedQuestions(valid,language),needs:needs(text)};
+  }
+  function needs(text) {
+    const found=[];const rules={registration:/\b(move|moving|arriv|coming|relocat|déménag|emménag)/i,school:/\b(child|children|school|enfant|école|scolair)/i,housing:/\b(home|house|rent|roof|chalet|flat|housing|logement|chambre|louer|toit|propriétaire)/i,renovation:/\b(roof|renovat|insulat|toit|isol|travaux)/i,energy:/\b(solar|energy|solaire|énergie)/i,volunteering:/\b(firefighter|volunteer|pompier|bénévol)/i,insurance:/\b(insurance|assurance)/i,business:/\b(business|entreprise|commerce)/i,transport:/\b(transport|car|voiture|journey|trajet)/i};for(const [key,re] of Object.entries(rules))if(re.test(text))found.push(key);return found;
+  }
+  function expectedQuestions(facts,language='en') {
+    const fr=language==='fr',result=[];
+    if(facts.some(f=>['permit','current_country'].includes(f.type))&&!facts.some(f=>f.type==='citizenship'))result.push({id:'nationality',text:fr?'Quelle est la nationalité de la personne qui déménage ?':'What is the moving person’s citizenship?',why:fr?'Le pays de provenance ne précise pas la nationalité. Cette réponse permet de préparer la question du séjour.':'Country of departure does not establish citizenship. This answer frames the residence questions.',type:'choice',options:fr?['Suisse','UE/AELE','État tiers','Je préfère ne pas répondre']:['Swiss','EU/EFTA','Third country','Prefer not to answer']});
+    if(facts.some(f=>f.type==='current_country')&&!facts.some(f=>f.type==='destination_commune'))result.push({id:'residence_commune',text:fr?'Dans quelle commune envisagez-vous d’habiter ?':'Which commune are you planning to live in?',why:fr?'Le lieu de travail peut être différent du domicile.':'Workplace and home destination can be different.',type:'text',options:[]});
+    return result;
+  }
+  function expectedNeeds(text,facts) {
+    const detected=needs(text),moving=/move|moving|arriv|coming|relocat|déménag|emménag/i.test(text),result=[];
+    if(moving)result.push('registration');
+    if(moving&&facts.some(f=>f.type==='children'))result.push('school');
+    if(detected.includes('housing')&&!detected.includes('renovation')||moving&&facts.some(f=>f.type==='housing_status'))result.push('housing');
+    for(const need of ['renovation','energy','volunteering','insurance','business','transport'])if(detected.includes(need))result.push(need);
+    return [...new Set(result)];
+  }
+  function parseEnvelope(text) {
+    const raw=String(text).replace(/```json|```/g,'').trim();
+    try{return JSON.parse(raw);}catch(original){
+      const start=raw.indexOf('{');if(start<0)throw original;
+      const stack=[];let quoted=false,escape=false,removed=0,candidate='';
+      for(const c of raw.slice(start)){
+        if(quoted){candidate+=c;if(escape)escape=false;else if(c==='\\')escape=true;else if(c==='"')quoted=false;continue;}
+        if(c==='"'){quoted=true;candidate+=c;continue;}
+        if(c==='{'||c==='[')stack.push(c==='{'?'}':']');
+        else if(c==='}'||c===']'){
+          // Apertus sometimes writes ...action}}}] instead of ...action}}].
+          // Remove one redundant object closer at an array boundary only.
+          // Never invent values, close a partial object or merge envelopes.
+          if(c==='}'&&stack[stack.length-1]===']'&&!removed){removed++;continue;}
+          if(stack.pop()!==c)throw original;
+        }
+        candidate+=c;
+      }
+      if(removed!==1||stack.length||quoted)throw original;return JSON.parse(candidate);
+    }
+  }
+  function validateCommand(raw,text,context) {
+    if(raw && ['ask','add_fact','replace_fact','add_goal','clarify'].includes(raw.type)){
+      raw=copy(raw);
+      if(raw.type!=='replace_fact' && (raw.target===undefined || raw.target===null || /^(?:none|null)?$/i.test(String(raw.target).trim()))){
+        delete raw.target;
+        if(raw.value===undefined || raw.value===null || /^(?:none|null)?$/i.test(String(raw.value).trim()) || ['add_fact','add_goal'].includes(raw.type)&&typeof raw.value==='string'&&literal(text,raw.value))delete raw.value;
+      }
+      if(raw.type!=='clarify' && /^(?:none|null)?$/i.test(String(raw.question || '').trim()))delete raw.question;
+    }
+    if(!raw || !['ask','add_fact','replace_fact','add_goal','clarify'].includes(raw.type)||own(raw,'kind')||own(raw,'update')||own(raw,'story'))fail('Use one command type; a comparison cannot start a new situation');
+    if(Object.keys(raw).some(k=>!['type','target','value','question','answers'].includes(k)))fail('Unknown command field');
+    const command=copy(raw);
+    if(raw.type==='replace_fact'){
+      const fact=context.facts.find(f=>f.id===raw.target),question=(context.questions || []).find(q=>q.id===raw.target)||own(context.answers,raw.target);
+      if(!fact&&!question)fail('Choose an existing personal fact or question to change');
+      if(typeof raw.value!=='string'||!literal(text,raw.value))fail('The replacement must quote the original message');
+      if(fact){const esc=String(fact.value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');if(new RegExp('(?:still|keep|continue|toujours|garde)[^,.;!?]*'+esc,'iu').test(text))fail('That change conflicts with a fact you want to retain');
+        if(fact.type==='destination_commune' && /\b(?:work|working|travaille)\b/i.test(text) && !new RegExp('(?:move|moving|destination|déménag|instead|plutôt)[^.!?]*'+String(raw.value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'iu').test(text))fail('Is this your workplace or your destination?');
+      }
+    } else if(own(raw,'target')||own(raw,'value'))fail('Only a replacement has a target and value');
+    if(raw.type==='clarify' && (typeof raw.question!=='string'||!raw.question.trim()||/full.*address|permit number|medical|certificate|find.*office|adresse complète|numéro.*permis|certificat|trouv.*bureau/i.test(raw.question)))fail('Ask one focused clarification');
+    return command;
+  }
+  function revision(tree,facts,answers){const text=JSON.stringify([tree,facts,answers]);let h=2166136261;for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);return 'r'+(h>>>0).toString(16);}
+  function dependencies(tree,facts,answers={}){
+    const factIds=(facts || []).map(f=>f.id),questionIds=(tree.questions || []).map(q=>q.id);if(new Set([...factIds,...questionIds]).size!==factIds.length+questionIds.length)fail('Fact and question IDs must be distinct');
+    const inputs=new Set([...factIds,...questionIds,...Object.keys(answers)]),actions=new Set(),seen=new Set();
+    for(const b of tree.branches)for(const s of b.steps){if(actions.has(s.id)||!id(s.id))fail('Duplicate or invalid action id');actions.add(s.id);}
+    for(const b of tree.branches)for(const s of b.steps){if(!Array.isArray(s.depends_on)||s.depends_on.some(d=>!inputs.has(d)||actions.has(d)))fail('Action '+s.id+' has an unknown input dependency or step id');if(s.prerequisites!==undefined && (!Array.isArray(s.prerequisites)||s.prerequisites.some(p=>!seen.has(p))))fail('Action prerequisites must name earlier actions');seen.add(s.id);}
+    return true;
+  }
+  function normalizePrerequisites(input,only=null) {
+    const tree=copy(input),all=new Set(tree.branches.flatMap(b=>b.steps.map(s=>s.id))),earlier=new Map();
+    for(const branch of tree.branches)for(const step of branch.steps){
+      if(only && !only.has(step.id)){earlier.set(step.id,step);continue;}
+      const inputs=[],prerequisites=[...(step.prerequisites || [])];
+      for(const dependency of step.depends_on || []){
+        if(all.has(dependency)){
+          const prior=earlier.get(dependency);if(!prior)fail('A prerequisite must name an earlier action: '+dependency);
+          prerequisites.push(dependency);inputs.push(...prior.depends_on);
+        }else inputs.push(dependency);
+      }
+      for(const dependency of prerequisites){const prior=earlier.get(dependency);if(!prior)fail('A prerequisite must name an earlier action: '+dependency);inputs.push(...prior.depends_on);}
+      step.depends_on=[...new Set(inputs)];if(prerequisites.length || step.prerequisites!==undefined)step.prerequisites=[...new Set(prerequisites)];earlier.set(step.id,step);
+    }return tree;
+  }
+  function unaffected(action,tree,context){const known=new Set([...(tree.variables || []).map(f=>f.id),...(tree.questions || []).map(q=>q.id),...Object.keys(context.answers || {})]);return action.depends_on.length>0 && action.depends_on.every(d=>known.has(d)&&!(context.changedIds || []).includes(d));}
+  const actionFields=['id','short','title','why','depends_on','prerequisites','sources','authority','confirm_with','purpose','mode'];
+  function validAction(a){if(!a||!id(a.id)||typeof a.title!=='string'||!a.title.trim()||Object.keys(a).some(k=>!actionFields.includes(k))||!Array.isArray(a.depends_on)||!Array.isArray(a.sources)||a.sources.some(r=>!r||Object.keys(r).some(k=>!['id','claim'].includes(k))))fail('Only action content and nominal references may be proposed');return copy(a);}
+  function requiredTargets(previous,context) {
+    if(!['replace_fact'].includes(context.kind))return [];
+    return previous.branches.flatMap(b=>b.steps.filter(s=>s.depends_on.some(id=>{const before=(previous.variables || []).find(f=>f.id===id),after=context.facts.find(f=>f.id===id);return context.changedIds.includes(id)&&before&&after&&before.value!==after.value&&literal(s.title+' '+s.short,before.value);})).map(s=>b.id+'/'+s.id));
+  }
+  function bindInputs(input,facts,answers={},only=null) {
+    const tree=copy(input),known=new Set(facts.map(f=>f.id).concat(tree.questions.map(q=>q.id),Object.keys(answers)));
+    const roles={departure:['origin'],arrival:['destination','origin_country','permit','nationality','residence_commune'],online_registration:['origin','destination','origin_country','permit','nationality'],school:['destination','children'],housing:['origin','destination','housing'],renovation:['home_location','housing'],energy:['home_location','housing'],permit:['destination','origin_country','permit','nationality'],volunteering:['origin'],business:['origin','workplace','permit','nationality'],transport:['origin','destination','workplace','children','transport']};
+    for(const branch of tree.branches)for(const step of branch.steps){if(only&&!only.has(step.id))continue;const purpose=purposeFor(step,branch);step.purpose=purpose;const allowed=roles[purpose];const declared=step.depends_on.filter(id=>!allowed || !facts.some(f=>f.id===id) || allowed.includes(id));step.depends_on=[...new Set(declared.concat((allowed || []).filter(id=>known.has(id))))];}
+    return tree;
+  }
+  function actionIdentity(action) {
+    const words=x=>String(x || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+    const aliases={announce:'notify',inform:'notify',declare:'notify',review:'check',verify:'check',annoncer:'notify',informer:'notify',vérifier:'check'};
+    const terms=words(action.title).split(' ').filter(w=>!['the','a','an','your','to','of','at','for','with','le','la','les','un','une','votre','de','du','au','des'].includes(w)).map(w=>aliases[w] || w).sort();
+    return JSON.stringify([terms,words(action.why),(action.depends_on || []).slice().sort(),(action.sources || []).map(r=>[r.id,r.claim || null]).sort(),action.authority,words(action.confirm_with)]);
+  }
+  function applyProposal(previous,proposal,context,expectedRevision){
+    if(!proposal||proposal.revision!==expectedRevision||Object.keys(proposal).some(k=>!['revision','operations'].includes(k))||!Array.isArray(proposal.operations)||proposal.operations.length>24)fail('Stale revision or invalid proposal envelope');
+    let tree=copy(previous);const touched=new Set(),allIds=new Set(tree.branches.flatMap(b=>b.steps.map(s=>s.id))),changed=context.changedIds || [];
+    const assertKeys=(op,keys)=>{if(Object.keys(op).some(k=>!keys.includes(k)))fail('Unauthorised proposal field');};
+    for(const op of proposal.operations){
+      if(!op||!['add_branch','add_action','replace_action','remove_action','add_question','remove_question'].includes(op.op))fail('Unknown proposal operation');
+      if(op.op==='add_branch'){
+        assertKeys(op,['op','branch']);const b=op.branch;if(!b||!id(b.id)||typeof b.name!=='string'||!Array.isArray(b.steps)||!b.steps.length||Object.keys(b).some(k=>!['id','name','need','steps'].includes(k))||tree.branches.some(x=>x.id===b.id))fail('Invalid added branch');
+        if(b.need && !['registration','school','housing','renovation','energy','volunteering','insurance','business','transport','residence','other'].includes(b.need))fail('Choose a known resident need');const branch={id:b.id,name:b.name,need:b.need || 'other',steps:b.steps.map(validAction)};for(const s of branch.steps){if(allIds.has(s.id))fail('Action id already exists');allIds.add(s.id);}tree.branches.push(branch);continue;
+      }
+      if(op.op==='add_question'){
+        assertKeys(op,['op','question']);const q=op.question;if(!q||!id(q.id)||typeof q.text!=='string'||typeof q.why!=='string'||!['text','yesno','choice'].includes(q.type)||!Array.isArray(q.options)||q.options.some(v=>typeof v!=='string')||allIds.has(q.id)||Object.keys(q).some(k=>!['id','text','why','type','options','affects'].includes(k))||tree.questions.some(x=>x.id===q.id)||context.facts.some(f=>f.id===q.id)||own(context.answers,q.id))fail('Invalid added question');tree.questions.push(copy(q));continue;
+      }
+      if(op.op==='remove_question'){
+        assertKeys(op,['op','target']);const q=tree.questions.find(q=>q.id===op.target);if(!q||!changed.includes(op.target)||!own(context.answers,op.target))fail('Only an explicitly resolved question may be removed: question/'+op.target);tree.questions=tree.questions.filter(q=>q.id!==op.target);continue;
+      }
+      const branch=tree.branches.find(b=>b.id===op.branch);if(!branch)fail('Unknown target branch');
+      if(op.op==='add_action'){
+        assertKeys(op,['op','branch','after','action']);const action=validAction(op.action);if(allIds.has(action.id))fail('Action id already exists');const index=op.after===null?branch.steps.length-1:branch.steps.findIndex(s=>s.id===op.after);if(op.after!==null&&index<0)fail('Unknown insertion target');branch.steps.splice(index+1,0,action);allIds.add(action.id);continue;
+      }
+      assertKeys(op,op.op==='replace_action'?['op','branch','target','action']:['op','branch','target']);
+      const index=branch.steps.findIndex(s=>s.id===op.target),prior=branch.steps[index],key=op.branch+'/'+op.target;if(!prior||touched.has(key))fail('Unknown or duplicate action target: '+key);
+      if(['add_goal','add_fact','completion'].includes(context.kind)||unaffected(prior,previous,context)||!prior.depends_on.some(d=>changed.includes(d)))fail('The alternative omitted existing steps or rewrote unrelated work: '+key);
+      touched.add(key);if(op.op==='remove_action')branch.steps.splice(index,1);else{const action=validAction(op.action);if(action.id!==prior.id)fail('Replacing an action must retain its id');if(prior.purpose && action.purpose && prior.purpose!==action.purpose)fail('An existing action must retain its purpose');if(prior.purpose)action.purpose=prior.purpose;branch.steps[index]=action;}
+    }
+    for(const key of requiredTargets(previous,context))if(!touched.has(key))fail('The proposal still names the old value in an affected action: '+key);
+    const accepted=new Set(previous.branches.flatMap(b=>b.steps.map(actionIdentity)));
+    const added=proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps:o.op==='add_action'?[o.action]:[]);
+    if(context.kind==='add_goal' && (!proposal.operations.some(o=>o.op==='add_branch') || proposal.operations.filter(o=>o.op==='add_branch').some(o=>!o.branch.steps.some(s=>!accepted.has(actionIdentity(s))))))fail('An additional goal needs a new action in a distinct branch');
+    if(context.kind==='completion' && !added.some(s=>!accepted.has(actionIdentity(s))))fail('Completion needs a new action; the map remains incomplete');
+    tree.branches=tree.branches.filter(b=>b.steps.length);if(!tree.branches.length)fail('A proposal cannot erase the journey');tree.variables=copy(context.facts);
+    const newIds=new Set(proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps.map(s=>s.id):o.action?[o.action.id]:[]));tree=normalizePrerequisites(tree,newIds);dependencies(tree,context.facts,context.answers);return tree;
+  }
+  const purposes={departure:['Ask {place} how to announce departure','Demander à {place} comment annoncer le départ'],arrival:['Ask {place} how to register arrival','Demander à {place} comment annoncer l’arrivée'],online_registration:['Ask whether online registration covers this move','Demander si l’annonce en ligne couvre ce déménagement'],school:['Ask about school arrangements for your child','Demander les possibilités de scolarisation de votre enfant'],housing:['Check housing options and what applies to your home','Examiner les options pour votre logement'],renovation:['Ask which conditions apply to the planned works','Demander quelles conditions concernent les travaux envisagés'],energy:['Ask about options for the proposed energy work','Demander les possibilités pour les travaux énergétiques'],permit:['Ask which residence process applies to your circumstances','Demander quelle procédure de séjour correspond à votre situation'],insurance:['Compare coverage and ask which options fit your needs','Comparer les couvertures et les options adaptées'],business:['Ask which process applies to the proposed business','Demander quelle procédure concerne l’activité envisagée'],volunteering:['Ask the local fire service how to join','Demander au service du feu local comment le rejoindre'],transport:['Check transport options for your journey','Examiner les options de transport pour votre trajet'],other:['Ask what applies to this part of your situation','Demander ce qui concerne cette partie de votre situation']};
+  const shortLabels={departure:['Departure from {place}','Départ de {place}'],arrival:['Arrival in {place}','Arrivée à {place}'],online_registration:['Online registration option','Option d’annonce en ligne'],school:['School and childcare','École et accueil'],housing:['Housing options','Options de logement'],renovation:['Planned renovation','Rénovation envisagée'],energy:['Energy options','Options énergétiques'],permit:['Residence questions','Questions de séjour'],insurance:['Compare coverage','Comparer les couvertures'],business:['Business questions','Questions sur l’activité'],volunteering:['Joining the fire service','Rejoindre le service du feu'],transport:['Transport options','Options de transport'],other:['Check applicability','Vérifier l’applicabilité']};
+  const explanations={departure:['Your current commune identifies the starting contact. A different destination does not itself change this starting point.','Votre commune actuelle identifie le premier interlocuteur. Une autre destination ne change pas à elle seule ce point de départ.'],arrival:['The proposed destination changes the local arrival contact and the questions to verify there. Individual conditions remain unconfirmed.','La destination proposée change le contact local et les questions à vérifier à l’arrivée. Les conditions individuelles restent à confirmer.'],school:['Your child’s needs and proposed home location frame the school or childcare questions. Placement and conditions remain unconfirmed.','Les besoins de votre enfant et le domicile envisagé précisent les questions sur l’école ou l’accueil. La place et les conditions restent à confirmer.'],housing:['Your stated housing situation frames the options to compare. This map does not establish contract or property obligations.','Votre situation de logement précise les options à comparer. Cette carte ne détermine pas les obligations liées au bail ou au bien.'],renovation:['The planned work and property location frame the question to the local service. Whether permission applies has not been established.','Les travaux envisagés et le lieu du bien précisent la question au service local. La nécessité d’une autorisation n’est pas établie.'],energy:['The proposed energy work opens options to compare. Permission, eligibility and financial support remain unverified.','Les travaux énergétiques envisagés ouvrent des options à comparer. Autorisations, admissibilité et aides restent à vérifier.'],permit:['Your stated residence circumstances frame this question. Country of departure is not citizenship and no eligibility decision is established.','Votre situation de séjour précise cette question. Le pays de provenance n’est pas la nationalité et aucune décision d’admissibilité n’est établie.'],insurance:['Your chosen risks and coverage needs frame this comparison. No coverage or eligibility is established by this map.','Les risques et couvertures souhaités précisent cette comparaison. Cette carte ne confirme aucune couverture ni admissibilité.'],business:['Your proposed activity and location frame the questions to verify. Permission to trade and required documents have not been established.','L’activité et le lieu envisagés précisent les questions à vérifier. Le droit d’exercer et les pièces nécessaires ne sont pas établis.'],volunteering:['Your interests and location frame how to ask about joining. Eligibility, documents and medical conditions remain unverified.','Vos intérêts et le lieu précisent la demande pour rejoindre le service. Admissibilité, pièces et conditions médicales restent à vérifier.'],transport:['The proposed journey frames which transport options to inspect. This map has not calculated a live route, timetable or fare.','Le trajet envisagé précise les options à examiner. Cette carte ne calcule aucun itinéraire, horaire ou tarif en direct.']};
+  function purposeFor(step,branch){if(purposes[step.purpose])return step.purpose;const text=[step.title,branch.name,branch.need].join(' ');if(/departure|départ|deregister/i.test(step.title))return 'departure';if(/arrival|arriv|register.*(?:in|at)|inscri/i.test(step.title))return 'arrival';if(/online|eDéménagement/i.test(step.title))return 'online_registration';return needs(text).find(n=>purposes[n]) || (/permit|permis|residen/i.test(text)?'permit':'other');}
+  function safeMap(input,{language='en',catalogue=[],facts=input.variables || [],answers={},onlyActions=null,onlyQuestions=null}={}){
+    const tree=copy(input),fr=language==='fr',f=key=>facts.find(f=>f.id===key),values=facts.map(f=>f.value).join(' '),citizenship=answers.nationality || (f('nationality') || {}).value || '';
+    const safeQuestions=[];for(const q of tree.questions || []){
+      if(onlyQuestions && !onlyQuestions.has(q.id)){safeQuestions.push(q);continue;}
+      if(/full (?:street )?address|permit number|passport|street name|adresse (?:complète|exacte)|numéro (?:de|du) permis|(?:what|which) (?:documents|papers)|medical|médical|certificate|certificat|required documents|mandatory|obligatoire|date of birth|date de naissance|which (?:office|web|page|regulation)|find (?:the|a) (?:office|page)|competent office|quel.*(?:bureau|page|règlement)/i.test(q.text || ''))continue;
+      if(facts.some(f=>f.type==='current_country')&&!facts.some(f=>f.type==='current_commune')&&/which commune.*(?:leave|depart)|quelle commune.*(?:quitt|départ)/i.test(q.text))continue;
+      safeQuestions.push({...q,why:fr?'Cette réponse aide à préciser les pistes concernées ci-dessous.':'This personal answer helps refine the affected paths below.'});
+    }tree.questions=safeQuestions;
+    for(const b of tree.branches)for(const s of b.steps){if(onlyActions && !onlyActions.has(s.id))continue;
+      const purpose=purposeFor(s,b),place=(f(purpose==='departure'?'origin':'destination') || {}).value || (fr?'la commune':'the commune');
+      const refs=(s.sources || []).filter(r=>{if(r.id==='sem-b-eu'&&!/^(?:EU\/EFTA|UE\/AELE)$/i.test(citizenship.trim()))return false;if(r.id==='sem-third'&&!/third.country|non.?EU|état.*tiers/i.test(citizenship))return false;return catalogue.some(c=>c.id===r.id);});if(!refs.length){const placeValue=(f(purpose==='departure'?'origin':'destination') || f('home_location') || f('origin') || {}).value || '';const slug=placeValue.toLowerCase().replace(/\s+/g,'-');let entry=['departure','arrival','online_registration'].includes(purpose)?catalogue.find(c=>c.jurisdiction && c.jurisdiction.commune===slug):null;if(!entry)entry=catalogue.find(c=>c.id===(purpose==='permit'?'sem-residence':purpose==='transport'?'otd':['departure','arrival','online_registration'].includes(purpose)&&!f('origin_country')?'ch-move':'vd-root'));if(entry)refs.push({id:entry.id,claim:null});}s.sources=refs;s.source=refs[0] && refs[0].id || null;
+      // Pilot notes are drafts. A URL or model-selected claim never authorises
+      // an obligation. Only an exact, reviewed, applicable action could do so.
+      const supported=refs.map(r=>{const c=catalogue.find(c=>c.id===r.id),claim=(c.claims || []).find(k=>k.id===r.claim);return {c,claim};}).find(({claim})=>claim && claim.status==='reviewed' && claim.actionText && claim.conditions && claim.conditions.every(c=>facts.some(f=>f.type===c.type&&f.value===c.value)) && claim.actionText[language]===s.title && claim.explanation && claim.explanation[language]===s.why);
+      if(!supported){const neutral=/^(?:Ask|Check|Compare|Contact|Demander|Vérifier|Comparer|Contacter)\b/iu.test(s.title) && !/must|required|mandatory|approval|medical|documents|deadline|\d|oblig|autorisa|médic|délai/i.test(s.title);s.title=neutral?s.title:purposes[purpose][fr?1:0].replace('{place}',place);s.short=shortLabels[purpose][fr?1:0].replace('{place}',place);s.why=fr?'Cette piste prépare une question, pas une obligation confirmée. Les conditions, documents et délais applicables restent à vérifier.':'This prepares a question, not a confirmed obligation. Applicable conditions, documents and timing remain unverified.';if(explanations[purpose])s.why=explanations[purpose][fr?1:0];s.mode='verify';s.purpose=purpose;s.sourceGaps=[{reason:fr?'Applicabilité non établie par une note relue.':'Applicability is not established by a reviewed note.',question:s.title}];}
+      const entry=refs.map(r=>catalogue.find(c=>c.id===r.id)).find(Boolean);s.authority=entry?entry.level:'other';s.confirm_with=entry ? entry.title : fr?'Point d’entrée officiel à confirmer':'Official entry point not yet established';
+      if(/EU|EFTA|UE\/AELE/i.test(b.name)&&!/EU|EFTA|UE|AELE/i.test(citizenship))b.name=fr?'Séjour et résidence':'Residence';
+    }
+    tree.note=fr?'Les pistes préparent vos questions. Les sources proposées et leurs conditions attendent une relecture humaine.':'These paths prepare your questions. Suggested sources and their applicability await human review.';
+    return tree;
+  }
+  function localize(input,facts,language) {
+    const tree=copy(input),fr=language==='fr',labels={registration:['Registration','Annonces de départ et d’arrivée'],school:['School','Scolarité'],housing:['Housing','Logement'],renovation:['Renovation','Rénovation'],energy:['Energy','Énergie'],volunteering:['Volunteering','Bénévolat'],insurance:['Insurance','Assurance'],business:['Business','Activité professionnelle'],transport:['Transport','Transport'],residence:['Residence','Séjour'],other:['Your next questions','Vos prochaines questions']};
+    for(const branch of tree.branches){if(labels[branch.need])branch.name=labels[branch.need][fr?1:0];for(const step of branch.steps){if(step.mode!=='verify')continue;const purpose=purposeFor(step,branch),place=(facts.find(f=>f.id===(purpose==='departure'?'origin':'destination')) || {}).value || (fr?'la commune':'the commune');step.title=purposes[purpose][fr?1:0].replace('{place}',place);step.short=shortLabels[purpose][fr?1:0].replace('{place}',place);step.why=fr?'Cette piste prépare une question, pas une obligation confirmée. Les conditions applicables restent à vérifier.':'This prepares a question, not a confirmed obligation. Applicable conditions remain unverified.';}}
+    tree.note=fr?'Les pistes préparent vos questions. Les sources proposées et leurs conditions attendent une relecture humaine.':'These paths prepare your questions. Suggested sources and their applicability await human review.';return tree;
+  }
+  return {roles,literal,extract,validateFacts,needs,expectedNeeds,expectedQuestions,parseEnvelope,validateCommand,revision,dependencies,normalizePrerequisites,unaffected,requiredTargets,bindInputs,actionIdentity,applyProposal,safeMap,localize};
+})();
+
+  // END GENERATED JOURNEY CONTRACT
   const PUBLIC_PROXY_URL = '';
   const LOCAL_DEV = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
   const ACCENT = '#1F4E8C', STORE_KEY = 'public-ai-commune.v5', CONN_KEY = 'public-ai-commune.conn.v5', LANG_KEY = 'public-ai-commune.lang';
@@ -215,8 +421,37 @@
   // ---- The only place a link can come from. Apertus picks by id; anything else is shown as "no linked page yet". ----
   // BEGIN GENERATED CATALOGUE
   // Edit packs/*.json and run node tools/catalogue.js --write.
-  const CATALOG_VERSION = "938b9f80d9533ae4";
+  const CATALOG_VERSION = "22f81fd2298843e1";
   const CATALOG = [
+  {
+    "id": "gland-cdh",
+    "level": "commune",
+    "url": "https://www.gland.ch/ma-ville/administration-communale/service-de-la-population/controle-des-habitants/habitants",
+    "title": "Ville de Gland — Contrôle des habitants",
+    "covers": "Gland residents registry: official entry point for arrival and departure",
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Gland directs arriving and departing residents to its residents registry.",
+        "fr": "Gland oriente les personnes qui arrivent ou partent vers son Contrôle des habitants.",
+        "kind": "practice",
+        "status": "draft",
+        "reviewer": null,
+        "reviewedOn": null,
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "Arriving in or departing from Gland. Documents for certificates elsewhere on the page are not arrival requirements.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#gland-cdh"
+      }
+    ],
+    "jurisdiction": {
+      "canton": "VD",
+      "commune": "gland"
+    },
+    "exact": true,
+    "pack": "VD-gland",
+    "packVersion": 1
+  },
   {
     "id": "nyon-cdh",
     "level": "commune",
@@ -232,8 +467,10 @@
         "status": "draft",
         "reviewer": null,
         "reviewedOn": null,
-        "sourceCheckedOn": null,
-        "recheckOn": null
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "Current or prospective Nyon residents. This verifies an entry point, not an individual administrative decision.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#nyon-cdh"
       }
     ],
     "jurisdiction": {
@@ -242,14 +479,14 @@
     },
     "exact": true,
     "pack": "VD-nyon",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "stcergue-arrival",
     "level": "commune",
     "url": "https://www.st-cergue.ch/prestations-communales/113320",
     "title": "Commune de Saint-Cergue — Arrivée à St-Cergue",
-    "covers": "Saint-Cergue: registering on arrival, documents, deadline",
+    "covers": "Saint-Cergue official arrival entry point; individual conditions remain to verify",
     "claims": [
       {
         "id": "c1",
@@ -259,8 +496,10 @@
         "status": "draft",
         "reviewer": null,
         "reviewedOn": null,
-        "sourceCheckedOn": null,
-        "recheckOn": null
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "A prospective resident arriving in Saint-Cergue; individual conditions still need confirmation.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#stcergue-arrival"
       }
     ],
     "jurisdiction": {
@@ -269,14 +508,14 @@
     },
     "exact": true,
     "pack": "VD-saint-cergue",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "vd-address",
     "level": "canton",
     "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
     "title": "État de Vaud — Annoncer son changement d’adresse (eDéménagement)",
-    "covers": "Vaud: online change of address, conditions by permit type, list of connected communes",
+    "covers": "Conditional online principal-residence address-change option; not a separate obligation or universal foreign-arrival service",
     "claims": [
       {
         "id": "c1",
@@ -286,8 +525,10 @@
         "status": "draft",
         "reviewer": null,
         "reviewedOn": null,
-        "sourceCheckedOn": null,
-        "recheckOn": null
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "Principal-residence changes originating in participating Vaud communes; check citizenship, permit and destination handling before offering an online process.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#vd-address"
       },
       {
         "id": "c2",
@@ -297,8 +538,10 @@
         "status": "draft",
         "reviewer": null,
         "reviewedOn": null,
-        "sourceCheckedOn": null,
-        "recheckOn": null
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "Principal-residence changes originating in participating Vaud communes; check citizenship, permit and destination handling before offering an online process.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#vd-address"
       }
     ],
     "jurisdiction": {
@@ -307,7 +550,7 @@
     },
     "exact": true,
     "pack": "VD",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "vd-tax-communes",
@@ -334,7 +577,7 @@
     },
     "exact": true,
     "pack": "VD",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "vd-vote-directive",
@@ -361,7 +604,7 @@
     },
     "exact": true,
     "pack": "VD",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "mobilis",
@@ -388,7 +631,7 @@
     },
     "exact": false,
     "pack": "VD",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "jestime",
@@ -415,7 +658,7 @@
     },
     "exact": false,
     "pack": "VD",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "vd-root",
@@ -430,7 +673,7 @@
     },
     "exact": false,
     "pack": "VD",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "ch-move",
@@ -457,7 +700,7 @@
     },
     "exact": true,
     "pack": "ch",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "ch-move-checklist",
@@ -484,7 +727,7 @@
     },
     "exact": true,
     "pack": "ch",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "sem-b-eu",
@@ -501,8 +744,10 @@
         "status": "draft",
         "reviewer": null,
         "reviewedOn": null,
-        "sourceCheckedOn": null,
-        "recheckOn": null
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "Only after EU/EFTA citizenship is explicitly established; country of departure is insufficient.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#sem-b-eu"
       }
     ],
     "jurisdiction": {
@@ -511,14 +756,14 @@
     },
     "exact": true,
     "pack": "ch",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "sem-third",
     "level": "confederation",
     "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
     "title": "SEM — Permis de séjour, ressortissants d’États tiers",
-    "covers": "permits for non-EU nationals: B (1 year renewable), C, L; family reunification",
+    "covers": "Third-state residence-permit categories and official onward links; not an eligibility determination",
     "claims": [
       {
         "id": "c1",
@@ -528,8 +773,10 @@
         "status": "draft",
         "reviewer": null,
         "reviewedOn": null,
-        "sourceCheckedOn": null,
-        "recheckOn": null
+        "sourceCheckedOn": "2026-10-29",
+        "recheckOn": null,
+        "applicability": "Third-state citizenship must be established; individual permit conditions remain unresolved.",
+        "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#sem-third"
       }
     ],
     "jurisdiction": {
@@ -538,7 +785,7 @@
     },
     "exact": true,
     "pack": "ch",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "ch-root",
@@ -553,7 +800,7 @@
     },
     "exact": false,
     "pack": "ch",
-    "packVersion": 1
+    "packVersion": 2
   },
   {
     "id": "otd",
@@ -601,13 +848,18 @@
     const places = mentionedPlaces([story, ...vars.map(v => v.value), ...Object.values(answers)].join(' '));
     return CATALOG.filter(c => (!c.claims.length || c.claims.some(usableClaim)) && ((!c.jurisdiction.canton && !c.jurisdiction.commune) || places.some(p => (!c.jurisdiction.canton || p.canton === c.jurisdiction.canton) && (!c.jurisdiction.commune || p.commune === c.jurisdiction.commune))));
   }
-  function constrainSources(tree) {
+  function constrainSources(tree, only = null) {
     tree.branches.forEach(b => b.steps.forEach(st => {
-      let places = mentionedPlaces(st.title + ' ' + st.short + ' ' + (st.confirm_with || ''));
+      if(only && !only.has(st.id))return;
+      const role=st.purpose==='departure'?'origin':['arrival','school'].includes(st.purpose)?'destination':st.purpose==='renovation'?'home_location':null;
+      const fact=role && tree.variables.find(v=>v.id===role);
+      let places = fact?mentionedPlaces(fact.value):mentionedPlaces(st.title + ' ' + st.short);
+      const unknownDestination=role==='destination'&&!fact&&tree.variables.some(v=>v.id==='origin_country');
       if (!places.length) places = mentionedPlaces(tree.variables.filter(v => st.depends_on.includes(v.id)).map(v => v.value).join(' '));
-      st.sourceGaps = (st.sourceGaps || []).filter(g => catalogById(g.id));
-      st.sources = st.sources.filter(ref => { const scope = pageScope(ref.id); if (!scope || !places.length || places.some(p => (!scope.commune || p.commune === scope.commune) && (!scope.canton || p.canton === scope.canton))) return true; st.sourceGaps.push({ id: ref.id, reason: t('Référence écartée : la page concerne ', 'Reference withheld: this page covers ') + (scope.commune || scope.canton) + t(', alors que l’étape concerne ', ', while the step names ') + places.map(p => p.names[0]).join(', ') + '.' }); return false; });
+      st.sourceGaps = (st.sourceGaps || []).filter(g => !g.id || catalogById(g.id));
+      st.sources = st.sources.filter(ref => { const scope = pageScope(ref.id); if (!scope || !unknownDestination && (!places.length || places.some(p => (!scope.commune || p.commune === scope.commune) && (!scope.canton || p.canton === scope.canton)))) return true; st.sourceGaps.push({ id: ref.id, reason: t('Référence écartée : la page concerne ', 'Reference withheld: this page covers ') + (scope.commune || scope.canton) + t(', alors que l’étape concerne ', ', while the step names ') + places.map(p => p.names[0]).join(', ') + '.' }); return false; });
       st.source = st.sources.length ? st.sources[0].id : null;
+      if(st.mode==='verify'){const contact=st.source && catalogById(st.source);st.confirm_with=contact?contact.title:t('Point d’entrée officiel à confirmer','Official entry point not yet established');}
     }));
     return tree;
   }
@@ -647,7 +899,7 @@
   // ---- State ----
   const scenarioKey = vars => JSON.stringify((vars || []).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0])));
   const state = { mode: 'situation', story: '', draftStory: '', followDraft: '', editDraft: '', goalConfirmation: null, vars: [], exploreVars: null, answers: {}, qtexts: {}, questionDefs: {}, answerSets: {}, tree: null, trees: {}, pending: null, suggestedStory: '', exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreQuestionDefs: {}, exploreTurns: [], history: [], mapZoom: 'fit', activeLane: null, prevTree: null, sel: null, hover: null, loading: '', error: '', note: null, done: [], touched: false, turns: [], editing: false };
-  const scenarioRecord = (answers,qtexts,tree,defs) => JSON.parse(JSON.stringify({answers,qtexts,questions:tree.questions,questionDefs:defs}));
+  const scenarioRecord = (answers,qtexts,tree,defs) => JSON.parse(JSON.stringify({answers,qtexts,questions:tree.questions,questionDefs:defs,tree}));
   const answersFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.answers : ((state.answerSets[scenarioKey(vars)] || {}).answers || {});
   const qtextsFor = vars => scenarioKey(vars) === scenarioKey(state.vars) ? state.qtexts : ((state.answerSets[scenarioKey(vars)] || {}).qtexts || {});
   function storyWithVars(story, vars, original) {
@@ -658,7 +910,8 @@
       const quote = was.span || was.value;
       if (!quote) continue;
       const escaped = quote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const matches = story.matchAll(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'));
+      const exact=was.evidence && story.slice(was.evidence.start,was.evidence.end)===quote;
+      const matches = exact?[{index:was.evidence.start,0:quote}]:story.matchAll(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'));
       for (const match of matches) {
         const at = match.index, end = at + match[0].length;
         if (!replacements.some(p => at < p.end && end > p.at)) { replacements.push({ at, end, value: v.value }); break; }
@@ -690,10 +943,10 @@
     for (const key of ['done','turns']) if (d[key] && !Array.isArray(d[key])) throw new Error('Invalid saved list');
     if ((d.turns || []).some(u => !u || typeof u.role !== 'string' || typeof u.text !== 'string' || (u.steps && (!Array.isArray(u.steps) || u.steps.some(x => !x || !Number.isInteger(x.li) || typeof x.id !== 'string'))))) throw new Error('Invalid saved conversation');
     for (const key of ['answers','qtexts']) if (Object.values(d[key] || {}).some(v => typeof v !== 'string')) throw new Error('Invalid saved answer value');
-    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); if(entry.questions!==undefined && (!Array.isArray(entry.questions) || entry.questions.some(q=>!validQuestion(q))))throw new Error('Invalid scenario questions'); if(entry.questionDefs!==undefined && (!entry.questionDefs || typeof entry.questionDefs!=='object' || Array.isArray(entry.questionDefs) || Object.values(entry.questionDefs).some(q=>!validQuestion(q))))throw new Error('Invalid scenario question definitions'); }
+    for (const entry of Object.values(d.answerSets || {})) { if (!entry || typeof entry !== 'object' || ['answers','qtexts'].some(k => entry[k] && (typeof entry[k] !== 'object' || Array.isArray(entry[k]) || Object.values(entry[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid scenario answers'); if(entry.tree!==undefined)normalizeTree(entry.tree); if(entry.questions!==undefined && (!Array.isArray(entry.questions) || entry.questions.some(q=>!validQuestion(q))))throw new Error('Invalid scenario questions'); if(entry.questionDefs!==undefined && (!entry.questionDefs || typeof entry.questionDefs!=='object' || Array.isArray(entry.questionDefs) || Object.values(entry.questionDefs).some(q=>!validQuestion(q))))throw new Error('Invalid scenario question definitions'); }
     if (Object.values(d.questionDefs || {}).some(q => !validQuestion(q))) throw new Error('Invalid saved question definition');
     const tree = normalizeTree(d.tree);
-    const done = (d.done || []).map(String).map(key => { const id=key.split('|')[0]; return key === completionKey(tree,d.vars,d.answers || {},id,true) ? completionKey(tree,d.vars,d.answers || {},id) : key; });
+    const done = (d.done || []).map(String).map(key => { const id=key.split('|')[0]; return (key === completionKey(tree,d.vars,d.answers || {},id,true) || key === completionKey(tree,d.vars,d.answers || {},id,'v3')) ? completionKey(tree,d.vars,d.answers || {},id) : key; });
     return Object.assign({}, d, { tree, done });
   }
   function load() {
@@ -705,7 +958,7 @@
       const history = (d.history || []).slice(-5).map(savedSnapshot);
       Object.assign(state, { story:d.story, vars:d.vars, answers:d.answers || {}, qtexts:d.qtexts || {}, questionDefs:d.questionDefs || Object.fromEntries(d.tree.questions.map(q => [q.id,q])), answerSets:d.answerSets || {}, turns:d.turns || [], history, tree:d.tree, done:d.done || [], trees:{} });
       const legacyScope = hash(JSON.stringify(state.vars.map(v => [v.id,v.value])) + JSON.stringify(state.answers));
-      state.done = state.done.map(x => { x=String(x); if(x.includes('|v2|') || x.includes('|v3|'))return x;const [id,scope]=x.split('|');return !scope || scope===legacyScope ? doneKey(id) : x; });
+      state.done = state.done.map(x => { x=String(x); if(x.includes('|v2|') || x.includes('|v3|') || x.includes('|v4|'))return x;const [id,scope]=x.split('|');return !scope || scope===legacyScope ? doneKey(id) : x; });
     } catch (e) { storageWarning = t('La carte enregistrée ne peut pas être chargée. Recommencez pour effacer ces données et créer une nouvelle carte.', 'The saved map could not be loaded. Start over to clear this data and create a new map.'); }
   }
   function persist() {
@@ -728,10 +981,12 @@
   const set = (patch, save) => { Object.assign(state, patch); if (save) persist(); render(); };
 
 
+  let operation = null;
   let requestId = 0;
   const requests = new Set();
-  function cancelRequests() { requestId++; requests.forEach(c => c.abort()); requests.clear(); }
-  function beginRequest(message) { cancelRequests(); const id = requestId; set({ loading: message, error: '', pending: null, goalConfirmation: null, sel: null }); return id; }
+  function cancelNetwork() { requestId++; requests.forEach(c=>c.abort()); requests.clear(); }
+  function cancelRequests() { cancelNetwork(); operation=null; }
+  function beginRequest(message) { cancelNetwork(); const id = requestId; set({ loading: message, error: '', pending: null, goalConfirmation: null, sel: null }); return id; }
   const stillCurrent = id => id === requestId;
   function snapshot() { return JSON.parse(JSON.stringify({ story: state.story, vars: state.vars, answers: state.answers, qtexts: state.qtexts, questionDefs: state.questionDefs, answerSets: state.answerSets, tree: state.tree, done: state.done, turns: state.turns, note: state.note })); }
   function remember() { if (state.tree) state.history = state.history.concat([snapshot()]).slice(-5); }
@@ -760,8 +1015,15 @@
   const live = () => conn.status === 'ok';
   const provLabel = p => p ? 'Apertus via ' + p.provider + (p.model ? ' (' + String(p.model).split('/').pop() + ')' : '') : t('Texte préparé', 'Prepared text');
   async function chat(messages, maxTokens) {
-    const { response: r, data: j } = await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, conn.tokenRequired && conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {}), body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) });
+    const op=operation;
+    if(op && (op.calls>=4 || Date.now()>=op.deadline))throw new Error(t('Limite de cette demande atteinte. Votre texte et votre carte sont conservés.','This operation reached its request or time limit. Your text and map are preserved.'));
+    if(op)op.calls++;
+    const remaining=op?Math.max(1,op.deadline-Date.now()):65000;
+    let result;
+    try{result=await requestJSON(conn.proxyUrl.replace(/\/$/, '') + '/chat', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, conn.tokenRequired && conn.demoToken ? { 'X-Demo-Token': conn.demoToken } : {}), body: JSON.stringify({ messages, max_tokens: maxTokens || 3000, temperature: 0.2 }) }, Math.min(65000,remaining));}catch(e){if(e instanceof TypeError || e.message==='Failed to fetch'){conn.status='error';conn.error=t('Connexion au proxy interrompue. Votre travail est conservé. Vérifiez la connexion puis réessayez.','The proxy connection was interrupted. Your work is preserved. Check the connection, then retry.');renderConn();throw Object.assign(new Error(conn.error),{transport:true});}throw e;}
+    const {response:r,data:j}=result;
     if (r.status === 401) { document.getElementById('conn-panel').hidden = false; conn.status = 'error'; conn.error = t('Jeton de répétition manquant ou incorrect. Vérifiez la connexion.', 'Rehearsal token missing or incorrect. Check the connection.'); renderConn(); throw new Error(conn.error); }
+    if(op && Date.now()>op.deadline)throw new Error(t('Délai global atteint. Votre texte et votre carte sont conservés.','The operation deadline was reached. Your text and map are preserved.'));
     if (!r.ok) {
       const upstream = /^upstream (\d{3})$/.exec(String(j && j.error || ''));
       let message = 'HTTP ' + r.status;
@@ -795,18 +1057,19 @@
   }
 
   // ---- Asking Apertus for the map ----
-  const SCHEMA = '{"branches":[{"id":"snake","name":"short name","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one sentence","depends_on":["variable or question ids"],"sources":[],"authority":"confederation|canton|commune|other","confirm_with":"office or provider name, or null"}]}],"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":[]}],"note":"one sentence to the person"}';
+  const SCHEMA = '{"branches":[{"id":"snake","name":"short name","need":"registration|school|housing|renovation|energy|volunteering|insurance|business|transport|residence|other","steps":[{"id":"snake_stable","short":"3 to 5 words","title":"one action sentence","why":"why this step exists, one sentence","depends_on":["existing fact or question ids"],"prerequisites":["earlier action ids, if any"],"purpose":"departure|arrival|online_registration|school|housing|renovation|energy|permit|insurance|business|volunteering|transport|other","sources":[],"authority":"confederation|canton|commune|other","confirm_with":"office or provider name, or null"}]}],"variables":[{"id":"snake_case","label":"short label","value":"as in the sentence","span":"exact words from the sentence","alternatives":["one or two plausible other values"]}],"questions":[{"id":"q_snake","text":"question","why":"one sentence","type":"yesno|choice|text","options":[]}],"note":"one sentence to the person"}';
   function systemPrompt(selection = CATALOG) {
     return (LANG === 'en'
       ? 'You are the guide of a Swiss public service that helps a person understand what a change in their life means for their dealings with commune, canton and Confederation. Write in English.'
       : 'Tu es le guide d’un service public suisse qui aide une personne à comprendre ce qu’un changement dans sa vie implique dans ses démarches avec la commune, le canton et la Confédération. Écris en français.') +
-      '\nReturn ONE JSON object, starting with "branches", of this exact shape. All four fields belong inside the SAME object; never split them into separate objects. Branch objects contain ONLY id, name and steps. variables, questions and note belong at the ROOT after the branches array, never inside a branch:\n' + SCHEMA +
+      '\nReturn ONE JSON object, starting with "branches", of this exact shape. All four fields belong inside the SAME object; never split them into separate objects. Branch objects contain ONLY id, name, need and steps. variables, questions and note belong at the ROOT after the branches array, never inside a branch:\n' + SCHEMA +
       '\nAnswer the requested topic, even when no catalogue source covers it. Keep a focused request to one branch with one to three short preparation actions; use more branches only for distinct needs explicitly triggered by the situation. Empty sources are allowed; an empty branches array is not a useful map. Missing location or details should become questions, not prevent an initial map. If the service is ambiguous, ask what the person means and give only neutral clarification or comparison actions; do not substitute a different service. Legal insurance means legal-expenses protection, not health, vehicle or liability insurance. Private services may use authority "other" and a private provider in confirm_with. Do not invent a municipal obligation or an official source for a private purchase.' +
       '\nRules: one to five branches, one to three steps each where useful. Keep "why" under 25 words and "title" under 12 words. For a multi-area situation, separate distinct needs into branches: for example a move with a child can affect registration, school and housing. Do not bury every area in one long branch or invent tasks to reach a count. Steps are concrete preparation actions in a sensible order. When a requirement is not supported by a catalogue note, write an action to ASK the appropriate office or provider whether it applies, not an instruction claiming it is mandatory. Never invent documents, fees, deadlines, eligibility, notification duties or permit requirements, including in questions or the note. For a private insurance purchase, do not add a commune notification without a supporting catalogue note. Questions ask only for missing PERSONAL facts or preferences that change the map; do not ask the resident to supply regulations, deadlines or an office’s document list. Select a municipal page only for its own commune and a cantonal page only for its own canton. For a between-commune move, ch-move/c1 covers general departure/arrival actions; local details need the matching commune page. Never reuse Nyon’s page for Gland or a Vaud page for Geneva. "variables" are ONLY facts literally stated (quote them in "span"); never infer nationality, permit, family or income. Missing relevant personal facts go in "questions" (at most 4). Give variables 1 or 2 plausible alternatives. depends_on contains ONLY variable or question ids, never step ids or invented prerequisites. For each step, "sources" contains zero to three objects {"id":"catalog id","claim":"note id or null"}; return [] when none fits. No old single "source" field. Catalogue:\n' + catalogForPrompt(selection) +
       '\n"sources": zero to three catalog entries per step; cite a note id only when that note supports the step as written; otherwise "claim": null. claim is the short note ID (for example "c1"), not the note text. These catalogue notes are drafts, not independently approved decisions. Never invent a URL. Do not state deadlines, amounts or validity periods unless a linked page and its note cover them. Use the same branch ids AND step ids for matching paths and actions in the previous map. Copy every field of an unchanged step exactly, including why, sources and confirm_with. Do not ask again about a fact in the sentence or answered questions. Current values override any older wording in the previous map. Output compact JSON on a single line, no indentation, no text outside the JSON.';
   }
   function userPrompt(story, vars, answers, prev, change) {
     let u = 'Situation: ' + story;
+    if (!prev) u += '\nInputs are owned by the application. Use these exact input IDs in depends_on; never return step IDs as inputs. Required resident needs explicitly triggered by this situation: '+JSON.stringify(Journey.expectedNeeds(story,vars))+'. Combine registration departure, arrival and optional online channels within one registration branch. Return branch.need for every branch. These are distinct user needs, not a minimum branch count. No invisible second coverage pass will be run.\nAccepted typed facts: '+JSON.stringify(vars);
     if (vars.length) u += '\nCurrent values: ' + JSON.stringify(vars.map(v => ({ id: v.id, value: v.value })));
     if (Object.keys(answers).length) u += '\nAnswered questions: ' + JSON.stringify(answers);
     if (change && change.kind === 'addition') u += '\nADDITIONAL REQUEST: ' + change.to + '\nAdd a distinct branch for this new goal with an action whose title describes a new action for the request, rather than copying accepted actions under new ids or labels. Explain the new goal-specific purpose in why. A different title alone is not new work. Give a distinct, goal-specific explanation or other substantively different action fields; identical purposes, dependencies, sources and contacts remain the same action even under a synonym title. Preserve all existing branches, their action lists and order, personal facts and confirmed answers exactly; the new request does not replace an old answer. Keep variables exactly equal to the accepted definitions below; describe the new goal in its branch and questions, not as newly extracted personal facts. If wording such as "live insurance" is ambiguous, add a clarification question rather than guessing coverage.';
@@ -835,8 +1098,8 @@
     const questions = (Array.isArray(j.questions) ? j.questions : []).slice(0, limits ? limits.questions : 4).map(q => ({ id: snake(q.id), text: String(q.text || ''), why: String(q.why || ''), type: ['yesno', 'choice', 'text'].includes(q.type) ? q.type : 'text', options: Array.isArray(q.options) ? q.options.map(String).slice(0, 5) : [] })).filter(q => q.text);
     // Apertus assumed these; the person never said them. Ask instead of asserting.
     inferred.forEach(v => { if (!questions.some(q => q.id === v.id)) questions.push({ id: v.id, text: v.label.charAt(0).toUpperCase() + v.label.slice(1) + ' ?', why: t('Vous ne l’avez pas dit ; Apertus avait supposé « ', 'You did not say it; Apertus had assumed “') + v.value + t(' ». La carte en dépend, alors nous demandons.', '”. The map depends on it, so we ask.'), type: 'choice', options: [v.value].concat(v.alternatives).slice(0, 5), inferred: true }); });
-    const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, limits ? limits.branches : 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, limits ? limits.steps : 4).map(s => { const step = {
-      id: snake(s.id), short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
+    const branches = (Array.isArray(j.branches) ? j.branches : []).slice(0, limits ? limits.branches : 6).map(b => ({ id: snake(b.id), name: String(b.name || ''), need:b.need, steps: (Array.isArray(b.steps) ? b.steps : []).slice(0, limits ? limits.steps : 4).map(s => { const step = {
+      id: snake(s.id), purpose:s.purpose, prerequisites:Array.isArray(s.prerequisites)?s.prerequisites.map(snake):[], short: String(s.short || s.title || '').slice(0, 40), title: String(s.title || ''), why: String(s.why || ''),
       depends_on: Array.isArray(s.depends_on) ? s.depends_on.map(snake) : [],
       sources: (Array.isArray(s.sources) ? s.sources : (s.source ? [{ id: s.source, claim: null }] : [])).map(r => (typeof r === 'string' ? { id: r, claim: null } : r)).filter(r => r && catalogById(r.id) && (!allowedIds || allowedIds.has(r.id))).map(r => ({ id: r.id, claim: claimId(r.id, r.claim) })).slice(0, 3),
       authority: ['confederation', 'canton', 'commune'].includes(s.authority) ? s.authority : 'other',
@@ -885,14 +1148,84 @@
     return { text: lastValid, truncated: true };
   }
   const treeKey = (story, vars, answers) => hash('review9-generation2|' + CATALOG_VERSION + '|' + new Date().toISOString().slice(0,10) + '|' + LANG + '|' + JSON.stringify(conn.prov || {}) + '|' + story + '|' + JSON.stringify(vars.map(v => v.id + '=' + v.value)) + '|' + JSON.stringify(answers));
+  // The application owns personal inputs. Journey generation cannot omit or rewrite them.
+  function rebaseFacts(facts,text) {const extracted=Journey.extract(text,LANG).facts;return facts.map(f=>{const current=extracted.find(v=>v.id===f.id&&v.value===f.value);return current?{...f,span:current.span,evidence:current.evidence}:f;});}
+  function factAlternatives(facts) {
+    const communes=[...new Set(CATALOG.filter(c=>c.jurisdiction.commune).map(c=>c.jurisdiction.commune.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join('-')))];
+    return facts.map(f=>({...f,alternatives:f.type==='permit' ? ['B permit','C permit','L permit'].filter(v=>v!==f.value) : ['current_commune','destination_commune','workplace'].includes(f.type) ? communes.filter(v=>v.toLowerCase()!==f.value.toLowerCase()).slice(0,3) : []}));
+  }
+  async function understandFacts(text) {
+    const result=Journey.extract(text,LANG);
+    if(result.facts.length || !/\b(?:I live|I reside|I own|my child|I hold|I am coming|je vis|je suis propriétaire)|[Jj]['’]habite/i.test(text)) return factAlternatives(result.facts);
+    let failed='';
+    for(let attempt=0;attempt<2;attempt++){
+      set({loading:attempt?t('Apertus vérifie les faits manquants…','Apertus is checking missing facts…'):t('Apertus identifie les faits de votre situation…','Apertus is identifying your personal facts…')});
+      const messages=[{role:'system',content:'UNDERSTAND_V1. Extract only explicitly supplied personal facts. Return {"facts":[{"type":"current_commune|destination_commune|workplace|current_country|housing_status|children|permit|citizenship|household|transport","value":"literal value","span":"exact quote","evidence":{"start":0,"end":5},"confidence":"explicit|confirm"}]}. Offsets use JavaScript UTF-16 characters. Distinguish workplace from destination. Country of departure is never citizenship. Do not ask for full addresses, names, permit numbers or documents. No inferred facts.'},{role:'user',content:text+(attempt?'\nRepair the extraction: '+failed:'')}];
+      const response=await chat(messages,900);
+      try{const raw=JSON.parse(extractJSON(response.text).text),facts=Journey.validateFacts(raw.facts,text,LANG);if(!facts.length)throw new Error('The supplied personal facts were omitted');if(facts.some(f=>f.confidence==='confirm'))throw new Error('Please confirm the personal facts in a short explicit sentence');return factAlternatives(facts);}catch(e){failed=e.message;if(attempt)throw new Error(t('Précisez les faits utiles (commune actuelle, destination, logement ou permis). Votre texte est conservé.','Please state the useful facts explicitly (current commune, destination, housing or permit). Your text is preserved.'));}
+    }
+  }
+  function canonicalBranches(tree,story,facts) {
+    const labels={registration:['Registration','Annonces de départ et d’arrivée'],school:['School','Scolarité'],housing:['Housing','Logement'],renovation:['Renovation','Rénovation'],energy:['Energy','Énergie'],volunteering:['Volunteering','Bénévolat'],insurance:['Insurance','Assurance'],business:['Business','Activité professionnelle'],transport:['Transport','Transport'],residence:['Residence','Séjour'],other:['Your next questions','Vos prochaines questions']};
+    const grouped=[];
+    for(const branch of tree.branches){let need=branch.need;if(!labels[need])need=/depart|arriv|register|registration|annonce|inscription|eDéménagement/i.test(branch.name)?'registration':Journey.needs(branch.name)[0] || 'other';const prior=grouped.find(b=>b.need===need);if(prior)prior.steps.push(...branch.steps);else grouped.push({...branch,need,name:labels[need][LANG==='fr'?1:0]});}
+    tree.branches=grouped;
+    return tree;
+  }
+  const patchSchema='{"revision":"supplied revision","operations":[{"op":"replace_action","branch":"existing branch id","target":"existing action id","action":{"id":"same action id","short":"short label","title":"preparation question","why":"purpose","purpose":"departure|arrival|online_registration|school|housing|renovation|energy|permit|insurance|business|volunteering|transport|other","depends_on":["fact or question id"],"prerequisites":[],"sources":[{"id":"catalogue id","claim":null}],"authority":"commune|canton|confederation|other","confirm_with":null}}]}';
+  function patchContext(previous,facts,answers,change) {
+    const answerChanges=[...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]);
+    return {facts,answers,changedIds:[...new Set([...(change && change.changedIds || []),...(change && change.answerChanges || []),...answerChanges,...(change && change.id && !change.kind?[change.id]:[])])],kind:change && change.kind==='addition'?'add_goal':change && change.kind==='fact_addition'?'add_fact':change && change.kind==='completion'?'completion':change?'replace_fact':answerChanges.length?'replace_fact':'refresh',archivedQuestions:change && change.archivedQuestions};
+  }
+  async function fetchProposal(story,facts,answers,previous,change,selection) {
+    const generation=requestId,context=patchContext(previous,facts,answers,change),revision=Journey.revision(previous,currentVars(),viewedAnswers());
+    const accepted={branches:previous.branches.map(b=>({...b,steps:b.steps.map(s=>({...s,sources:referencesForModel(s.sources),source:undefined,sourceGaps:undefined}))})),questions:previous.questions};
+    const allowed=previous.branches.flatMap(b=>b.steps.filter(s=>!Journey.unaffected(s,previous,context)&&s.depends_on.some(d=>context.changedIds.includes(d))).map(s=>b.id+'/'+s.id));
+    const prompt='CHANGE_PROPOSAL_V1\nRevision: '+revision+'\nRequested change: '+JSON.stringify(change || {kind:context.kind,changedAnswers:context.changedIds})+'\nSituation: '+story+'\nFacts owned by the app: '+JSON.stringify(facts)+'\nConfirmed answers: '+JSON.stringify(answers)+'\nAccepted map: '+JSON.stringify(accepted)+'\nOnly these existing actions may be replaced or removed: '+JSON.stringify(allowed)+'\nAffected actions that still name the old value must be addressed explicitly: '+JSON.stringify(Journey.requiredTargets(previous,context))+'\nReturn small operations, not a map. An unrelated action is copied by the app; do not return it. New branches must serve a distinct resident need, not a separate website. With an added fact or goal, add related work without rewriting existing actions. Unknown or empty dependencies never establish unaffected work. Model output cannot contain personal facts, confirmed answers, completion, history, source records or reviewer metadata. No-op is allowed when no demonstrated change can be established; it is not proof that administrative consequences are absent.\nSources: '+catalogForPrompt(selection);
+    const goalExample={...JSON.parse(patchSchema).operations[0].action,id:'new_goal_action',purpose:Journey.needs(change && change.to || '').find(n=>['insurance','business','housing','school','transport'].includes(n)) || 'other',title:'Ask which options fit the additional goal',short:'Compare options',why:'Clarify personal needs and verify applicable conditions',depends_on:[],prerequisites:[],sources:[],authority:'other',confirm_with:null};
+    const stageSchema=context.kind==='add_goal'?JSON.stringify({revision:'supplied revision',operations:[{op:'add_branch',branch:{id:'new_goal',name:'Additional goal',need:goalExample.purpose,steps:[goalExample]}}]}):patchSchema;
+    const stageRule=context.kind==='add_goal'?'This is an ADDITIONAL GOAL. Return ONLY add_branch operations (plus personal add_question if necessary). The existing registration branch and other accepted branches are copied by the app. Do not use add_action in an existing branch. ':'';
+    let failed='',prior='';
+    for(let attempt=0;attempt<2;attempt++){
+      set({loading:attempt?t('La proposition nécessite une correction — une tentative…','The proposal needs a correction — one retry…'):t('Apertus propose uniquement les changements concernés…','Apertus is proposing only the affected changes…')});
+      const messages=[{role:'system',content:(LANG==='fr'?'Write in French. ':'Write in English. ')+stageRule+'Return ONLY JSON of this shape: '+stageSchema+(context.kind==='add_goal'?' Allowed operations: add_branch {op,branch:{id,name,need,steps}}; add_question {op,question:{id,text,why,type,options}}. ':' Allowed operations: replace_action and remove_action only for authorised targets; add_action {op,branch,after:existing action id or null (null appends at the end of the branch),action}; add_branch {op,branch:{id,name,need,steps}}; add_question {op,question:{id,text,why,type,options}}; remove_question {op,target} only for explicitly answered questions. For completion add a genuinely new action. ')+ 'depends_on contains actual fact/question IDs only; prerequisites contains earlier action IDs only. Use neutral preparation questions. Never assert approval, deadlines, documents, medical clearances, nationality or eligibility. Ask necessary personal questions, never ask the resident to find an office or supply a full address.'},{role:'user',content:prompt}];
+      if(attempt)messages.push({role:'assistant',content:prior.slice(0,10000)},{role:'user',content:'Repair this proposal: '+failed+'. '+stageRule+'Return one proposal for revision '+revision+'. Do not reproduce unchanged work.'});
+      const response=await chat(messages,2200);prior=response.text;
+      if(generation!==requestId)throw new Error('cancelled');
+      try{
+        const proposal=Journey.parseEnvelope(response.text);
+        const base=JSON.parse(JSON.stringify(previous));if(context.archivedQuestions)base.questions=JSON.parse(JSON.stringify(context.archivedQuestions));
+        let tree=Journey.applyProposal(base,proposal,context,revision);
+        if(context.kind==='add_goal' && !proposal.operations.some(o=>o.op==='add_branch'))throw new Error('The additional goal needs a distinct useful path');
+        if(context.kind==='completion' && !proposal.operations.some(o=>o.op==='add_branch'||o.op==='add_action'))throw new Error('No missing action was added; the map remains incomplete');
+        const addedBranches=new Set(proposal.operations.filter(o=>o.op==='add_branch').map(o=>o.branch.id));
+        const labels=Journey.localize({branches:tree.branches.filter(b=>addedBranches.has(b.id)),questions:[]},facts,LANG);
+        tree.branches.forEach(b=>{if(addedBranches.has(b.id)){const label=labels.branches.find(x=>x.id===b.id);b.name=label && label.name || t('Nouvelle piste','New path');if(context.kind==='add_goal')b.name=t('Nouvel objectif : ','Additional goal: ')+String(change.to).slice(0,100);}});
+        const newIds=new Set(proposal.operations.flatMap(o=>o.op==='add_branch'?o.branch.steps.map(s=>s.id):o.action?[o.action.id]:[]));
+        const newQuestions=new Set(proposal.operations.filter(o=>o.op==='add_question').map(o=>o.question.id));
+        let cleaned=Journey.safeMap(tree,{language:LANG,catalogue:selection,facts,answers,onlyActions:newIds,onlyQuestions:newQuestions});
+        cleaned=Journey.bindInputs(cleaned,facts,answers,newIds);
+        const preserved=new WeakSet();
+        cleaned.branches.forEach(b=>b.steps.forEach(st=>{if(!newIds.has(st.id)){preserved.add(st);return;}st.sources=(st.sources || []).filter(r=>selection.some(c=>c.id===r.id)).map(r=>({id:r.id,claim:claimId(r.id,r.claim)}));st.source=st.sources[0] && st.sources[0].id || null;}));
+        tree=constrainSources(cleaned,newIds);recordSources(tree,selection,preserved);
+        Journey.dependencies(tree,facts,answers);
+        for(const id of context.changedIds){const before=previous.variables.find(f=>f.id===id),after=facts.find(f=>f.id===id);if(!before||!after||before.value===after.value||previous.variables.filter(f=>f.value===before.value).length!==1)continue;tree.questions=tree.questions.map(q=>({...q,text:q.text.split(before.value).join(after.value)}));}
+        tree.variables=JSON.parse(JSON.stringify(facts));tree.catalogueVersion=CATALOG_VERSION;tree.sourceSelection=selection.map(c=>c.id);tree.prov=response.prov;tree.incomplete=false;tree.key=hash(revision+'|'+JSON.stringify(proposal));tree.acceptedRevision=revision;
+        return tree;
+      }catch(e){failed=e.message;if(attempt)throw Object.assign(new Error(t('La proposition n’a pas pu être vérifiée. Votre carte et vos réponses sont conservées. Précisez le changement ou réessayez.','The proposal could not be verified. Your map and answers are preserved. Clarify the change or try again.')),{detail:failed});}
+    }
+  }
+
   async function fetchTree(story, vars, answers, prev, change) {
     const effectiveStory = change && prev ? storyWithVars(story, vars, prev.variables) : story;
     const selection = selectCatalog(effectiveStory, vars, answers), allowedIds = new Set(selection.map(c => c.id));
+    if (prev) return fetchProposal(effectiveStory,vars,answers,prev,change,selection);
+    if (!vars.length) vars = factAlternatives(Journey.extract(effectiveStory,LANG).facts);
     const key = treeKey(effectiveStory, vars, answers);
     const generation = requestId;
     const fingerprint = JSON.stringify({ story:effectiveStory, values:vars.map(v=>[v.id,v.value]), answers, previous:prev ? {branches:prev.branches,variables:prev.variables,questions:prev.questions} : null, change, language:LANG, provider:conn.prov });
     const cached = state.trees[key];
-    if (cached && cached.fingerprint === fingerprint) { if (comparisonGaps(cached.tree,prev,change,answers).length === 0) return cached.tree; }
+    if (cached && cached.fingerprint === fingerprint) return cached.tree;
     const prompt = userPrompt(effectiveStory, vars, answers, prev, change);
     let retryReason = "", previousResponse = "";
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -908,41 +1241,18 @@
         const raw = res.text.replace(/```json|```/g, '').trim();
         const ex = extractJSON(raw);
         const parsed = JSON.parse(ex.text);
-        const requestedSteps = prev && change ? new WeakMap() : null;
-        const completing = change && change.kind === 'completion';
-        const limits = prev ? {branches:Math.max(6,prev.branches.length + (completing ? 3 : 1)),questions:Math.max(6,prev.questions.length + 4),steps:Math.max(4,...prev.branches.map(b=>b.steps.length)) + (completing ? 3 : 0)} : null;
-        let tree = reconcileIds(validate(parsed, effectiveStory, answers, allowedIds, requestedSteps, limits), prev, effectiveStory, requestedSteps);
-        const preserved = new WeakSet();
-        if (requestedSteps) preserveAcceptedSources(tree,prev,requestedSteps,preserved,change);
-        if (prev && ex.truncated) throw new Error(t('La réponse comparative a été coupée. Votre carte est conservée.', 'The comparison response was cut off. Your map is preserved.'));
-        const gaps = comparisonGaps(tree, prev, change, answers);
-        if (gaps.length) throw new Error(t('La proposition a perdu des étapes existantes : ', 'The alternative omitted existing steps: ') + gaps.join(', ') + t('. Réessayez ; votre carte est conservée.', '. Try again; your saved map is unchanged.'));
-        if (change && ['addition','completion'].includes(change.kind)) tree.variables = vars.map(v=>Object.assign({},v,{alternatives:v.alternatives.slice()}));
-        // Neither regenerated ids nor trivial title edits establish new work.
-        const words = text => String(text || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-        const substantive = s => JSON.stringify([words(s.why), [...new Set(s.depends_on)].sort(), referencesForModel(s.sources).map(r=>[r.id,r.claim]).sort(),s.authority,words(s.confirm_with)]);
-        const acceptedActions = prev ? prev.branches.flatMap(b=>b.steps) : [];
-        const actionAliases = new Map(Object.entries({inform:'notify',announce:'notify',declare:'notify',informer:'notify',annoncer:'notify',déclarer:'notify',verify:'check',review:'check',vérifier:'check',comparer:'compare'}));
-        const actionTerms = title => new Set(words(title).split(' ').filter(w=>!['a','an','the','your','you','to','at','of','for','with','today','le','la','les','un','une','votre','vos','au','aux','de','du','des'].includes(w)).map(w=>(actionAliases.get(w) || w)));
-        const sameAction = (a,b) => {
-          if (substantive(a)!==substantive(b)) return false;
-          const x=[...actionTerms(a.title)].sort(),y=[...actionTerms(b.title)].sort();
-          return words(a.title)===words(b.title) || JSON.stringify(x)===JSON.stringify(y);
-        };
-        const novelAction = step => !!words(step.title) && !acceptedActions.some(old=>sameAction(step,old));
-        const addedBranches = prev ? tree.branches.filter(b=>!prev.branches.some(old=>old.id===b.id)) : [];
-        if (change && change.kind === 'addition' && (!addedBranches.length || addedBranches.some(b=>!b.steps.some(novelAction)))) throw new Error(t('Apertus n’a pas ajouté de nouvelle piste pour votre demande. Votre carte et vos réponses sont conservées.', 'Apertus did not add steps in a new branch for your additional request. Your map and answers are preserved.'));
-        if (completing && !tree.branches.some(b=>b.steps.some(s=>!acceptedActions.some(old=>old.id===s.id) && novelAction(s)))) throw new Error(t('Apertus n’a pas complété la carte : aucune nouvelle étape. Votre carte reste incomplète.', 'Apertus did not extend the map with a new action. Your map remains incomplete.'));
-        const majorTransition = /\b(move|moving|arriv|relocat|retir|déménag|emménag|retrait)/i.test(effectiveStory);
-        if (!prev && attempt === 0 && !ex.truncated && tree.branches.length < 3 && majorTransition && generation === requestId) {
-          try {
-            set({ loading: t('La carte est dessinée. Apertus vérifie les démarches liées à ce changement…', 'The map is drafted. Apertus is checking the related steps…') });
-            const reviewed = await chat([{ role: 'system', content: systemPrompt(selection) }, { role: 'user', content: prompt + '\nCoverage check: the first map is narrow for a move, arrival or retirement. Review housing, money, work/social insurance and transport only where the stated situation triggers them. Add relevant omitted paths or unanswered questions. Never invent children, nationality, ownership, employment or extra tasks to meet a branch count. A focused map is allowed. Keep the existing actions and their ids. First map: ' + JSON.stringify(tree) }], 3000);
-            const reviewJSON = extractJSON(reviewed.text.replace(/```json|```/g, '').trim());
-            if (!reviewJSON.truncated) { tree = reconcileIds(validate(JSON.parse(reviewJSON.text), effectiveStory, answers, allowedIds), tree, effectiveStory); res.prov = reviewed.prov; }
-          } catch (e) { /* the first complete map remains usable */ }
-        }
-        recordSources(tree, selection, preserved);
+        parsed.variables = JSON.parse(JSON.stringify(vars));
+        const understoodQuestions=Journey.expectedQuestions(vars,LANG);
+        parsed.questions=(Array.isArray(parsed.questions)?parsed.questions:[]).filter(q=>!understoodQuestions.some(u=>u.id===q.id)).concat(understoodQuestions);
+        let tree = validate(parsed,effectiveStory,answers,allowedIds);
+        tree.variables = JSON.parse(JSON.stringify(vars));
+        tree = canonicalBranches(Journey.safeMap(Journey.normalizePrerequisites(tree),{language:LANG,catalogue:selection,facts:vars,answers}),effectiveStory,vars);
+        tree.branches.forEach(b=>b.steps.forEach(st=>{const questions=tree.questions.filter(q=>q.id==='nationality' && ['arrival','permit'].includes(st.purpose) || q.id==='residence_commune' && st.purpose==='arrival');st.depends_on=[...new Set(st.depends_on.concat(questions.map(q=>q.id)))];}));
+        tree=Journey.bindInputs(tree,vars,answers);
+        Journey.dependencies(tree,vars,answers);
+        const missingNeeds=Journey.expectedNeeds(effectiveStory,vars).filter(need=>!tree.branches.some(b=>b.need===need));
+        if(missingNeeds.length)throw new Error('Missing explicit resident needs: '+missingNeeds.join(', '));
+        recordSources(tree,selection);
         tree.catalogueVersion = CATALOG_VERSION; tree.sourceSelection = selection.map(c => c.id);
         tree.incomplete = ex.truncated;
         tree.prov = res.prov; tree.key = key;
@@ -973,92 +1283,6 @@
     const suppliedKey = key(supplied);
     return suppliedKey !== null && suppliedKey === key(referencesForModel(accepted));
   }
-  function unaffectedAction(step, previous, change) {
-    if (!change) return false;
-    if (['addition','completion'].includes(change.kind)) return true;
-    const known = new Set([...currentVars().map(v=>v.id),...(previous.questions || []).map(q=>q.id),...Object.keys(viewedAnswers())]);
-    const changed = (change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id]).concat(change.answerChanges || []);
-    return step.depends_on.length > 0 && step.depends_on.every(id=>known.has(id) && !changed.includes(id));
-  }
-  function preserveAcceptedSources(tree, previous, requestedSteps, preserved, change) {
-    previous.branches.forEach(oldBranch => {
-      const branch = tree.branches.find(b=>b.id===oldBranch.id);
-      if (!branch) return;
-      oldBranch.steps.forEach(old => {
-        if (!unaffectedAction(old,previous,change)) return;
-        const step = branch.steps.find(s=>s.id===old.id), requested = step && requestedSteps.get(step);
-        if (!step || !requested || ['short','title','why','authority','confirm_with'].some(k=>step[k]!==old[k]) || JSON.stringify(step.depends_on)!==JSON.stringify(old.depends_on)) return;
-        if (!sameRequestedSources(requested,old.sources)) return;
-        step.sources = JSON.parse(JSON.stringify(old.sources));
-        step.source = old.source;
-        step.sourceGaps = JSON.parse(JSON.stringify(old.sourceGaps || []));
-        preserved.add(step);
-      });
-    });
-  }
-  function comparisonGaps(tree, previous, change, confirmedAnswers = viewedAnswers()) {
-    if (!previous || !change) return [];
-    const gaps = [];
-    const preserveAll = ['addition','completion'].includes(change.kind);
-    const addedFact = change.kind === 'fact_addition';
-    if (preserveAll || addedFact) {
-      if (!addedFact && tree.variables.length !== currentVars().length) gaps.push('fact-set');
-      const branchIds = new Set(previous.branches.map(b=>b.id));
-      if (JSON.stringify(tree.branches.filter(b=>branchIds.has(b.id)).map(b=>b.id)) !== JSON.stringify(previous.branches.map(b=>b.id))) gaps.push('branch-order');
-      currentVars().forEach(v => {
-        const next = tree.variables.find(x => x.id === v.id);
-        if (!next || ['value','span','label'].some(k => next[k] !== v[k]) || JSON.stringify(next.alternatives.filter(a=>a!==next.value)) !== JSON.stringify(v.alternatives.filter(a=>a!==v.value))) gaps.push('fact/' + v.id);
-      });
-    }
-    {
-      const questions=change.archivedQuestions || previous.questions || [];
-      questions.forEach(q => {
-        const next = tree.questions.find(x => x.id === q.id);
-        if (!next ? preserveAll || !(q.id in confirmedAnswers) : ['text','why','type'].some(k=>next[k]!==q[k]) || JSON.stringify(next.options)!==JSON.stringify(q.options)) gaps.push('question/' + q.id);
-      });
-      const defs = change.archivedDefs || (state.mode === 'explore' ? state.exploreQuestionDefs : state.questionDefs);
-      const texts = change.archivedQtexts || (state.mode === 'explore' ? state.exploreQtexts : state.qtexts);
-      if (change.archivedTarget && change.archivedQuestions) {
-        const allowedQuestions = new Set(questions.map(q=>q.id).concat(Object.keys(confirmedAnswers)));
-        tree.questions.forEach(q=>{ if (!allowedQuestions.has(q.id)) gaps.push('question/outside-target/' + q.id); });
-        const allowedDependencies = new Set([...allowedQuestions,...tree.variables.map(v=>v.id)]);
-        tree.branches.forEach(b=>b.steps.forEach(st=>{ if (st.depends_on.some(id=>!allowedDependencies.has(id))) gaps.push(b.id + '/' + st.id + '/outside-target'); }));
-      }
-
-      Object.keys(change.archivedTarget ? confirmedAnswers : viewedAnswers()).forEach(id => {
-        if (questions.some(q=>q.id===id)) return;
-        const next = tree.questions.find(q=>q.id===id), old = defs[id];
-        if (next && (old ? ['text','why','type'].some(k=>next[k]!==old[k]) || JSON.stringify(next.options)!==JSON.stringify(old.options) : texts[id] && next.text!==texts[id])) gaps.push('answer/' + id);
-      });
-    }
-    // These permissions come from the requested input, before generation. A
-    // generated variable or dependency cannot authorize its own replacement.
-    const changedIds = change.kind === 'fact_replacement' ? change.changedIds || [] : [change.id];
-    const replacingFacts = change.kind === 'fact_replacement' || !change.kind && currentVars().some(v=>v.id===change.id);
-    if (replacingFacts) currentVars().forEach(v => {
-      const next = tree.variables.find(n=>n.id===v.id);
-      if (!changedIds.includes(v.id)) {
-        if (!next || ['value','span','label'].some(k=>next[k]!==v[k]) || JSON.stringify(next.alternatives.filter(a=>a!==next.value))!==JSON.stringify(v.alternatives.filter(a=>a!==v.value))) gaps.push('fact/' + v.id);
-      } else if (!next || next.value !== (change.kind === 'fact_replacement' ? (change.expectedValues || {})[v.id] : change.to)) gaps.push('fact/' + v.id);
-    });
-    previous.branches.forEach(b => {
-      const branch = tree.branches.find(x => x.id === b.id);
-      if ((preserveAll || addedFact || replacingFacts && b.steps.every(st=>unaffectedAction(st,previous,change))) && (!branch || branch.name !== b.name)) gaps.push(b.id);
-      if (preserveAll && branch) {
-        const ids = new Set(b.steps.map(st=>st.id));
-        if (JSON.stringify(branch.steps.filter(st=>ids.has(st.id)).map(st=>st.id)) !== JSON.stringify(b.steps.map(st=>st.id))) gaps.push(b.id + '/order');
-        if (change.kind === 'addition' && branch.steps.length !== b.steps.length) gaps.push(b.id + '/new-steps');
-      }
-      b.steps.forEach(st => {
-        const matching = branch && branch.steps.find(x => x.id === st.id);
-        const relocated = tree.branches.some(x => x.id !== b.id && x.steps.some(y => y.id === st.id));
-        const declaredUnchanged = unaffectedAction(st,previous,change);
-        if (relocated || (declaredUnchanged && !matching) || ((preserveAll || (addedFact || replacingFacts) && declaredUnchanged) && matching && !same(st,matching))) gaps.push(b.id + '/' + st.id);
-      });
-    });
-    return gaps;
-  }
-
   function reconcileIds(tree, previous, story = '', requestedSteps = null) {
     if (!previous) return tree;
     const renames = {};
@@ -1081,12 +1305,16 @@
     return JSON.stringify({ branches: tree.branches.map(b => ({ id: b.id, name: b.name, steps: b.steps.map(s => ({ id: s.id, title: s.title, why: s.why, authority: s.authority, confirm_with: s.confirm_with, claims: (s.sources || []).map(r => { const k = guidanceClaim(r); return k ? r.id + '/' + r.claim + ': ' + (LANG === 'fr' ? k.fr || k.text : k.text) : r.id + ' (page only)'; }) })) })), open_questions: (tree.questions || []).filter(q => !(q.id in answers)).map(q => ({id:q.id,text:q.text,type:q.type,options:q.options})) });
   }
   function followSystem() {
-    return (LANG === 'en' ? 'You are the guide of a Swiss public service. Write in English.' : 'Tu es le guide d’un service public suisse. Écris en français.') +
-      '\nThe person already has a map (given). They now write a follow-up. Return ONLY JSON: {"kind":"add|compare|whatif|fact|question|both","update":"none|add_fact|replace_fact|new_situation","story":"the situation sentence updated with any new fact, else the original unchanged","answer":"2 to 4 sentences, or empty string if the turn adds facts only","changes":[{"id":"existing variable or answered-question id","value":"proposed value"}],"answers":[{"id":"existing open or answered question id","value":"verbatim stated answer","quote":"verbatim clause in the follow-up stating that answer"}],"steps":["ids of map steps the answer refers to"],"not_covered":true|false,"target":{"type":"variable|question","id":"existing id","value":"alternative answer"}}' +
-      '\nFor every replacement return changes with the existing id and exact requested value; do not rely on a rewritten story alone. If a stated fact directly answers an existing open or previously answered question, return it in answers with its existing question id, a value present verbatim in the follow-up and a verbatim clause containing that value. Only bind answers explicitly stated about the person; a workplace or residence never proves nationality. Never infer or invent an answer. These are proposals, confirmed only if adopted.' +
-      '\nSet update add_fact when adding a personal fact or hypothetical fact without replacing an existing fact; replace_fact only for an explicit correction/replacement. Workplace and home/destination are different facts: “What if I work in Gland but still move to Saint-Cergue?” adds a hypothetical workplace and keeps the destination Saint-Cergue. Never target the destination merely because an alternative city is mentioned. Copy every other original fact into story. Set new_situation only when explicitly requested; otherwise this remains the same person and situation. A hypothetical can use kind compare and update add_fact. Questions without new facts use update none.' +
-      '\nIntent: a question about an existing step is kind question and must not change any story or answer. A request for an ADDITIONAL goal or service is kind add: keep the existing situation and answers; never append the new topic to an old answer. "Can I also have life insurance? How?" adds a goal; it does not change an answer about tenancy disputes. Use target or changes only for an explicit replacement of the referenced fact or answer, such as "instead of tenancy, employment disputes". If unclear, ask a short clarification question without changing the map.' +
-      '\nA request that replaces an existing path, a hypothetical, "what if", "et si", "instead", or changing an answer MUST use kind compare and give the full alternative story or changes to existing variable ids. A comparison is NOT a confirmed fact. For an answered-question alternative, use target type question, its existing id and the proposed value; do not turn it into an unrelated situation sentence. For a variable alternative use target type variable. Preserve every other stated fact in story. A correction such as "it is Nyon, not Hyon" must replace the mistaken word in story. Do not merely explain the alternative: return the changed situation so the app can preview its map. If kind fact or both, also preserve existing facts except explicit corrections. Rules for "answer": use ONLY the map and the draft catalogue notes given; never add deadlines, amounts, documents or rules that are not in a note; if the question is not covered, say so in one sentence, set not_covered true and name the office to ask (confirm_with or the authority). If the follow-up states a confirmed fact about the person (permit, job, family, housing, nationality, income, plans), "kind" MUST be "fact" or "both" and "story" MUST contain that fact in their words. In "answer" never write step ids (like geneva_permit_check); name steps by their title. A "fact" is something the person states about themselves; suggest merging it into "story" in their own words, for the person to review before applying. Never infer facts they did not state. No text outside the JSON.';
+    return (LANG==='fr'?'Écrire en français. ':'Write in English. ')+'COMMAND_V1. Interpret the original follow-up against the accepted facts and questions. Return ONLY {"type":"ask|add_fact|replace_fact|add_goal|clarify","target":"existing input id, replacements only","value":"verbatim proposed value, replacements only","question":"one focused clarification, clarify only","answers":[{"id":"existing question id","value":"literal answer","quote":"literal clause"}]}. Omit unused fields. One type only: no kind, update, story, reset or new_situation. A hypothetical proposes a replacement; it never starts a new situation. Distinguish workplace from home destination. Keep facts the person explicitly retains. Do not invent replacement values or unknown input ids. An added fact keeps other goals and answers; an added goal keeps earlier goals. If a replacement target is uncertain, clarify. Questions request personal facts/preferences only, never full addresses, permit numbers, regulations or finding an office. Do not answer administrative questions from model knowledge.';
+  }
+  async function readCommand(text,tree) {
+    const context={facts:currentVars(),questions:[...tree.questions,...Object.values(state.mode==='explore'?state.exploreQuestionDefs:state.questionDefs)],answers:viewedAnswers()};let failed='',prior='';
+    for(let attempt=0;attempt<2;attempt++){
+      const messages=[{role:'system',content:followSystem()},{role:'user',content:'Original follow-up: '+text+'\nFacts: '+JSON.stringify(context.facts)+'\nQuestions: '+JSON.stringify(context.questions)+'\nConfirmed answers: '+JSON.stringify(context.answers)+'\nAccepted situation: '+viewedStory()}];
+      if(attempt){set({loading:t('Apertus précise le changement demandé — une tentative…','Apertus is clarifying the requested change — one retry…')});messages.push({role:'assistant',content:prior.slice(0,4000)},{role:'user',content:'Repair the command: '+failed+'. Keep the original message and retained facts. Use clarify when uncertain.'});}
+      const response=await chat(messages,650);prior=response.text;
+      try{const j=Journey.parseEnvelope(prior);return Journey.validateCommand(j,text,context);}catch(e){failed=e.message;if(attempt)throw new Error(t('Précisez le fait à modifier et sa nouvelle valeur. Votre situation est conservée.','Please identify the fact to change and its new value. Your situation is preserved.')+' '+failed);}
+    }
   }
   function directAlternative(text) {
     const quote = value => '["\u201c\u201d\u2018\u2019\x27]?' + String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '["\u201c\u201d\u2018\u2019\x27]?';
@@ -1104,80 +1332,50 @@
     return !!escaped && new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(String(text));
   };
   async function converse(text) {
-    text = text.trim(); if (!text || state.loading) return;
-    state.followDraft = '';
-    if (!state.tree) { startStory(text); return; }
-    if (!live()) { set({ error: t('Apertus n’est pas connecté.', 'Apertus is not connected.') }); return; }
-    const exploring = state.mode === 'explore', turns = (exploring ? state.exploreTurns : state.turns).concat([{ role: 'you', text }]);
-    set(exploring ? { exploreTurns: turns } : { turns }, !exploring);
-    const fresh = text.match(/^(?:start (?:a )?new situation|new situation|nouvelle situation)\s*:\s*([\s\S]+)$/i);
-    if (fresh) { await stageStory(fresh[1],false,'new_situation'); return; }
-    const explicitReplacement = /\b(instead|rather than|replace|au lieu|plutôt|remplacer)\b/i.test(text);
-    const adding = !explicitReplacement && /\b(also|as well|in addition|aussi|en plus|également)\b/i.test(text) && /\b(have|buy|get|want|need|obtain|add|insurance|avoir|souscrire|veux|voudrais|souhaite|ajouter|assurance)\b/i.test(text);
-    if (adding && /\blive insurance\b/i.test(text)) {
-      set({pending:null,goalConfirmation:{request:text,suggestion:text.replace(/\blive insurance\b/ig,'life insurance')},loading:'',error:''}); return;
+    text=text.trim();if(!text||state.loading)return;
+    if(!state.tree){await startStory(text);return;}
+    if(!live()){set({error:t('Apertus n’est pas connecté.','Apertus is not connected.'),followDraft:text});return;}
+    const fresh=text.match(/^(?:start (?:a )?new situation|new situation|nouvelle situation)\s*:\s*([\s\S]+)$/i);
+    if(fresh){await stageStory(fresh[1],false,'new_situation');return;}
+    if(/\blive insurance\b/i.test(text)){set({goalConfirmation:{request:text,suggestion:text.replace(/\blive insurance\b/ig,'life insurance')},followDraft:text,error:''});return;}
+    const exploring=state.mode==='explore',tree=exploring?state.exploreTree:state.tree,base=viewedStory();
+    const turns=(exploring?state.exploreTurns:state.turns).concat([{role:'you',text}]);set(exploring?{exploreTurns:turns}:{turns});
+    const explicitReplacement=/\b(instead|rather than|replace|au lieu|plutôt|remplacer)\b/i.test(text);
+    const adding=!explicitReplacement && /\b(also|as well|in addition|aussi|en plus|également)\b/i.test(text) && /\b(have|buy|get|want|need|obtain|add|insurance|avoir|souscrire|veux|voudrais|souhaite|ajouter|assurance)\b/i.test(text);
+    if(adding){await stageStory(text,true);return;}
+    const explicitPersonal=/^(?:I (?:also )?(?:work|live|own|rent|hold)\b|What if I (?:work|live|hold)\b|Et si je (?:travaille|vis)\b|[Jj]e (?:travaille|vis)\b|[Jj]['’]habite)/i.test(text) && (!/\?\s*$/.test(text)||/^(?:what if|et si)/i.test(text));
+    if(explicitPersonal){
+      const understood=Journey.extract(text,LANG).facts,changed=understood.filter(f=>currentVars().some(v=>v.id===f.id&&v.value!==f.value)),added=understood.filter(f=>!currentVars().some(v=>v.id===f.id));
+      if(changed.length===1&&!added.length && /^(?:what if|et si)/i.test(text)){try{const command=Journey.validateCommand({type:'replace_fact',target:changed[0].id,value:changed[0].value},text,{facts:currentVars(),questions:tree.questions,answers:viewedAnswers()});await propose(command.target,command.value);return;}catch(e){set({followDraft:text,error:e.message});return;}}
+      if(!changed.length&&added.length){await stageStory(base+'\n'+text,false,'fact_addition',null,{},text);return;}
     }
-    if (adding) { await stageStory(text, true); return; }
-    const direct = directAlternative(text);
-    if (direct) { await propose(direct.id, direct.to); return; }
-    const id = beginRequest(t('Apertus lit votre message…', 'Apertus is reading your message…'));
-    try {
-      const viewTree = exploring ? state.exploreTree : state.tree, baseStory = viewedStory();
-      const res = await chat([{ role: 'system', content: followSystem() }, { role: 'user', content: 'Situation: ' + baseStory + '\nVariables: ' + JSON.stringify(currentVars()) + '\nConfirmed answers: ' + JSON.stringify(Object.keys(viewedAnswers()).map(q => ({ id: q, text: (state.mode === 'explore' ? state.exploreQtexts : state.qtexts)[q] || q, answer: viewedAnswers()[q] }))) + '\nMap: ' + mapForPrompt(viewTree) + '\nFollow-up: ' + text }], 1100);
-      if (!stillCurrent(id)) return;
-      const ex = extractJSON(res.text.replace(/```json|```/g, '').trim()), j = JSON.parse(ex.text);
-      if (j.update === 'new_situation') { set({loading:'',followDraft:text,error:t('Pour une autre situation, utilisez « Recommencer » ou écrivez « Nouvelle situation : … ». Votre carte actuelle est conservée.','For a separate situation, use Start over or write “New situation: …”. Your current map is preserved.')}); return; }
-      const retained = currentVars().filter(v => {
-        const escaped = String(v.value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-        return new RegExp('(?:still|keep|continue|toujours|garde)[^,.;!?]*?(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])','iu').test(text);
-      });
-      const proposedChanges = (Array.isArray(j.changes) ? j.changes : []).concat(j.target ? [j.target] : []);
-      if (retained.some(v => proposedChanges.some(c=>c && c.id===v.id && c.value!==v.value) || typeof j.story==='string' && !j.story.toLowerCase().includes(v.value.toLowerCase()))) {
-        set({loading:'',followDraft:text,error:t('La proposition contredit un fait que vous voulez garder. Précisez le changement ; votre carte est conservée.','The proposal conflicts with a fact you asked to keep. Please clarify the change; your map is preserved.')}); return;
+    const direct=directAlternative(text);if(direct){await propose(direct.id,direct.to);return;}
+    const id=beginRequest(t('Apertus identifie votre demande…','Apertus is identifying your request…'));
+    try{
+      const command=await readCommand(text,tree);if(!stillCurrent(id))return;
+      const answerUpdates={};
+      for(const binding of command.answers || []){
+        if(!binding || Object.prototype.hasOwnProperty.call(answerUpdates,binding.id) || !tree.questions.some(q=>q.id===binding.id) && !ownsAnswer(viewedAnswers(),binding.id) || typeof binding.quote!=='string' || !binding.quote.trim() || !text.toLowerCase().includes(binding.quote.trim().toLowerCase()) || !Journey.literal(binding.quote,binding.value))throw new Error(t('Répondez directement à cette question pour confirmer votre réponse.','Answer that question directly to confirm your answer.'));
+        answerUpdates[binding.id]=binding.value;
       }
-      if (j.kind === 'add' && !explicitReplacement) { set({ loading: '' }); await stageStory(text, true); return; }
-      if ((j.target || (Array.isArray(j.changes) ? j.changes : []).some(c => c && ownsAnswer(viewedAnswers(),c.id))) && ['compare','whatif'].includes(j.kind) && !/\b(instead|rather|replace|switch|change|what if|et si|plutôt|changer|remplacer)\b/i.test(text)) {
-        j.kind = 'question'; j.story = baseStory; j.target = null; j.changes = [];
+      set({loading:'',followDraft:''});
+      if(command.type==='clarify'){set({error:command.question,followDraft:text});return;}
+      if(command.type==='replace_fact'){
+        if(currentVars().some(f=>f.id===command.target)){await propose(command.target,command.value);return;}
+        if(ownsAnswer(viewedAnswers(),command.target)){await proposeAnswer(command.target,command.value,true);return;}
+        answerUpdates[command.target]=command.value;
+        await stageStory(base+'\n'+text,false,'fact_addition',null,answerUpdates,text);return;
       }
-      const requestedChanges=(Array.isArray(j.changes)?j.changes:[]).concat(j.target?[j.target]:[]);
-      if(requestedChanges.some(c=>c && typeof c.value==='string' && (currentVars().some(v=>v.id===c.id && v.value!==c.value) || ownsAnswer(viewedAnswers(),c.id) && viewedAnswers()[c.id]!==c.value) && !literalFact(text,c.value))) {set({loading:'',followDraft:text,error:t('La nouvelle valeur proposée n’est pas dans votre message. Votre carte est conservée.','The proposed new value was not stated in your message. Your map is preserved.')});return;}
-      if (j.target && typeof j.target.value === 'string' && ['compare','whatif'].includes(j.kind)) {
-        set({ loading: '' });
-        if (currentVars().some(v => v.id === j.target.id)) { await propose(j.target.id, j.target.value); return; }
-        if (ownsAnswer(viewedAnswers(),j.target.id)) { await proposeAnswer(j.target.id, j.target.value, true); return; }
+      if(command.type==='add_goal'){await stageStory(text,true);return;}
+      if(command.type==='add_fact'){
+        if(exploring && Object.keys(answerUpdates).length){const qid=Object.keys(answerUpdates)[0];set({exploreTurns:turns,sel:{q:qid,requireDirect:true,suggestedAnswer:answerUpdates[qid]},followDraft:text});return;}
+        await stageStory(base+'\n'+text,false,'fact_addition',null,answerUpdates,text);return;
       }
-      const answerChanges = (Array.isArray(j.changes) ? j.changes : []).filter(c => c && typeof c.value === 'string' && ownsAnswer(viewedAnswers(),c.id));
-      if (answerChanges.length === 1 && ['compare','whatif'].includes(j.kind)) { set({ loading: '' }); await proposeAnswer(answerChanges[0].id, answerChanges[0].value, true); return; }
-      let answerText = String(j.answer || '').trim(), newStory = String(j.story || baseStory).trim();
-      const answerUpdates = {};
-      for (const binding of Array.isArray(j.answers) ? j.answers : []) {
-        if (!binding || ownsAnswer(answerUpdates,binding.id) || !viewTree.questions.some(q=>q.id===binding.id) && !(ownsAnswer(viewedAnswers(),binding.id)) || typeof binding.value!=='string' || typeof binding.quote!=='string' || !binding.quote.trim() || !text.toLowerCase().includes(binding.quote.trim().toLowerCase()) || !literalFact(binding.quote,binding.value)) throw new Error(t('La réponse proposée n’est pas vérifiable dans vos mots. Répondez directement à la question ; votre carte est conservée.','The proposed answer could not be verified in your words. Answer the question directly; your map is preserved.'));
-        answerUpdates[binding.id] = binding.value.trim();
-      }
-      if (exploring && Object.keys(answerUpdates).some(id=>answerUpdates[id]!==viewedAnswers()[id])) { const qid=Object.keys(answerUpdates).find(id=>answerUpdates[id]!==viewedAnswers()[id]);set({loading:'',followDraft:text,sel:{q:qid,requireDirect:true,suggestedAnswer:answerUpdates[qid]},error:t('Confirmez la réponse directement dans cette question avant de modifier l’hypothèse.','Confirm the answer directly in this question before changing the hypothesis.')}); return; }
-      if (Object.keys(answerUpdates).length && newStory===baseStory && ['fact','both','compare','whatif'].includes(j.kind)) newStory=baseStory+'\n'+text;
-
-      const correction = text.match(/(?:^|\b)(?:is|it's|it’s|it is|c'est|c’est)\s+([\p{L}][\p{L}\-'’]*)\s*,?\s*(?:no|not|non|pas)\s+([\p{L}][\p{L}\-'’]*)/iu);
-      if (correction && newStory === baseStory) { const escaped = correction[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); newStory = baseStory.replace(new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'giu'), correction[1]); }
-      const changes = Array.isArray(j.changes) ? j.changes.filter(c => c && currentVars().some(v => v.id === c.id) && typeof c.value === 'string' && c.value.trim()) : [];
-      if (changes.length) { const vars = currentVars().map(v => { const c = changes.find(c => c.id === v.id); return c ? Object.assign({}, v, { value: c.value.trim() }) : v; }); newStory = storyWithVars(baseStory, vars, currentVars()); }
-      const looksLikeFact = /^(i |i'm |i’m |i am |i hold|i have|i live|i own|i rent|i work|we |my |je |j'|j’|nous |mon |ma |mes )/i.test(text) && !/\?\s*$/.test(text);
-      if (looksLikeFact && newStory === baseStory && !['compare', 'question'].includes(j.kind)) newStory = baseStory + ' ' + text.replace(/\.?\s*$/, '.');
-      const ids = (Array.isArray(j.steps) ? j.steps : []).map(String), found = [], selectedSteps = [];
-      const rows = derive().rows; viewTree.branches.forEach(b => b.steps.forEach(st => { if (ids.some(id => id === st.id || id === b.id + '/' + st.id)) { found.push({ li: rows.findIndex(r => r.id === b.id), id: st.id }); selectedSteps.push(st); } }));
-      const notes = [], seenNotes = new Set(); selectedSteps.forEach(st => (st.sources || []).forEach(ref => { const claim = guidanceClaim(ref), key = ref.id + '/' + ref.claim; if (claim && !seenNotes.has(key)) { seenNotes.add(key); notes.push(LANG === 'fr' ? claim.fr || claim.text : claim.text); } }));
-      const comparing = ['compare','whatif'].includes(j.kind) || newStory !== baseStory;
-      const safeText = notes.length ? t('Voici les notes non relues du catalogue liées aux étapes choisies : ', 'Here are the unreviewed catalogue notes linked to the selected steps: ') + notes.join(' ') : t('Le catalogue ne fournit pas de réponse établie à cette question. Ouvrez l’étape proposée et confirmez auprès de ', 'The catalogue does not establish an answer to this question. Open the proposed step and confirm with ') + (selectedSteps[0] && selectedSteps[0].confirm_with || t('l’autorité compétente', 'the competent authority')) + '.';
-      const guide = !comparing && (answerText || j.kind === 'question' || found.length) ? [{ role: 'guide', text: safeText, steps: found, prov: res.prov, catalogueOnly: true, notCovered: !notes.length || !!j.not_covered }] : [];
-      set(exploring ? { exploreTurns: turns.concat(guide), loading: '' } : { turns: turns.concat(guide), loading: '' }, !exploring);
-      // Any proposed changed situation gets a map, even if the model mislabels a "what if" as a question.
-      if (newStory !== baseStory) {
-        const addingFact = (j.update === 'add_fact' || ['fact','both'].includes(j.kind)) && j.update !== 'replace_fact' && !explicitReplacement && !correction && !changes.length;
-        await stageStory(addingFact ? baseStory + '\n' + text : newStory,false,addingFact ? 'fact_addition' : 'fact_replacement',changes.length ? changes : null,answerUpdates,text); return;
-      }
-      if (['compare', 'fact', 'both'].includes(j.kind) && !answerText) set({ error: t('Le changement n’a pas été compris. Touchez un mot souligné ou réécrivez la phrase pour comparer.', 'The change was not understood. Touch an underlined word or rewrite the sentence to compare.') });
-      else if (found.length) set({ sel: Object.assign({ alt: false }, found[0]) });
-    } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.message || 'error' }); }
+      const note=t('Le catalogue ne démontre pas encore la réponse à cette question. Les étapes liées et leurs pages permettent de préparer la vérification ; les notes restent non relues.','The catalogue does not yet establish the answer to this question. Related steps and their pages prepare that verification; the notes remain unreviewed.');
+      const topics=Journey.needs(text);if(/permit|permis|nationality|nationalité|residen/i.test(text))topics.push('registration','residence');
+      const related=tree.branches.map((b,li)=>({b,li})).filter(({b})=>!topics.length||topics.includes(b.need)).slice(0,4).flatMap(({b,li})=>b.steps.slice(0,2).map(st=>({li,id:st.id})));
+      const guide={role:'guide',text:note,prov:tree.prov,catalogueOnly:true,notCovered:true,steps:related};set(exploring?{exploreTurns:turns.concat(guide)}:{turns:turns.concat(guide)},!exploring);
+    }catch(e){if(stillCurrent(id))set({loading:'',followDraft:text,error:e.message});}
   }
   async function stageStory(text, addition = false, intent = 'fact_replacement', requestedChanges = null, answerUpdates = {}, requestText = null) {
     text = String(text || '').trim(); if (!text || text === viewedStory()) return;
@@ -1208,12 +1406,21 @@
     const id = beginRequest(t('Apertus dessine le chemin alternatif…', 'Apertus is drawing the alternative path…'));
     try {
       const change = addition ? {kind:'addition',id:'additional_goal',to:request} : fresh ? null : {kind:intent,id:'story_update',to:request,changedIds,expectedValues,answerChanges};
-      const tree = await fetchTree(text, addition || intent === 'fact_addition' ? currentVars() : [], answers, fresh ? null : previous, change); if (!stillCurrent(id)) return;
+      const extracted = factAlternatives(Journey.extract(text,LANG).facts);
+      let facts = fresh ? await understandFacts(text) : currentVars().map(v=>expectedValues[v.id] ? {...v,value:expectedValues[v.id],span:expectedValues[v.id]} : v);
+      if (!fresh && !addition) for (const f of extracted) { const old=facts.find(v=>v.id===f.id); if(!old)facts=facts.concat(f); else if(intent==='fact_addition' && old.value!==f.value)throw new Error(t('Ce fait a déjà une autre valeur. Sélectionnez-le pour proposer son remplacement.','That fact already has another value. Select it to propose a replacement.')); }
+      facts=rebaseFacts(facts,text);
+      const tree = await fetchTree(text, facts, answers, fresh ? null : previous, change); if (!stillCurrent(id)) return;
       if (exploring) set({ exploreStory:text,exploreVars:tree.variables,exploreTree:tree,exploreAnswers:answers,exploreQtexts:qtexts,exploreQuestionDefs:defs,loading:'',sel:null });
       else set({ activeLane:(diffBranches(state.tree.branches,tree.branches).find(r=>r.cmp.some(c=>c.kind!=='same')) || {}).id || state.activeLane,pending:{kind:'story',addition,intent,story:text,vars:tree.variables,tree,answers,qtexts,questionDefs:defs,requiredAnswers:Object.keys(answerUpdates).filter(id=>answers[id]!==viewedAnswers()[id]),confirmedAnswers:[],from:t('ma situation','my situation'),to:t('ce chemin','this path')},suggestedStory:'',loading:'',sel:null });
     } catch(e) { if(stillCurrent(id))set({loading:'',suggestedStory:addition ? request : text,suggestedAddition:addition,suggestedIntent:intent,suggestedChanges:changedIds.map(id=>({id,value:expectedValues[id]})),suggestedAnswerUpdates:answerUpdates,suggestedRequestText:originalRequest,error:e.message || 'error'}); }
   }
   async function applySuggestedStory(text) { const same=text===state.suggestedStory;await stageStory(text,!!state.suggestedAddition,state.suggestedIntent || 'fact_replacement',same?state.suggestedChanges || null:null,state.suggestedAnswerUpdates || {},same?state.suggestedRequestText || null:null); }
+  async function recoverInputs() {
+    if(!state.tree||state.loading||state.vars.length||!live())return;
+    const id=beginRequest(t('Apertus prépare les faits et une nouvelle proposition pour votre plan conservé…','Apertus is preparing the facts and an updated proposal for your saved plan…'));
+    try{const facts=await understandFacts(state.story);const tree=await fetchTree(state.story,facts,state.answers,null,null);if(!stillCurrent(id))return;set({pending:{kind:'recovery',intent:'legacy_recovery',from:t('mon plan conservé','my saved plan'),to:t('le plan avec faits modifiables','the plan with editable facts'),story:state.story,vars:facts,tree,answers:state.answers,qtexts:state.qtexts,questionDefs:Object.assign({},state.questionDefs,Object.fromEntries(tree.questions.map(q=>[q.id,q]))),recoveredFacts:facts},loading:''});}catch(e){if(stillCurrent(id))set({loading:'',error:t('Le plan conservé reste disponible. Précisez la phrase et réessayez la reconnaissance des faits.','Your saved plan remains available. Clarify the sentence and retry fact recognition.')});}
+  }
   async function startStory(text) {
     text = text.trim(); if (!text || state.loading) return;
     if (state.tree) { await stageStory(text); return; }
@@ -1221,7 +1428,10 @@
     state.draftStory = text;
     const id = beginRequest(t('Apertus prépare votre carte… Vous pouvez annuler et garder votre texte.', 'Apertus is preparing your map… You can cancel and keep your text.'));
     try {
-      const tree = await fetchTree(text, [], {}, null, null); if (!stillCurrent(id)) return;
+      const facts = await understandFacts(text);
+      if (!stillCurrent(id)) return;
+      set({loading:t('Apertus dessine les pistes à partir de vos faits…','Apertus is drawing paths from your facts…')});
+      const tree = await fetchTree(text, facts, {}, null, null); if (!stillCurrent(id)) return;
       set({ story: text, draftStory: '', tree, vars: tree.variables, loading: '', pending: null, note: { text: tree.note, prov: tree.prov }, editing: false }, true);
       if (window.innerWidth < 900) document.getElementById('tree-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) { if (stillCurrent(id)) set({ loading: '', error: e.transport ? e.message : t('Apertus n’a pas pu produire une carte exploitable : ', 'Apertus could not produce a usable map: ') + (e.message || 'error') + t('. Votre texte est conservé. Réessayez.', '. Your text is preserved. Try again.') }); }
@@ -1229,14 +1439,21 @@
   function currentVars() { return state.mode === 'explore' && state.exploreVars ? state.exploreVars : state.vars; }
   async function propose(varId, to) {
     const v = currentVars().find(x => x.id === varId); to = String(to || '').trim(); if (!v || !to || to === v.value || state.loading) return;
-    const exploring = state.mode === 'explore', original = currentVars(), vars = original.map(x => x.id === varId ? Object.assign({}, x, { value: to, span: to }) : x);
+    const exploring = state.mode === 'explore', original = currentVars();let vars = original.map(x => x.id === varId ? Object.assign({}, x, { value: to, span: to }) : x);
     const story = storyWithVars(viewedStory(), vars, original), previous = exploring ? state.exploreTree : state.tree;
+    vars=rebaseFacts(vars,story);
     const archived = !exploring && state.answerSets[scenarioKey(vars)];
     const answers = Object.assign({},archived ? archived.answers : viewedAnswers()), qtexts = Object.assign({},archived ? archived.qtexts : exploring ? state.exploreQtexts : state.qtexts);
     const historyTarget=archived && state.history.slice().reverse().find(snapshot=>scenarioKey(snapshot.vars)===scenarioKey(vars));
     const archivedQuestions=archived && (archived.questions || historyTarget && historyTarget.tree.questions), archivedDefs=archived && (archived.questionDefs || historyTarget && historyTarget.questionDefs);
     const questionChanges=archivedQuestions ? previous.questions.filter(q=>{const target=archivedQuestions.find(t=>t.id===q.id) || (archivedDefs || {})[q.id];return !target ? !ownsAnswer(answers,q.id) : ['text','type'].some(k=>q[k]!==target[k]) || JSON.stringify(q.options)!==JSON.stringify(target.options);}).map(q=>q.id) : [];
     const answerChanges = [...new Set([...Object.keys(viewedAnswers()),...Object.keys(answers)])].filter(id=>viewedAnswers()[id]!==answers[id]).concat(questionChanges);
+    const savedTree=archived && (archived.tree || historyTarget && historyTarget.tree);
+    if(savedTree && scenarioKey(savedTree.variables)===scenarioKey(vars)){
+      const tree=normalizeTree(JSON.parse(JSON.stringify(savedTree)));tree.acceptedRevision=Journey.revision(previous,currentVars(),viewedAnswers());
+      set({pending:{kind:'variable',id:varId,from:v.value,to,story,vars,tree,answers,qtexts,questionDefs:archivedDefs || {}},loading:'',error:''});return;
+    }
+
     const id = beginRequest(t('Apertus dessine la branche « ', 'Apertus is drawing the “') + to + t(' » en pointillé…', '” branch…'));
     try {
       const tree = await fetchTree(story, vars, answers, previous, { id:varId,from:v.value,to,archivedTarget:!!archived,archivedQuestions,archivedDefs,archivedQtexts:archived && archived.qtexts,answerChanges }); if (!stillCurrent(id)) return;
@@ -1252,7 +1469,7 @@
     set({pending:Object.assign({},p,{confirmedAnswers:confirmed})});
   }
   function adopt() {
-    const p = state.pending; if (!p || state.loading || !pendingAnswersConfirmed(p)) return; remember();
+    const p = state.pending; if (!p || state.loading || !pendingAnswersConfirmed(p)) return; if(p.tree.acceptedRevision && p.tree.acceptedRevision!==Journey.revision(state.tree,state.vars,state.answers)){set({pending:null,error:t('Cette proposition concerne une ancienne version. Votre carte est conservée ; proposez à nouveau le changement.','This proposal belongs to an older map revision. Your map is preserved; propose the change again.')});return;} remember();
     const next = p.answers ? { answers: p.answers, qtexts: p.qtexts || {} } : (state.answerSets[scenarioKey(p.vars)] || { answers: {}, qtexts: {} });
     const answerSets = Object.assign({}, state.answerSets, { [scenarioKey(state.vars)]: scenarioRecord(state.answers,state.qtexts,state.tree,state.questionDefs) });
     const story = p.story || storyWithVars(state.story, p.vars, state.vars), vars = p.kind === 'answer' ? p.vars : p.vars.map(v => v.id === p.id ? Object.assign({}, v, { span: p.to }) : v);
@@ -1260,14 +1477,10 @@
     set({ story, prevTree: state.tree, tree: p.tree, vars, answers: next.answers, qtexts: next.qtexts, answerSets: resetContext ? {} : answerSets, questionDefs: resetContext ? {} : p.questionDefs || state.questionDefs, done: resetContext ? [] : state.done, pending: null, sel: null, editing: false, note: { text: p.tree.note, prov: p.tree.prov } }, true);
   }
   async function refreshSources() {
-    if (!state.tree || state.loading || !live()) return;
-    const exploring = state.mode === 'explore', previous = exploring ? state.exploreTree : state.tree;
-    const id = beginRequest(t('Apertus compare les sources actuelles…','Apertus is comparing current sources…'));
-    try {
-      const tree = await fetchTree(viewedStory(),currentVars(),viewedAnswers(),previous,null); if (!stillCurrent(id)) return;
-      if (exploring) set({exploreTree:tree,loading:'',sel:null});
-      else set({pending:{kind:'refresh',story:state.story,vars:state.vars,answers:state.answers,qtexts:state.qtexts,tree,from:t('ma carte','my map'),to:t('la carte actualisée','the refreshed map')},loading:'',sel:null});
-    } catch(e) { if(stillCurrent(id))set({loading:'',error:e.message}); }
+    if(!state.tree || state.loading)return;
+    const exploring=state.mode==='explore',previous=exploring?state.exploreTree:state.tree;
+    const tree=constrainSources(JSON.parse(JSON.stringify(previous)));recordSources(tree,CATALOG);tree.catalogueVersion=CATALOG_VERSION;tree.acceptedRevision=Journey.revision(previous,currentVars(),viewedAnswers());tree.key=hash(tree.acceptedRevision+'|sources|'+CATALOG_VERSION);
+    if(exploring)set({exploreTree:tree,sel:null});else set({pending:{kind:'refresh',story:state.story,vars:state.vars,answers:state.answers,qtexts:state.qtexts,questionDefs:state.questionDefs,tree,from:t('mes sources conservées','my recorded sources'),to:t('le catalogue actuel','the current catalogue')},sel:null});
   }
   function keep() { set({ pending: null, sel: null }); }
   async function completeMap() {
@@ -1313,7 +1526,7 @@
   }
 
   // ---- Diff by id ----
-  const same = (a, b) => a.short === b.short && JSON.stringify(a.depends_on || []) === JSON.stringify(b.depends_on || []) && a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && sourcesIdentity(a.sources) === sourcesIdentity(b.sources) && JSON.stringify(a.sourceGaps || []) === JSON.stringify(b.sourceGaps || []);
+  const same = (a, b) => a.short === b.short && JSON.stringify(a.prerequisites || [])===JSON.stringify(b.prerequisites || []) && JSON.stringify(a.depends_on || []) === JSON.stringify(b.depends_on || []) && a.title === b.title && a.why === b.why && a.authority === b.authority && a.confirm_with === b.confirm_with && sourcesIdentity(a.sources) === sourcesIdentity(b.sources) && JSON.stringify(a.sourceGaps || []) === JSON.stringify(b.sourceGaps || []);
   function diffBranches(A, B) {
     const ids = A.map(b => b.id); B.forEach((b, i) => { if (!ids.includes(b.id)) ids.splice(Math.min(i, ids.length), 0, b.id); });
     return ids.map(id => {
@@ -1336,13 +1549,14 @@
   }
   function completionKey(tree, vars, answers, id, legacy = false) {
     const step = tree && tree.branches.flatMap(b => b.steps).find(s => s.id === id);
-    const known = new Set([...(vars || []).map(v => v.id), ...Object.keys(answers || {})]);
+    const known = new Set([...(vars || []).map(v => v.id), ...Object.keys(answers || {}),...(!legacy?(tree.questions || []).map(q=>q.id):[])]);
     const dependencies = step && step.depends_on && step.depends_on.length && step.depends_on.every(id => known.has(id)) ? step.depends_on : null;
     const facts = (vars || []).filter(v => !dependencies || dependencies.includes(v.id)).map(v => [v.id, v.value]).sort((a,b) => a[0].localeCompare(b[0]));
     const responses = Object.keys(answers || {}).filter(k => !dependencies || dependencies.includes(k)).sort().map(k => [k, answers[k]]);
     const meaning = step ? [step.title,step.why,step.authority,step.confirm_with,(step.sources || []).map(({id,claim}) => ({id,claim})),step.sourceGaps || []] : [];
+    if(!legacy && step && (step.prerequisites || []).length)meaning.push({prerequisites:step.prerequisites});
     const context = JSON.stringify([facts,responses,meaning]);
-    return id + (legacy ? '|v2|' + hash(context) : '|v3|' + context);
+    return id + (legacy===true ? '|v2|' + hash(context) : legacy==='v3'?'|v3|'+context:'|v4|'+context);
   }
   function doneKey(id, vars = currentVars(), answers = vars === state.exploreVars ? state.exploreAnswers : answersFor(vars)) { return completionKey(state.mode === 'explore' ? state.exploreTree : state.tree, vars, answers, id); }
   const isDone = id => state.done.includes(doneKey(id));
@@ -1368,10 +1582,11 @@
     const storyText = viewedStory();
     vars.forEach(v => {
       const cls = (d.previewOn && s.pending.id === v.id) ? 'pending' : (d.exploreOn && s.vars.find(o => o.id === v.id && o.value !== v.value)) ? 'hyp' : (!d.exploreOn && s.prevTree && s.trees && vars !== s.vars) ? '' : '';
-      const label = (d.previewOn && s.pending.id === v.id && !s.pending.answerChange) ? esc(v.span || v.value) + ' → ' + esc(s.pending.to) + ' ?' : esc(v.span || v.value);
-      const btn = '<button type="button" class="word ' + cls + '" data-var="' + esc(v.id) + '" title="' + esc(v.label) + '">' + label + '</button>';
+      const labelText=(v.span || v.value)+((d.previewOn && s.pending.id===v.id && !s.pending.answerChange)?' → '+s.pending.to+' ?':'');
+      const btn = '<button type="button" class="word ' + cls + '" data-var="' + esc(v.id) + '" title="' + esc(v.label) + '" aria-label="' + esc(v.label+': '+labelText) + '">' + esc(labelText) + '</button>';
       const span = v.span || v.value;
-      const idx = span ? storyText.toLowerCase().indexOf(span.toLowerCase()) : -1;
+      const exact=v.evidence && storyText.slice(v.evidence.start,v.evidence.end)===span;
+      const idx = exact?v.evidence.start:span?storyText.toLowerCase().indexOf(span.toLowerCase()):-1;
       if (idx >= 0 && !occupied.some(p => idx < p[1] && idx + span.length > p[0])) { occupied.push([idx, idx + span.length]); placements.push({ start: idx, end: idx + span.length, html: btn }); placedVars.add(v); }
     });
     placements.sort((a, b) => a.start - b.start);
@@ -1383,6 +1598,8 @@
     if (loose.length) html += '<div class="chips">' + loose.map(v => '<button type="button" class="word chip" data-var="' + esc(v.id) + '">' + esc(v.label) + ' : ' + esc(v.value) + '</button>').join('') + '</div>';
     const qa = Object.keys(d.answers || {}).map(q => { const qq = d.tree && d.tree.questions.find(x => x.id === q); return '<button type="button" data-answered="' + esc(q) + '"><b>' + esc(qq ? qq.text : (d.qtexts[q] || q)) + '</b> ' + esc(d.answers[q]) + '</button>'; });
     if (qa.length) html += '<p class="answered">' + qa.join(' · ') + '</p>';
+    if(!vars.length && Journey.extract(storyText,LANG).facts.length && !d.exploreOn)html+='<div class="banner"><p>'+t('Ce plan conservé ne contient aucun fait modifiable. Vous pouvez examiner une proposition actualisée sans effacer ce plan.','This saved plan has no editable facts. You can review an updated proposal while keeping this plan.')+'</p><button type="button" class="btn" data-action="recover-inputs"'+(live()&&!s.loading?'':' disabled')+'>'+t('Reconnaître les faits du plan','Review this plan’s facts')+'</button></div>';
+    if(s.pending && s.pending.recoveredFacts)html+='<div class="banner"><b>'+t('Faits à vérifier avant adoption','Review these facts before adoption')+'</b>'+s.pending.recoveredFacts.map(f=>'<p>'+esc(f.label)+': '+esc(f.value)+'</p>').join('')+'</div>';
     html += '<div class="hint">' + (d.exploreOn ? t('Ici, changer un mot souligné redessine sans enregistrer.', 'Here, changing an underlined word redraws without saving.') : t('Les mots soulignés sont ce qu’Apertus a compris comme vos réponses. Touchez-en un pour proposer une autre valeur.', 'The underlined words are what Apertus understood as your answers. Touch one to propose another value.')) + '</div>';
     if (d.previewOn) {
       const c = count(d);
@@ -1391,7 +1608,7 @@
       const questionPreview=omittedQuestions.length ? '<div class="small">' + t('Questions hors du chemin proposé : ','Questions outside the proposed path: ') + omittedQuestions.map(q=>esc(q.text)).join(' · ') + '</div>' : '';
       const revisedAnswers = Object.keys(s.pending.answers || {}).filter(id=>s.pending.answers[id]!==s.answers[id]);
       const answerPreview = (revisedAnswers.length ? '<div class="small proposed-answers">' + t('Réponses proposées : ', 'Proposed answers: ') + revisedAnswers.map(id=>'<p>' + esc((s.pending.qtexts || {})[id] || id) + '<br><b>' + esc(s.pending.answers[id]) + '</b>' + ((s.pending.requiredAnswers || []).includes(id) ? '<br><button type="button" class="btn" data-action="confirm-answer" data-question="' + esc(id) + '" aria-pressed="' + (s.pending.confirmedAnswers || []).includes(id) + '">' + ((s.pending.confirmedAnswers || []).includes(id) ? t('Annuler la confirmation','Undo confirmation') : t('Confirmer la réponse','Confirm answer')) + '</button>' : '') + '</p>').join('') + (!pendingAnswersConfirmed(s.pending) ? '<p>' + t('Confirmez la réponse à chaque question avant d’adopter ce chemin.','Confirm the answer to each question before adopting this path.') + '</p>' : '') + '</div>' : '') + (parked ? '<div class="small">' + parked + t(' réponse(s) actuelle(s) ne font pas partie de ce chemin proposé.', ' current answer(s) are not part of this proposed path.') + '</div>' : '');
-      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + questionPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' ne bougent pas.', ' do not move.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
+      html += '<div class="banner"><div class="eyebrow">' + t('Proposition, rien n’est appliqué', 'Proposal, nothing is applied') + '</div>' + (s.pending.intent === 'new_situation' ? '<p>' + t('Nouvelle situation : vos réponses et étapes terminées seront effacées si vous l’adoptez. Annuler le changement les restaurera.', 'New situation: adopting clears your previous answers and completion marks. Undo change will restore them.') + '</p>' : '') + (s.pending.kind === 'story' ? '<div>' + esc(s.pending.story) + '</div>' : '') + answerPreview + questionPreview + '<div class="small">' + t('Avec « ', 'With “') + esc(s.pending.to) + t(' » : ', '”: ') + c.changed + t(' étapes changeraient, ', ' steps would change, ') + c.added + t(' apparaîtraient, ', ' would appear, ') + c.removed + t(' disparaîtraient ; ', ' would disappear; ') + c.same + t(' sont communes.', ' are shared.') + '</div><div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ma situation', 'Keep my situation') + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Utiliser cette proposition', 'Use this proposal') + '</button></div></div>';
     }
     if (d.exploreOn) html += '<div class="banner" style="background:var(--accent-mist)"><div class="eyebrow">' + t('Hypothèse', 'Hypothesis') + '</div><div class="small">' + t('Votre carte enregistrée n’est pas touchée.', 'Your saved map is untouched.') + '</div><div class="row"><button type="button" class="btn primary" data-action="mode-situation">' + t('Revenir à ma situation', 'Back to my situation') + '</button></div></div>';
     const note = d.previewOn ? { text: s.pending.tree.note, prov: s.pending.tree.prov } : d.exploreOn && d.tree ? { text: d.tree.note, prov: d.tree.prov } : s.note && s.note.text ? s.note : null;
@@ -1472,7 +1689,7 @@
         for (let i = Math.max(0, first); i < m; i++) { const k = row.cmp[i].kind; if (k === 'removed') continue; route.push({ x: pts[i].x, y: k === 'same' ? pts[i].y : pts[i].y + 48 }); }
         out += '<path class="grow" d="' + pathThrough(start, route, null) + '" fill="none" stroke="' + ACCENT + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 6"/>';
       }
-      const tag = d.previewOn ? (row.added ? t('nouvelle piste', 'new path') : row.removed ? t('disparaîtrait', 'would disappear') : affected ? t('changerait', 'would change') : t('ne bouge pas', 'does not move')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
+      const tag = d.previewOn ? (row.added ? t('nouvelle piste', 'new path') : row.removed ? t('disparaîtrait', 'would disappear') : affected ? t('changerait', 'would change') : t('étapes communes', 'shared steps')) : (s.prevTree && !d.exploreOn ? (applied ? t('recalculée', 'recalculated') : t('inchangée', 'unchanged')) : '');
       const nameX = X0 + (m - 1) * XSTEP + 70, lastY = pts[m - 1].y + (mainPts.length ? 0 : 48);
       const nameLines = mapLabelLines(row.name, 24, 3, 16);
       const nameY = lastY + 5 - (nameLines.length - 1) * 9;
@@ -1493,14 +1710,14 @@
           out += '<circle cx="' + p.x + '" cy="' + p.y + '" r="10" fill="' + (changed ? ACCENT : done ? '#2E6A4B' : '#FFFFFF') + '" stroke="' + (changed ? '#FFFFFF' : done ? '#2E6A4B' : ring) + '" stroke-width="' + (changed ? 3 : 2.5) + '"/>';
           if (done && !changed) out += '<path d="M ' + (p.x - 4.5) + ' ' + p.y + ' l 3 3 l 6 -6.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
           const stepLines = mapLabelLines(st.short, 18, 2);
-          out += mapText(st.short, p.x, p.y - 17 - (stepLines.length - 1) * 14, 'text-anchor="middle" font-size="14" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : ''), 18, 2, 14);
+          out += mapText(st.short, p.x, p.y - 17 - (stepLines.length - 1) * 14, 'aria-hidden="true" text-anchor="middle" font-size="14" font-weight="' + (hl ? 600 : 500) + '" fill="' + (d.exploreOn ? '#3A4A63' : '#1B1A17') + '"' + (removed ? ' text-decoration="line-through"' : ''), 18, 2, 14);
 
           if (sub) out += '<text x="' + p.x + '" y="' + (p.y + 26) + '" text-anchor="middle" font-size="12" fill="' + (done && k === 'same' ? '#2E6A4B' : ACCENT) + '">' + esc(sub) + '</text>';
           out += '</g>';
         }
         if (k === 'changed' || k === 'added') {
           const ay = p.y + 48, alt = c.b, selA = s.sel && s.sel.li === li && s.sel.id === c.id && s.sel.alt;
-          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : '') + ' — ' + alt.title) + '"><circle cx="' + p.x + '" cy="' + ay + '" r="23" fill="transparent"/>' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>' + mapText(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : ''), p.x, ay + 26, 'text-anchor="middle" font-size="14" font-weight="600" fill="' + ACCENT + '"', 18, 2, 14) + '</g>';
+          out += '<g data-sel="' + li + '|' + esc(c.id) + '|1" tabindex="0" role="button" aria-label="' + esc(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : '') + ' — ' + alt.title) + '"><circle cx="' + p.x + '" cy="' + ay + '" r="23" fill="transparent"/>' + (selA ? '<circle cx="' + p.x + '" cy="' + ay + '" r="19" fill="none" stroke="' + ACCENT + '" stroke-width="1.5" stroke-dasharray="3 3"/>' : '') + '<circle cx="' + p.x + '" cy="' + ay + '" r="10" fill="#FFFFFF" stroke="' + ACCENT + '" stroke-width="2.5" stroke-dasharray="4 3"/>' + mapText(alt.short + (k === 'added' ? t(' (nouvelle)', ' (new)') : ''), p.x, ay + 26, 'aria-hidden="true" text-anchor="middle" font-size="14" font-weight="600" fill="' + ACCENT + '"', 18, 2, 14) + '</g>';
         }
       });
       out += '</g>';
@@ -1519,13 +1736,14 @@
   // ---- Detail ----
   function mapToolbar(d, mobile) {
     const c = count(d), p = state.pending;
-    let html = '<div class="map-tools"><div><div class="map-title">' + (d.exploreOn ? t('Explorer un autre chemin', 'Explore another path') : d.previewOn ? t('Votre chemin, et l’alternative', 'Your path, and the alternative') : t('Votre carte de parcours', 'Your journey map')) + '</div><div class="map-meta">' + d.rows.length + t(' pistes · étapes proposées par Apertus', ' paths · steps proposed by Apertus') + '</div></div><div class="map-actions">' + (!mobile ? '<button data-action="zoom-out" aria-label="' + t('Réduire', 'Zoom out') + '">−</button><button data-action="fit" aria-pressed="' + (state.mapZoom === 'fit') + '">' + t('Vue entière', 'Fit map') + '</button><button data-action="zoom-in" aria-label="' + t('Agrandir', 'Zoom in') + '">+</button>' : '') + '<button data-action="plan">' + t('Mon plan', 'My plan') + '</button>' + (state.history.length && !d.exploreOn ? '<button data-action="undo">' + t('Annuler le changement', 'Undo change') + '</button>' : '') + '</div></div>';
+    let html = '<div class="map-tools"><div><h1 class="map-title">' + (d.exploreOn ? t('Explorer un autre chemin', 'Explore another path') : d.previewOn ? t('Votre chemin, et l’alternative', 'Your path, and the alternative') : t('Votre carte de parcours', 'Your journey map')) + '</h1><div class="map-meta">' + d.rows.length + t(' pistes · étapes proposées par Apertus', ' paths · steps proposed by Apertus') + '</div></div><div class="map-actions">' + (!mobile ? '<button data-action="zoom-out" aria-label="' + t('Réduire', 'Zoom out') + '">−</button><button data-action="fit" aria-pressed="' + (state.mapZoom === 'fit') + '">' + t('Vue entière', 'Fit map') + '</button><button data-action="zoom-in" aria-label="' + t('Agrandir', 'Zoom in') + '">+</button>' : '') + '<button data-action="plan">' + t('Mon plan', 'My plan') + '</button>' + (state.history.length && !d.exploreOn ? '<button data-action="undo">' + t('Annuler le changement', 'Undo change') + '</button>' : '') + '</div></div>';
     const sourceRecords = d.tree.branches.flatMap(b=>b.steps.flatMap(st=>(st.sources || []).map(referenceOf)));
     const missingRecords = sourceRecords.some(ref=>!ref.archived);
     if (missingRecords || d.tree.catalogueVersion !== CATALOG_VERSION || sourceRecords.some(ref=>ref.changed)) html += '<div class="catalogue-update"><p>' + (d.tree.catalogueVersion && !missingRecords ? t('Le catalogue a changé. Les notes conservées correspondent à la carte d’origine.', 'The catalogue has changed. Recorded notes belong to the original map.') : t('La version d’origine des sources n’a pas été enregistrée.', 'The original source version was not recorded.')) + '</p><button type="button" class="btn" data-action="refresh-sources"' + (live() && !state.loading ? '' : ' disabled') + '>' + t('Comparer avec les sources actuelles','Compare current sources') + '</button></div>';
     if (d.previewOn) {
+      const evidenceGap = !c.changed && !c.added && !c.removed ? '<p class="small">'+t('Aucun changement d’étape n’est démontré par cette proposition. Le catalogue ne permet pas de conclure à l’absence de conséquences ; les questions de vérification restent ouvertes.','This proposal demonstrates no step change. The catalogue cannot establish that there are no consequences; verification questions remain open.')+'</p>' : '';
       const summary = p.answerChange && !c.changed && !c.added && !c.removed ? t('Seule votre réponse change ; les étapes restent identiques. Rien n’est appliqué.', 'Only your answer changes; the mapped steps stay the same. Nothing is applied.') : c.changed + t(' modifiées · ', ' modified · ') + c.added + t(' ajoutées · ', ' added · ') + c.removed + t(' retirées · ', ' removed · ') + c.same + t(' identiques. Rien n’est appliqué.', ' identical. Nothing is applied.');
-      html += '<div class="map-comparison"><span>' + summary + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter', 'Adopt') + '</button></div>';
+      html += '<div class="map-comparison"><span>' + summary + evidenceGap + '</span><button data-action="keep">' + t('Garder', 'Keep') + '</button><button data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter', 'Adopt') + '</button></div>';
     }
     if (mobile) html += '<div class="lane-tabs" role="group" aria-label="' + t('Pistes', 'Paths') + '">' + d.rows.map(r => '<button data-lane-select="' + esc(r.id) + '" aria-pressed="' + (r.id === (state.activeLane && d.rows.some(x => x.id === state.activeLane) ? state.activeLane : d.rows[0].id)) + '">' + esc(r.name) + '</button>').join('') + '</div>';
     return html;
@@ -1538,7 +1756,7 @@
     row.cmp.forEach((c,i) => { const point = { x, y: y0+i*gap }, alternate = { x: ax, y: point.y };
       if (c.a) { out += line(prior,point,false); prior=point; }
       if (comparing && c.b) { const target = c.kind === 'same' ? point : alternate; out += line(altPrior,target,true); altPrior=target; }
-      const node = (st,p,alt,removed) => { const selected = state.sel && state.sel.li === li && state.sel.id === c.id && state.sel.alt === alt; const done = !alt && isDone(st.id), changed = !alt && c.kind.startsWith('applied-'); return '<g role="button" tabindex="0" data-sel="'+li+'|'+esc(c.id)+'|'+(alt?1:0)+'" aria-label="'+esc(st.short+' — '+st.title)+'"'+(removed?' opacity=".5"':'')+'><rect x="'+(comparing?p.x-78:p.x-23)+'" y="'+(p.y-(comparing?58:28))+'" width="'+(comparing?156:292)+'" height="'+(comparing?86:74)+'" rx="10" fill="transparent"/><circle cx="'+p.x+'" cy="'+p.y+'" r="23" fill="transparent"/>'+(!selected && !alt && c.id === nextId && !d.exploreOn ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="16" fill="none" stroke="'+ACCENT+'" stroke-width="1.5"/>' : '')+(selected?'<circle cx="'+p.x+'" cy="'+p.y+'" r="20" fill="none" stroke="'+ACCENT+'" stroke-dasharray="3 3"/>':'')+'<circle cx="'+p.x+'" cy="'+p.y+'" r="10" fill="'+(changed?ACCENT:done?'#2E6A4B':'white')+'" stroke="'+(changed?'white':alt?ACCENT:(LV()[st.authority]||LV().other).bg)+'" stroke-width="2.5"'+(alt?' stroke-dasharray="4 3"':'')+'/>'+mapText(st.short,comparing?p.x:p.x+26,comparing?p.y-43:p.y-5,'font-size="13" fill="'+(alt?ACCENT:'#1B1A17')+'"'+(comparing?' text-anchor="middle"':''),comparing?18:30,3,16)+'</g>'; };
+      const node = (st,p,alt,removed) => { const selected = state.sel && state.sel.li === li && state.sel.id === c.id && state.sel.alt === alt; const done = !alt && isDone(st.id), changed = !alt && c.kind.startsWith('applied-'); return '<g role="button" tabindex="0" data-sel="'+li+'|'+esc(c.id)+'|'+(alt?1:0)+'" aria-label="'+esc(st.short+' — '+st.title)+'"'+(removed?' opacity=".5"':'')+'><rect x="'+(comparing?p.x-78:p.x-23)+'" y="'+(p.y-(comparing?58:28))+'" width="'+(comparing?156:292)+'" height="'+(comparing?86:74)+'" rx="10" fill="transparent"/><circle cx="'+p.x+'" cy="'+p.y+'" r="23" fill="transparent"/>'+(!selected && !alt && c.id === nextId && !d.exploreOn ? '<circle cx="'+p.x+'" cy="'+p.y+'" r="16" fill="none" stroke="'+ACCENT+'" stroke-width="1.5"/>' : '')+(selected?'<circle cx="'+p.x+'" cy="'+p.y+'" r="20" fill="none" stroke="'+ACCENT+'" stroke-dasharray="3 3"/>':'')+'<circle cx="'+p.x+'" cy="'+p.y+'" r="10" fill="'+(changed?ACCENT:done?'#2E6A4B':'white')+'" stroke="'+(changed?'white':alt?ACCENT:(LV()[st.authority]||LV().other).bg)+'" stroke-width="2.5"'+(alt?' stroke-dasharray="4 3"':'')+'/>'+mapText(st.short,comparing?p.x:p.x+26,comparing?p.y-43:p.y-5,'aria-hidden="true" font-size="13" fill="'+(alt?ACCENT:'#1B1A17')+'"'+(comparing?' text-anchor="middle"':''),comparing?18:30,3,16)+'</g>'; };
       if(c.a)out+=node(c.a,point,false,c.kind==='removed'); if(d.previewOn&&c.b&&c.kind!=='same')out+=node(c.b,alternate,true,false);
     });
     return '<svg class="journey-map mobile-map" font-family="Arial,sans-serif" viewBox="0 0 360 '+height+'" aria-label="'+esc(row.name)+'">'+out+'</svg>';
@@ -1574,7 +1792,7 @@
   }
   function printPlan(d) {
     if (!d.tree) return;
-    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2><p class="print-meta">Catalogue ' + esc(tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p><div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const {cat,claim,archived,changed} = referenceOf(r); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a><br>' + esc(cat.pack + ' v' + cat.packVersion) + ' · ' + (claim ? esc(claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '<br>' + (archived ? t('Source conservée avec la carte.', 'Source recorded with the map.') : t('Catalogue actuel ; version d’origine non enregistrée.', 'Current catalogue; original source version not recorded.')) + (changed ? ' ' + t('Catalogue actualisé depuis : vérifiez à nouveau.', 'Catalogue updated since: check again.') : '') + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
+    const treeHTML = (tree, answers, qtexts, hypothetical) => '<h2>' + (hypothetical ? t('Chemin hypothétique — non adopté', 'Hypothetical path — not adopted') : t('Démarches à vérifier', 'Steps to verify')) + '</h2><p class="print-meta">Catalogue ' + esc(tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p>' + (Object.keys(answers).length ? '<p>' + Object.keys(answers).map(k => esc(qtexts[k] || k) + ': ' + esc(answers[k])).join('<br>') + '</p>' : '') + tree.branches.map(b => '<h3>' + esc(b.name) + '</h3>' + b.steps.map(st => '<section class="print-step"><b>' + esc(st.title) + '</b><p>' + esc(st.why) + '</p>'+((st.sourceGaps || []).length?'<p class="print-question">'+esc(st.sourceGaps.map(g=>[g.question,g.reason].filter(Boolean).join(' ')).join(' '))+'</p>':'')+'<div>' + t('À confirmer auprès de : ', 'Confirm with: ') + esc(st.confirm_with || (LV()[st.authority] || LV().other).name) + '</div>' + ((st.sources || []).length ? st.sources.map(r => { const {cat,claim,archived,changed} = referenceOf(r); return cat ? '<p class="print-meta">' + esc(cat.title) + '<br><a href="' + esc(cat.url) + '">' + esc(cat.url) + '</a><br>' + esc(cat.pack + ' v' + cat.packVersion) + ' · ' + (claim ? esc(claim.status) + ' · ' + t('Source vérifiée : ', 'Source checked: ') + esc(claim.sourceCheckedOn || t('non renseigné', 'not recorded')) : '') + '<br>' + (archived ? t('Source conservée avec la carte.', 'Source recorded with the map.') : t('Catalogue actuel ; version d’origine non enregistrée.', 'Current catalogue; original source version not recorded.')) + (changed ? ' ' + t('Catalogue actualisé depuis : vérifiez à nouveau.', 'Catalogue updated since: check again.') : '') + (claim ? '<br>' + esc(LANG === 'fr' ? claim.fr || claim.text : claim.text) : '') + '<br>' + t('Source proposée par le modèle ; correspondance non relue.', 'Model-suggested source; match unreviewed.') + '</p>' : ''; }).join('') : '<p class="print-meta">' + esc((st.sourceGaps || []).map(g => g.reason).join(' ')) + ' ' + t('Aucune page précise reliée. À vérifier directement.', 'No exact page linked. Check directly.') + '</p>') + '</section>').join('')).join('') + '<h3>' + t('Questions encore ouvertes', 'Open questions') + '</h3>' + (tree.questions || []).filter(q => !(q.id in answers)).map(q => '<p class="print-question">' + esc(q.text) + '</p>').join('');
     const visual = (document.getElementById('tree-host').innerHTML.match(/<svg class="journey-map[\s\S]*?<\/svg>/) || [''])[0];
     const date = new Date().toLocaleString(LANG === 'fr' ? 'fr-CH' : 'en-GB');
     document.getElementById('print-plan').innerHTML = '<h1>' + t('Mon parcours · document de préparation', 'My journey · preparation document') + '</h1><p>' + esc(viewedStory()) + '</p><p class="print-meta">' + esc(date) + ' · ' + esc(provLabel(d.tree.prov)) + ' · ' + t('Version de la carte : ', 'Map version: ') + esc(d.tree.key || hash(JSON.stringify(d.tree.branches))) + ' · Catalogue ' + esc(d.tree.catalogueVersion || t('non enregistrée','not recorded')) + '</p><p><b>' + t('Étapes proposées par un modèle, non relues par une commune. Ce document prépare vos questions pour le service ou le professionnel compétent ; il ne confirme aucune décision.', 'Model-proposed steps, unreviewed by a commune. This document prepares your questions for the competent office or professional; it confirms no decision.') + '</b></p>' + (visual ? '<p class="print-meta">' + t('Vue de la carte affichée ; toutes les étapes sont détaillées ci-dessous.', 'View of the displayed map; all steps are detailed below.') + '</p>' + visual : '') + treeHTML(d.tree, d.answers || {}, d.qtexts || {}, d.exploreOn) + (d.previewOn ? '<div class="print-alternative"><p>' + esc(state.pending.story) + '</p>' + treeHTML(state.pending.tree, state.pending.answers || {}, state.pending.qtexts || {}, true) + '</div>' : '') + '<h2>' + t('À compléter avec votre interlocuteur', 'Complete with your adviser') + '</h2><p>' + t('Questions, corrections, documents à apporter :', 'Questions, corrections, documents to bring:') + '</p><br><br><br>';
@@ -1590,7 +1808,7 @@
     }
     if (s.sel && s.sel.q) {
       const q = d.tree.questions.find(x => x.id === s.sel.q) || ((d.qtexts || {})[s.sel.q] ? { id: s.sel.q, text: d.qtexts[s.sel.q], why: t('Vous pouvez corriger cette réponse ; la carte sera recalculée.', 'You can correct this answer; the map will be recalculated.'), type: 'text', options: [] } : null);
-      if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div></div>';
+      if (q) { html = '<div class="eyebrow">' + t('Question en attente', 'Open question') + '</div><h2>' + esc(q.text) + '</h2><div class="zone model"><div class="zone-title">' + t('Pourquoi cette question', 'Why this question') + '</div><div class="who live"><i></i>' + esc(provLabel(d.tree.prov)) + '</div><div>' + esc(q.why) + '</div><p>'+t('Pistes concernées : ','Affected paths: ')+esc(d.tree.branches.filter(b=>b.steps.some(st=>st.depends_on.includes(q.id))).map(b=>b.name).join(' · ') || t('À préciser avec la prochaine proposition.','To be refined in the next proposal.'))+'</p></div>';
         if (q.type === 'yesno' && !s.sel.requireDirect) html += '<div class="row"><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('oui', 'yes') + '">' + t('Oui', 'Yes') + '</button><button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + t('non', 'no') + '">' + t('Non', 'No') + '</button></div>';
         else if (q.type === 'choice' && q.options.some(o => o.trim()) && !s.sel.requireDirect) html += '<div class="row">' + q.options.filter(o => o.trim()).map(o => '<button type="button" class="btn" data-answer="' + esc(q.id) + '" data-value="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
         else html += '<form data-answer-form="' + esc(q.id) + '" style="display:flex;flex-direction:column;gap:8px"><input name="answer" value="' + esc(s.sel.suggestedAnswer || '') + '" aria-label="' + esc(q.text) + '" type="text" autocomplete="off" placeholder="' + t('Votre réponse', 'Your answer') + '"><button type="submit" class="btn primary">' + t('Répondre : la carte se met à jour', 'Answer: the map updates') + '</button></form>';
@@ -1621,9 +1839,10 @@
     const prov = viewingAlt && s.pending ? s.pending.tree.prov : d.tree.prov;
     const pill = viewingAlt ? '<span class="pill">' + (k === 'added' ? t('Apparaîtrait', 'Would appear') : t('Proposée', 'Proposed')) + '</span>' : k === 'applied-changed' ? '<span class="pill solid">' + t('Modifiée', 'Modified') + '</span>' : k === 'applied-added' ? '<span class="pill solid">' + t('Ajoutée', 'Added') + '</span>' : k === 'changed' ? '<span class="pill">' + t('Changerait', 'Would change') + '</span>' : k === 'removed' ? '<span class="pill">' + t('Disparaîtrait', 'Would disappear') + '</span>' : '';
     html = '<div class="head"><div class="eyebrow">' + esc(row.name) + '</div>' + pill + '</div><h2>' + esc(st.title) + '</h2>' + sourceBlock(st);
-    html += '<div class="zone model"><div class="zone-title">' + t('Ce qu’Apertus explique', 'What Apertus explains') + '</div><div class="who live"><i></i>' + esc(provLabel(prov)) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.map(id => { const v = currentVars().find(v => v.id === id); return v ? v.label || v.value : (state.qtexts[id] || ((d.tree.questions || []).find(q => q.id === id) || {}).text || id); }).join(' · ')) + '</div>' : '') + '</div>';
+    html += '<div class="zone model"><div class="zone-title">' + t('Pourquoi vérifier cette étape', 'Why verify this step') + '</div><div class="who live"><i></i>' + esc(provLabel(prov)) + '</div><div>' + esc(st.why) + '</div>' + (st.depends_on.length ? '<div class="deps">' + t('Dépend de : ', 'Depends on: ') + esc(st.depends_on.map(id => { const v = currentVars().find(v => v.id === id); return v ? v.label || v.value : (state.qtexts[id] || ((d.tree.questions || []).find(q => q.id === id) || {}).text || id); }).join(' · ')) + '</div>' : '') + '</div>';
     if (!viewingAlt && !d.previewOn && !d.exploreOn && k !== 'removed') { const dn = isDone(st.id); html += '<div class="row"><button type="button" class="btn ' + (dn ? 'done' : '') + '" data-done="' + esc(st.id) + '">' + (dn ? t('Faite — la remettre à faire', 'Done — mark as not done') : t('Je l’ai faite', 'I have done this')) + '</button></div>'; }
     if (other) {
+      html += '<p class="comparison-reason">'+t('Cette proposition répond au changement suivant : ','This proposal addresses this change: ')+esc(s.pending ? s.pending.from+' → '+s.pending.to : '')+'. '+t('Les démarches applicables restent à vérifier sur les sources.','Applicable procedures still need verification against the sources.')+'</p>';
       html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + (viewingAlt ? t('Version enregistrée', 'Saved version') : t('Version proposée', 'Proposed version')) + '</div><div style="font-weight:600;font-size:15px">' + esc(other.title) + '</div><div class="small">' + esc(other.why) + '</div>' + sourceBlock(other) + '</div>';
     } else if (viewingAlt) html += '<div class="zone alt"><div class="zone-title" style="color:var(--accent)">' + t('Aujourd’hui : cette étape n’existe pas', 'Today: this step does not exist') + '</div></div>';
     if (d.previewOn) html += '<div class="row"><button type="button" class="btn ink" data-action="keep">' + t('Garder ', 'Keep ') + esc(s.pending.from) + '</button><button type="button" class="btn primary" data-action="adopt"' + (pendingAnswersConfirmed(state.pending) ? '' : ' disabled') + '>' + t('Adopter ', 'Adopt ') + esc(s.pending.to) + t(' à ma situation', ' to my situation') + '</button></div>';
@@ -1660,13 +1879,27 @@
     if (focusId && ['ask','edit','suggest'].includes(focusId) && !state.loading) { const next = document.getElementById(focusId); if (next && typeof next.focus === 'function') { next.focus(); if (caret && typeof next.setSelectionRange === 'function') next.setSelectionRange(caret[0],caret[1]); } }
     document.getElementById('announcer').textContent = state.loading || state.error || (conn.status === 'error' ? conn.error : '') || (d.previewOn ? t('Le chemin alternatif est prêt. Rien n’est appliqué.', 'The alternative path is ready. Nothing is applied.') : '');
   }
-  async function setLang(l) {
-    if (state.loading || state.pending || LANG === l) return; const old = LANG, exploring = state.mode === 'explore'; LANG = l;
-    try { localStorage.setItem(LANG_KEY, l); } catch (e) {} renderConn(); render();
-    if (!state.tree || !live()) return;
-    const id = beginRequest(t('Apertus traduit la carte…', 'Apertus is translating the map…'));
-    try { const tree = await fetchTree(viewedStory(), currentVars(), viewedAnswers(), exploring ? state.exploreTree : state.tree, null); if (!stillCurrent(id)) return; set(exploring ? { exploreTree: tree, loading: '' } : { tree, prevTree: null, pending: null, sel: null, loading: '', note: { text: tree.note, prov: tree.prov } }, !exploring); }
-    catch (e) { if (stillCurrent(id)) { LANG = old; try { localStorage.setItem(LANG_KEY, old); } catch (_) {} renderConn(); set({ loading: '', error: e.message }); } }
+  async function setLang(language) {
+    if(state.loading||state.pending||LANG===language)return;
+    const old=LANG,exploring=state.mode==='explore',previous=exploring?state.exploreTree:state.tree;LANG=language;
+    const completed=previous && !exploring?previous.branches.flatMap(b=>b.steps).filter(s=>isDone(s.id)).map(s=>s.id):[];
+    try{localStorage.setItem(LANG_KEY,LANG);}catch(_){}renderConn();render();if(!previous)return;
+    const id=beginRequest(t('Apertus traduit les questions personnelles…','Apertus is translating the personal questions…'));
+    try{
+      const tree=Journey.localize(previous,currentVars(),LANG);let translated=null,failed='';
+      if(tree.questions.length){
+        for(let attempt=0;attempt<2;attempt++){
+          const response=await chat([{role:'system',content:'QUESTION_LABELS_V1. Translate the supplied personal question text and options into '+(LANG==='fr'?'French':'English')+'. Return ONLY {"questions":[{"id":"unchanged id","text":"translated question","options":["translated options in same order"]}]}. Do not change meaning, ask for identifying details, add requirements or add/remove questions.'},{role:'user',content:JSON.stringify(previous.questions)+(attempt?'\nRepair: '+failed:'')}],900);
+          try{const raw=JSON.parse(extractJSON(response.text).text);if(!Array.isArray(raw.questions)||raw.questions.length!==previous.questions.length)throw new Error('Retain the question inventory');translated=raw.questions;for(let i=0;i<translated.length;i++){const q=translated[i],old=previous.questions[i];if(q.id!==old.id || typeof q.text!=='string'||!Array.isArray(q.options)||q.options.length!==old.options.length||q.options.some(o=>typeof o!=='string')||/full.*address|permit number|medical|mandatory|adresse complète|numéro.*permis|obligatoire/i.test(q.text))throw new Error('Only the existing question labels may be translated');}break;}catch(e){failed=e.message;if(attempt)throw e;}
+        }
+      }
+      if(!stillCurrent(id))return;
+      if(translated)tree.questions=tree.questions.map((q,i)=>({...q,text:translated[i].text,options:translated[i].options,why:t('Cette réponse personnelle précise les pistes concernées.','This personal answer refines the affected paths.')}));
+      tree.key=hash(previous.key+'|'+LANG);delete tree.acceptedRevision;
+      const defs=Object.assign({},exploring?state.exploreQuestionDefs:state.questionDefs,Object.fromEntries(tree.questions.map(q=>[q.id,q]))),vars=currentVars().map(f=>({...f,label:Journey.roles[f.type]?Journey.roles[f.type][LANG==='fr'?2:1]:f.label}));
+      if(exploring)set({exploreTree:tree,exploreVars:vars,exploreQuestionDefs:defs,loading:'',sel:null});
+      else{const done=state.done.slice();completed.forEach(id=>done.push(completionKey(tree,vars,state.answers,id)));set({tree,vars,done:[...new Set(done)],questionDefs:defs,prevTree:null,loading:'',sel:null,note:{text:tree.note,prov:tree.prov}},true);}
+    }catch(e){if(stillCurrent(id)){LANG=old;try{localStorage.setItem(LANG_KEY,old);}catch(_){}renderConn();set({loading:'',error:t('La traduction n’a pas pu être vérifiée. Votre carte est conservée.','The translation could not be verified. Your map is preserved.')});}}
   }
   function leaveExplore() { cancelRequests(); set({ mode: 'situation', loading: '', error: '', sel: null, exploreVars: null, exploreTree: null, exploreStory: null, exploreAnswers: {}, exploreQtexts: {}, exploreTurns: [] }); }
 
@@ -1679,7 +1912,7 @@
     const pa = e.target.closest('[data-propose-answer]'); if (pa) { proposeAnswer(pa.dataset.proposeAnswer, pa.dataset.value); return; }
     const w = e.target.closest('[data-var]'); if (w) { set({ sel: { v: w.dataset.var } }); narrow(); return; }
     const pr = e.target.closest('[data-propose]'); if (pr) { propose(pr.dataset.propose, pr.dataset.value); return; }
-    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'confirm-answer') { confirmProposedAnswer(a.dataset.question); return; } if (x === 'confirm-goal') { const goal=state.goalConfirmation; if(goal)stageStory(goal.suggestion,true); return; } if (x === 'edit-goal') { const goal=state.goalConfirmation; set({goalConfirmation:null,followDraft:goal ? goal.request : ''}); return; } if (x === 'complete-map') { completeMap(); return; } if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'refresh-sources') { refreshSources(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
+    const a = e.target.closest('[data-action]'); if (a) { const x = a.dataset.action; if (x === 'recover-inputs') { recoverInputs();return; } if (x === 'confirm-answer') { confirmProposedAnswer(a.dataset.question); return; } if (x === 'confirm-goal') { const goal=state.goalConfirmation; if(goal)stageStory(goal.suggestion,true); return; } if (x === 'edit-goal') { const goal=state.goalConfirmation; set({goalConfirmation:null,followDraft:goal ? goal.request : ''}); return; } if (x === 'complete-map') { completeMap(); return; } if (x === 'toggle-remember') { toggleRemember(); return; } if (x === 'refresh-sources') { refreshSources(); return; } if (x === 'cancel-request') { cancelRequests(); set({ loading: '', error: '' }); return; } if (x === 'close-detail') { set({ sel: null }); return; } if (x === 'plan') { set({ sel: { plan: true } }); return; } if (x === 'undo') { undo(); return; } if (x === 'fit') { set({ mapZoom: 'fit' }); return; } if (x === 'zoom-in' || x === 'zoom-out') { set({ mapZoom: Math.max(.6, Math.min(1.8, (typeof state.mapZoom === 'number' ? state.mapZoom : 1) + (x === 'zoom-in' ? .2 : -.2))) }); return; } if (x === 'print-plan') { printPlan(derive()); return; } if (x === 'edit-story') { set({ editing: !state.editing, editDraft: viewedStory() }); return; } if (x === 'dismiss-suggestion') { set({ suggestedStory: '' }); return; } if (x === 'copy-plan') { const d = derive(); if (d.tree && navigator.clipboard) navigator.clipboard.writeText(planText(d)).then(() => { a.textContent = t('Copié', 'Copied'); setTimeout(render, 1500); }).catch(() => {}); return; } if (x === 'keep') keep(); else if (x === 'adopt') adopt(); else if (x === 'mode-situation') leaveExplore(); return; }
     const lane = e.target.closest('[data-lane-select]'); if (lane) { set({ activeLane: lane.dataset.laneSelect, sel: null }); return; }
     const y = e.target.closest('[data-answer]'); if (y) { answer(y.dataset.answer, y.dataset.value); return; }
     const dn = e.target.closest('[data-done]'); if (dn) { const id = dn.dataset.done, key = doneKey(id); state.done = isDone(id) ? state.done.filter(x => x !== key) : state.done.concat([key]); set({}, true); return; }
@@ -1708,6 +1941,11 @@
   document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
   document.getElementById('conn-btn').addEventListener('click', () => { const p = document.getElementById('conn-panel'); p.hidden = !p.hidden; renderConn(); });
 
+  const bounded = fn => async function(...args) {
+    const parent=operation, op=parent || {calls:0,deadline:Date.now()+90000};if(!parent)operation=op;
+    try{return await fn(...args);}finally{if(!parent && operation===op)operation=null;}
+  };
+  recoverInputs=bounded(recoverInputs);startStory=bounded(startStory);converse=bounded(converse);stageStory=bounded(stageStory);propose=bounded(propose);proposeAnswer=bounded(proposeAnswer);answer=bounded(answer);completeMap=bounded(completeMap);refreshSources=bounded(refreshSources);fetchTree=bounded(fetchTree);setLang=bounded(setLang);
   load(); renderConn(); render();
   if (PUBLIC_PROXY_URL) connect();
   else if (conn.proxyUrl) connect();

@@ -1,0 +1,22 @@
+{
+  "baseline": "42c625569003a9dc73c57613888b95fc595c32d8",
+  "command": "npm run test:all -- --workers=4",
+  "result": "passed",
+  "nodeTests": 94,
+  "storageRenderingRegressions": 30,
+  "browserTests": 96,
+  "browserConfigurations": [
+    "Chromium desktop",
+    "Chromium mobile",
+    "Firefox desktop",
+    "WebKit mobile"
+  ],
+  "modelProviderCalls": 0,
+  "additionalChecks": [
+    "generated contracts",
+    "generated catalogue",
+    "reviewed-note changes against baseline",
+    "git diff --check"
+  ],
+  "distinction": "Deterministic fixture results; not a live Apertus acceptance pass."
+}

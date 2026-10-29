@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "VD-saint-cergue",
-  "version": 1,
+  "version": 2,
   "entries": [
     {
       "id": "stcergue-arrival",
       "level": "commune",
       "url": "https://www.st-cergue.ch/prestations-communales/113320",
       "title": "Commune de Saint-Cergue — Arrivée à St-Cergue",
-      "covers": "Saint-Cergue: registering on arrival, documents, deadline",
+      "covers": "Saint-Cergue official arrival entry point; individual conditions remain to verify",
       "claims": [
         {
           "id": "c1",
@@ -18,8 +18,10 @@
           "status": "draft",
           "reviewer": null,
           "reviewedOn": null,
-          "sourceCheckedOn": null,
-          "recheckOn": null
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "A prospective resident arriving in Saint-Cergue; individual conditions still need confirmation.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#stcergue-arrival"
         }
       ],
       "jurisdiction": {

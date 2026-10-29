@@ -1,4 +1,6 @@
-# Manual rehearsal set — full run pending
+# Fictional journey evaluation
+
+29 October: see the [current validation record](docs/CORE-EXPERIENCE-VALIDATION-2026-10-29.md). All ten cases were exercised through Public AI/Apertus across the initial run and three targeted reruns (17 requests). Real browser attempts used the remaining 23 requests. The combined 40-request allowance is exhausted; the additional insurance goal did not complete, and live Explore/Print remain unexecuted. Corpus acceptance includes editable facts, dependency resolution and comparison outcomes; it does not establish source correctness or human approval. Historical observations below describe their dated builds.
 
 6 October baseline on the currently published page: the Nyon → Saint-Cergue example produced a two-branch map (moving and school), and its Saint-Cergue arrival step opened the source panel. Proposing Gland as a custom alternative failed with “unreadable answer (brackets)”; the saved map remained visible. The accompanying update adds a bounded retry and partial-map recovery for malformed JSON. Those changes pass the local smoke test but need a fresh live retest after publishing. This is one partial run, not a pass for the ten cases below.
 

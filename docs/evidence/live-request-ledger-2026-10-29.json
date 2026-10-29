@@ -1,0 +1,165 @@
+{
+  "maxCalls": 40,
+  "calls": [
+    {
+      "at": "2026-10-29T00:56:04.722Z",
+      "stage": "case-1"
+    },
+    {
+      "at": "2026-10-29T00:56:18.365Z",
+      "stage": "case-1"
+    },
+    {
+      "at": "2026-10-29T00:56:21.549Z",
+      "stage": "case-2"
+    },
+    {
+      "at": "2026-10-29T00:56:36.278Z",
+      "stage": "case-2"
+    },
+    {
+      "at": "2026-10-29T00:56:51.070Z",
+      "stage": "case-3"
+    },
+    {
+      "at": "2026-10-29T00:57:07.547Z",
+      "stage": "case-3"
+    },
+    {
+      "at": "2026-10-29T00:57:24.481Z",
+      "stage": "case-4"
+    },
+    {
+      "at": "2026-10-29T00:57:32.812Z",
+      "stage": "case-5"
+    },
+    {
+      "at": "2026-10-29T00:57:42.005Z",
+      "stage": "case-6"
+    },
+    {
+      "at": "2026-10-29T00:57:49.629Z",
+      "stage": "case-7"
+    },
+    {
+      "at": "2026-10-29T00:57:55.931Z",
+      "stage": "case-8"
+    },
+    {
+      "at": "2026-10-29T00:58:08.363Z",
+      "stage": "case-9"
+    },
+    {
+      "at": "2026-10-29T00:58:15.721Z",
+      "stage": "case-9"
+    },
+    {
+      "at": "2026-10-29T00:58:22.923Z",
+      "stage": "case-10"
+    },
+    {
+      "at": "2026-10-29T01:06:47.982Z",
+      "stage": "case-2"
+    },
+    {
+      "at": "2026-10-29T01:07:03.042Z",
+      "stage": "case-3"
+    },
+    {
+      "at": "2026-10-29T01:07:03.683Z",
+      "stage": "case-9"
+    },
+    {
+      "at": "2026-10-29T01:22:24.144Z",
+      "stage": "browser-1-2-editable-personal-facts"
+    },
+    {
+      "at": "2026-10-29T01:22:40.699Z",
+      "stage": "browser-confirm-nationality-and-complete-departure"
+    },
+    {
+      "at": "2026-10-29T01:22:44.299Z",
+      "stage": "browser-3-4-proposed-Gland-and-inspected-consequences"
+    },
+    {
+      "at": "2026-10-29T01:22:47.380Z",
+      "stage": "browser-3-4-proposed-Gland-and-inspected-consequences"
+    },
+    {
+      "at": "2026-10-29T01:32:03.473Z",
+      "stage": "browser-1-2-editable-personal-facts"
+    },
+    {
+      "at": "2026-10-29T01:32:05.153Z",
+      "stage": "browser-confirm-nationality-and-complete-departure"
+    },
+    {
+      "at": "2026-10-29T01:32:11.243Z",
+      "stage": "browser-3-4-proposed-Gland-and-inspected-consequences"
+    },
+    {
+      "at": "2026-10-29T01:32:15.147Z",
+      "stage": "browser-5-Keep-repeat-Adopt-Undo"
+    },
+    {
+      "at": "2026-10-29T01:32:15.638Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:32:16.417Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:34:23.936Z",
+      "stage": "browser-1-2-editable-personal-facts"
+    },
+    {
+      "at": "2026-10-29T01:34:24.982Z",
+      "stage": "browser-confirm-nationality-and-complete-departure"
+    },
+    {
+      "at": "2026-10-29T01:34:26.024Z",
+      "stage": "browser-3-4-proposed-Gland-and-inspected-consequences"
+    },
+    {
+      "at": "2026-10-29T01:34:27.175Z",
+      "stage": "browser-5-Keep-repeat-Adopt-Undo"
+    },
+    {
+      "at": "2026-10-29T01:34:27.576Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:34:27.833Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:34:30.640Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:38:59.240Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:38:59.853Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:39:02.679Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:50:01.001Z",
+      "stage": "browser-6-added-workplace-preserves-accepted-work"
+    },
+    {
+      "at": "2026-10-29T01:50:04.525Z",
+      "stage": "browser-7-workplace-Gland-retains-home-destination"
+    },
+    {
+      "at": "2026-10-29T01:50:08.850Z",
+      "stage": "browser-8-ambiguous-insurance-goal-is-confirmed-and-keeps-previous-goals"
+    }
+  ]
+}

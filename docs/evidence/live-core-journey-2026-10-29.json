@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "mode": "live-provider-browser",
+  "startedAt": "2026-10-29T01:20:21.279Z",
+  "proxy": "https://gory-coffin-x77jgr967wcvx49-8788.app.github.dev",
+  "clientOrigin": "http://localhost:8000",
+  "provider": null,
+  "model": null,
+  "buildSha256": "de92b571f7300487a492e39465bb84268414ec31ed606557890781d30f75b678",
+  "contractSha256": "36ff536b3b9739988b781908d1066914b46c368dbc84608e52cff03b161bad5e",
+  "configuration": "Proposed local build; proxy discovery uses the explicitly supplied running endpoint. Model responses are neither mocked nor rewritten.",
+  "maxCombinedCalls": 40,
+  "steps": [
+    {
+      "name": "connection",
+      "status": "failed",
+      "milliseconds": 15289,
+      "error": "page.waitForFunction: Timeout 15000ms exceeded."
+    }
+  ],
+  "requests": [
+    {
+      "step": "connection",
+      "at": "2026-10-29T01:20:22.243Z",
+      "method": "GET",
+      "url": "https://gory-coffin-x77jgr967wcvx49-8788.app.github.dev/health",
+      "failure": {
+        "errorText": "net::ERR_FAILED"
+      }
+    }
+  ],
+  "complete": false,
+  "humanReview": "pending",
+  "error": "page.waitForFunction: Timeout 15000ms exceeded.",
+  "finishedAt": "2026-10-29T01:20:37.157Z",
+  "combinedCalls": 17
+}

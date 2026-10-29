@@ -6,7 +6,7 @@ test('Evaluation saves fictional raw evidence and never asserts human approval',
     for await(const _ of req){}
     res.setHeader('Content-Type','application/json');
     if(req.url==='/health')return res.end(JSON.stringify({ready:true,provider:'test',model:'fixture'}));
-    calls++;res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(map())}}],provenance:{provider:'test',model:'fixture'}}));
+    calls++;res.end(JSON.stringify({choices:[{message:{content:JSON.stringify({variables:[],questions:[],branches:[{id:'volunteering',name:'Volunteering',need:'volunteering',steps:[{id:'join',short:'Ask how to join',title:'Ask the fire service how to join',why:'Find suitable options',depends_on:['origin'],sources:[],authority:'other',confirm_with:null}]}]})}}],provenance:{provider:'test',model:'fixture'}}));
   });
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const dir=await fs.mkdtemp(path.join(os.tmpdir(),'commune-eval-'));
   t.after(async()=>{server.closeAllConnections();await new Promise(r=>server.close(r));await fs.rm(dir,{recursive:true,force:true});});

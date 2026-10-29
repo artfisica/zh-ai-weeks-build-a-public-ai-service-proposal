@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "VD-nyon",
-  "version": 1,
+  "version": 2,
   "entries": [
     {
       "id": "nyon-cdh",
@@ -18,8 +18,10 @@
           "status": "draft",
           "reviewer": null,
           "reviewedOn": null,
-          "sourceCheckedOn": null,
-          "recheckOn": null
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "Current or prospective Nyon residents. This verifies an entry point, not an individual administrative decision.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#nyon-cdh"
         }
       ],
       "jurisdiction": {

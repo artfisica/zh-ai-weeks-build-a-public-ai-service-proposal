@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "VD-gland",
+  "version": 1,
+  "entries": [
+    {
+      "id": "gland-cdh",
+      "level": "commune",
+      "url": "https://www.gland.ch/ma-ville/administration-communale/service-de-la-population/controle-des-habitants/habitants",
+      "title": "Ville de Gland — Contrôle des habitants",
+      "covers": "Gland residents registry: official entry point for arrival and departure",
+      "claims": [
+        {
+          "id": "c1",
+          "text": "Gland directs arriving and departing residents to its residents registry.",
+          "fr": "Gland oriente les personnes qui arrivent ou partent vers son Contrôle des habitants.",
+          "kind": "practice",
+          "status": "draft",
+          "reviewer": null,
+          "reviewedOn": null,
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "Arriving in or departing from Gland. Documents for certificates elsewhere on the page are not arrival requirements.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#gland-cdh"
+        }
+      ],
+      "jurisdiction": {
+        "canton": "VD",
+        "commune": "gland"
+      },
+      "exact": true
+    }
+  ]
+}
