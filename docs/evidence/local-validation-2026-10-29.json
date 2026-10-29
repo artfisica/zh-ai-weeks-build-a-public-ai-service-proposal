@@ -62,7 +62,7 @@
     ],
     "liveRetest": "pending public forwarding availability; previous full core pass is a different recorded build"
   },
-  "runLog": "local-validation-2026-10-29.log",
+  "runLog": "local-validation-2026-10-29.txt",
   "precedingBrowserRun": {
     "passed": 127,
     "failed": 5,

@@ -1,0 +1,348 @@
+
+> test:all
+> npm test && npm run test:browser --workers=4
+
+
+> test
+> node tools/check.js
+
+inline script syntax passed
+Journey contract generated output passed
+✓ Unknown URLs and claims are discarded; draft provenance stays visible
+✓ A quoted Spain span cannot justify an invented Swiss nationality or a stray letter C
+✓ Diff keeps exact shared steps and draws changed, added and removed steps
+✓ Exact unchanged titles and references repair changed IDs without semantic guesses
+✓ Duplicate IDs cannot select or mark two unrelated steps
+✓ Desktop labels wrap within the map; questions no longer expand its width
+✓ Mobile becomes a vertical tree with one selectable path, not a scaled desktop canvas
+✓ Nyon-only links are withheld on a Gland arrival and the reason is visible
+✓ Vaud-only links are withheld for a named Geneva step; federal moving links remain
+✓ An exact returned catalogue note becomes c1; a model paraphrase cannot become verified evidence
+✓ An altered action cannot inherit completion from an unchanged ID
+✓ Legacy saved maps receive the source-scope guard on reload
+✓ Start over during the initial health check does not break an otherwise healthy connection
+✓ Keyboard activation works on an SVG node even when it has no click() method
+✓ Rendering the story cannot mutate the accepted model map or its shared variable objects
+✓ Simultaneous edits cannot cascade into each other or replace substrings
+✓ Unknown completion dependencies conservatively include the full situation
+✓ Corrupt stored maps recover without a half-loaded situation
+✓ A storage quota failure is visible while the in-memory map remains usable
+✓ Device persistence can be disabled before generation and re-enabled without changing the map
+✓ A stale health check cannot overwrite a newer proxy connection
+✓ Resizing an empty map cannot replace the initial situation form while typing
+✓ Reserved and duplicate model input ids are rejected for bounded repair
+✓ Scenario and completion identities cannot inherit a short-hash collision
+✓ Legacy v2 completion marks migrate with their accepted map and Undo snapshots
+✓ Corrupt archived question definitions recover before any state is installed
+✓ Disabling saving in another tab prevents this tab from recreating the stored plan
+✓ A plan deleted in another tab cannot be silently recreated by a stale open plan
+✓ A model choice question with no usable options still accepts a free-text answer
+✓ A branch-first split response cannot silently lose its following questions and facts
+
+30 regression checks passed.
+Catalogue schema and generated output passed
+✔ Budget survives restart and enforces both limits (162.205375ms)
+✔ Corrupt and malformed budgets fail closed rather than resetting allowance (100.801958ms)
+✔ A failed persistence attempt blocks subsequent calls (6.022625ms)
+✔ UTC hour and day rollover reset only their own limits (88.493833ms)
+✔ Moving the clock backwards cannot issue a second daily allowance (39.024041ms)
+✔ All pilot notes remain unapproved after separately recorded source-content inspection (57.912292ms)
+✔ Review status cannot be asserted without provenance (2.145459ms)
+✔ Duplicate ids and unsafe source URLs are rejected (3.6835ms)
+✔ Geneva-only generation excludes Vaud and Nyon catalogue ids and records explicit source gaps (379.372916ms)
+✔ No recognised place offers only federal and unscoped references (3.389541ms)
+✔ Changed reviewed wording requires a new approval date and pack version (5.172708ms)
+✔ Saved maps and PDFs keep their original notes and pack versions after a catalogue update (58.624667ms)
+✔ Initial model-supplied source records are replaced by catalogue-stamped metadata (22.362875ms)
+✔ Source records cannot inject active or foreign-publisher links from local storage (18.179833ms)
+✔ Refreshing sources is reversible and sends no archive payloads to a model (83.515792ms)
+✔ Explicit canton names and common Saint-Cergue spellings retain relevant references (4.661667ms)
+✔ Catalogue text and jurisdiction types cannot silently coerce into misleading notes (7.771375ms)
+✔ Completion copies unchanged archived sources after catalogue changes without model reproduction (28.576208ms)
+✔ Retired references remain archived on unchanged actions and are withheld from new actions (31.366792ms)
+✔ Changed actions cannot obtain an old archive by supplying a source record (30.774917ms)
+✔ Explicit source refresh replaces archived records reversibly after completion (29.846042ms)
+✔ Unknown generated target IDs are repaired instead of reconciling them onto trusted archive objects (50.251542ms)
+✔ An added goal copies old archives and stamps only its new nominal references (28.028416ms)
+✔ Source aliases cannot rewrite an accepted archive through a proposal (152.102875ms)
+✔ Unchanged references retain accepted order and records without a model reordering them (27.82925ms)
+✔ Legacy missing or invalid archives retain explicit refresh after completion and Undo (72.104625ms)
+✔ Observed personal situations expose typed, literal editable facts before map generation (145.113541ms)
+✔ Extraction rejects unsupported interpretations, overlapping roles and identifier fields (3.276042ms)
+✔ One command type rejects contradictory legacy intent and invented replacements (1.754625ms)
+✔ Input dependencies and ordered action prerequisites are separate validated graphs (1.728666ms)
+✔ Revisioned operations copy accepted objects and reject stale or unauthorised writes (9.137583ms)
+✔ Unsupported obligations cannot leak through action, note or question text (1.232959ms)
+✔ Grounded add-fact values with empty unused targets normalize without authorising replacement (1.721416ms)
+✔ A single redundant object closer at an array boundary is normalized without rewriting data (0.457ms)
+✔ Natural household paraphrases expose omissions independently of literal fact validity (20.093708ms)
+✔ Qualified action IDs resolve only an exact existing branch/action pair (0.75575ms)
+✔ Private insurance does not inherit government sources authority or a publisher as its contact (5.970708ms)
+✔ Institutional rules become verification tasks rather than questions for the resident (1.259959ms)
+✔ Prepared explanations and model titles retain separate app-owned field provenance (1.368667ms)
+✔ The independently reported registration/registration_arrival fragment resolves exactly (15.427792ms)
+✔ An additional goal rejects mixed proposals that also insert work into an accepted branch (0.373625ms)
+✔ Stale place values in explanations or contact text require explicit replacement operations (1.341709ms)
+✔ Removing the sole stale action in an affected branch does not require that branch to remain (0.494916ms)
+✔ An unresolved action question is current instruction text, not an archived citation (0.571958ms)
+✔ Application-prepared verification tasks follow the affected input without model rewriting (1.076875ms)
+✔ Captured live extraction offsets are derived from unique literal quotations, never invented values (1.571291ms)
+✔ French recent-past and rental intentions do not assert country of origin or current tenure (0.19625ms)
+✔ Evaluation saves fictional raw evidence and never asserts human approval (682.698083ms)
+✔ The versioned evaluation set contains twelve fictional scenarios with independent fact and need expectations (0.377625ms)
+✔ Unavailable Codespaces endpoints produce an explicit blocked report without spending calls (109.470333ms)
+✔ Malformed provider responses are retained as failure evidence and the hard call cap is respected (51.321667ms)
+✔ Invalid evaluation selections and insecure proxy URLs fail before any network call (0.776458ms)
+✔ An explicitly smaller live allowance is enforced without changing the exhausted ledger (130.537625ms)
+✔ An authorised total allowance increase retains the original forty attempts (76.900541ms)
+✔ Initial map owns all supplied typed facts even when generation omits them (160.323ms)
+✔ Invalid dependencies are repaired once and cannot enter accepted maps (88.589416ms)
+✔ Central change journey preserves sources, answers and completed departure across Keep Adopt Undo and reload (63.756291ms)
+✔ An added workplace retains confirmed nationality, unrelated source archives and departure completion (39.441416ms)
+✔ A workplace in Gland cannot replace the retained destination even when interpretation first tries it (23.965541ms)
+✔ Contradictory comparison intent is repaired to a grounded change instead of forcing a restart (23.216666ms)
+✔ Invented and unknown replacement values never change accepted context (47.008959ms)
+✔ Additional goals use a separate branch and ambiguous insurance is clarified before any request (31.483375ms)
+✔ A quoted workplace cannot resolve nationality without separate question confirmation (24.173208ms)
+✔ Stale revisions and attempts to mutate departure are repaired once or refused with accepted work intact (73.344292ms)
+✔ Explore applies hypothetical operations without touching saved context and Print retains open questions (32.025625ms)
+✔ Cancellation rejects late proposals and preserves the original request and map (27.530291ms)
+✔ One user operation cannot exceed four provider requests across intent and proposal repairs (20.723875ms)
+✔ Proposal question definitions and archived sources are copied by the app without model reproduction (38.984417ms)
+✔ Model proposal cannot write answers (23.356542ms)
+✔ Model proposal cannot write done (19.272875ms)
+✔ Model proposal cannot write history (23.849417ms)
+✔ Model proposal cannot write questionDefs (37.505833ms)
+✔ Model proposal cannot write reviewer (25.999459ms)
+✔ Model proposal cannot write sourceRecords (27.276584ms)
+✔ Actions cannot inject reviewed dates or archived evidence through nominal source references (18.871208ms)
+✔ Unknown dependency identifiers cannot establish unaffected work (21.249834ms)
+✔ A proposed action must use actual input dependencies and earlier prerequisites (85.980625ms)
+✔ An earlier action reference is preserved separately as a prerequisite with known transitive inputs (1.730375ms)
+✔ Question-only and echoed completion responses cannot hide an incomplete map (37.892083ms)
+✔ Completion adds missing work without rewriting accepted actions and Undo restores incompleteness (21.496209ms)
+✔ A duplicated old action cannot become a new goal merely through a new id (13.647541ms)
+✔ A zero-change preview explains the evidence gap instead of declaring no consequences (19.4295ms)
+✔ An accepted snapshot changed after generation cannot adopt a stale proposal (24.323792ms)
+✔ Returning to an archived scenario restores its own questions and sources locally without copying the current scenario (39.135875ms)
+✔ Source refresh is an explicit application-owned comparison with reversible archives (21.817208ms)
+✔ The overall operation deadline rejects a response that arrives after its budget (5.108542ms)
+✔ Recognised personal descriptions missing from extraction receive one repair and a correction prompt (3.944542ms)
+✔ An impersonal question may legitimately have no personal facts (5.956292ms)
+✔ Country of arrival never authorises an EU-specific permit path, document duty or identifying question (5.139292ms)
+✔ Language switching preserves source archives, accepted answers, completion and Explore isolation (13.990708ms)
+✔ An omitted insertion hint appends a new workplace action after its named prerequisites (16.368458ms)
+✔ Typed departure scope cannot be made destination-dependent by model declarations (0.962292ms)
+✔ An additional goal receives a distinct-branch schema and one focused repair after a misplaced action (23.36925ms)
+✔ A saved zero-fact plan offers explicit input recovery while retaining answers completion history and Undo (16.717208ms)
+✔ An administrative question points to related accepted actions and source drawers without inventing an answer (14.7215ms)
+✔ Archived scenarios rebuild alternatives so the previous destination can be proposed again (39.347083ms)
+✔ An archived English scenario restores in French with localized definitions and preserved completion sources and Undo (48.332291ms)
+✔ Partial recognition supplements missing personal roles before journey generation within the operation cap (24.190833ms)
+✔ Unknown missing roles never disappear from an otherwise literal partial extraction (10.356375ms)
+✔ A repaired qualified target passes the same source safety checks as a bare target (19.487875ms)
+✔ A generic unchanged school action is marked for reassessment when destination changes (23.309792ms)
+✔ Omitted affected actions cannot retain a municipal source from the previous destination (32.511083ms)
+✔ An insurance proposal cannot acquire a canton contact even when it nominates an unrelated government root (18.485625ms)
+✔ Provider-facing accepted actions omit application field provenance before raw operation replies (30.351375ms)
+✔ A follow-up workplace statement supplements extraction before proposing changes (22.218667ms)
+✔ Resume skips every previously verified mutation, including inherited passes after step five (1.30425ms)
+✔ An old pre-comparison report cannot skip later mutations without a real checkpoint (0.394292ms)
+✔ The recorded last-allowance artifact resumes after the completed workplace checks (45.845375ms)
+✔ A transient preview cannot be mistaken for an accepted checkpoint (0.501084ms)
+✔ Request validation preserves the budget and the process remains available (827.758291ms)
+✔ Private rehearsal and the root entry point use the maintained proxy (373.112ms)
+✔ Upstream deadline cancels hang and leaves the proxy usable (1261.818583ms)
+✔ Upstream deadline cancels body-hang and leaves the proxy usable (1223.306916ms)
+✔ Client disconnection cancels the in-flight upstream request (269.457125ms)
+✔ Malformed upstream responses return 502 without terminating the proxy (380.083084ms)
+✔ Provider diagnostics are withheld and oversized responses are bounded (265.058417ms)
+✔ Concurrency rejection does not charge budget (4456.407291ms)
+✔ Invalid port values stop startup instead of silently selecting another port (407.706083ms)
+✔ Startup and restart in a checkout with spaces preserve budget and identify the right process (3536.153167ms)
+✔ A foreign PID is never stopped and the startup lock is released (123.825083ms)
+✔ An occupied port cannot masquerade as this proxy readiness (18192.637833ms)
+✔ Codespace hook explicitly preserves automatic public-port and discovery setup (3396.25525ms)
+✔ Local edits prevent automatic pulls and discovery commits without stopping the demo (1934.492ms)
+ℹ tests 123
+ℹ suites 0
+ℹ pass 123
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27913.696083
+npm warn Unknown cli config "--workers". This will stop working in the next major version of npm.
+
+> test:browser
+> playwright test
+
+
+Running 132 tests using 4 workers
+
+(node:13331) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13329) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13328) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13330) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    4 [desktop] › tests/browser/journey.spec.js:23:1 › Adding employment preserves answers sources and completed departure through adoption (4.9s)
+  ✓    1 [desktop] › tests/browser/journey.spec.js:24:1 › Workplace in Gland retains Saint-Cergue as the destination (5.2s)
+  ✓    3 [desktop] › tests/browser/journey.spec.js:21:1 › Supplied personal facts are editable with clear roles before any comparison (5.4s)
+  ✓    5 [desktop] › tests/browser/journey.spec.js:25:1 › An ambiguous additional goal is confirmed and appended while retaining the original goals (2.9s)
+  ✓    7 [desktop] › tests/browser/journey.spec.js:27:1 › Keyboard activation reaches facts map nodes and source details (2.4s)
+  ✓    2 [desktop] › tests/browser/journey.spec.js:22:1 › Ordinary pointer comparison supports source inspection Keep Adopt Undo and persisted completion (8.6s)
+  ✓    6 [desktop] › tests/browser/journey.spec.js:26:1 › Explore changes and question answers remain isolated from the saved situation (3.7s)
+  ✓   10 [desktop] › tests/browser/journey.spec.js:30:1 › Malformed initial JSON is repaired once with its failed response retained (905ms)
+  ✓   11 [desktop] › tests/browser/journey.spec.js:31:1 › Unknown input dependencies are repaired or leave the draft retryable (1.4s)
+  ✓    8 [desktop] › tests/browser/journey.spec.js:28:1 › Open questions explain their affected paths and accept an explicit answer (2.5s)
+  ✓    9 [desktop] › tests/browser/journey.spec.js:29:1 › Per-question confirmation blocks a misbound answer from generic adoption (3.2s)
+  ✓   13 [desktop] › tests/browser/journey.spec.js:33:1 › Cancellation preserves the draft and ignores a late initial response (1.7s)
+  ✓   12 [desktop] › tests/browser/journey.spec.js:32:1 › Stale proposals and model metadata cannot overwrite the saved map (2.4s)
+  ✓   14 [desktop] › tests/browser/journey.spec.js:34:1 › Provider authentication failure explains the problem and preserves the original draft (2.9s)
+  ✓   15 [desktop] › tests/browser/journey.spec.js:35:1 › A transport failure marks the connection unavailable while preserving the accepted map (3.2s)
+  ✓   16 [desktop] › tests/browser/journey.spec.js:36:1 › Completion extends accepted work and Undo restores the incomplete map (3.3s)
+  ✓   17 [desktop] › tests/browser/journey.spec.js:37:1 › A missing original source record can be refreshed explicitly and restored with Undo (3.5s)
+  ✓   19 [desktop] › tests/browser/journey.spec.js:39:1 › Saved language and questions survive reload; a rejected translation restores the old language (2.9s)
+  ✓   21 [desktop] › tests/browser/journey.spec.js:41:1 › Corrupted saved data has an accessible recovery through Start over (2.4s)
+  ✓   18 [desktop] › tests/browser/journey.spec.js:38:1 › FR and EN switch visible labels without losing answers source records or completion (5.1s)
+  ✓   22 [desktop] › tests/browser/journey.spec.js:42:1 › Print includes all facts open questions source versions and unresolved verification gaps (1.6s)
+  ✓   20 [desktop] › tests/browser/journey.spec.js:40:1 › Device-saving opt-out applies across tabs and prevents stale writes (6.2s)
+  ✓   24 [desktop] › tests/browser/journey.spec.js:44:1 › An older zero-fact saved plan has an explicit reversible recovery to editable facts (4.9s)
+  ✓   26 [desktop] › tests/browser/journey.spec.js:46:320 › Ordinary en household wording retains five editable roles and school (2.2s)
+  ✓   23 [desktop] › tests/browser/journey.spec.js:43:1 › Rendered controls preserve mobile layout and accessible labels (7.2s)
+  ✓   27 [desktop] › tests/browser/journey.spec.js:46:320 › Ordinary fr household wording retains five editable roles and school (2.6s)
+  ✓   25 [desktop] › tests/browser/journey.spec.js:45:1 › Restoring an archived scenario rebuilds alternatives and localizes its questions without losing completion (7.0s)
+  ✓   28 [desktop] › tests/browser/journey.spec.js:47:1 › An insurance goal keeps its source gap and prepared text attribution (3.4s)
+  ✓   29 [desktop] › tests/browser/journey.spec.js:48:1 › A destination-dependent action with unchanged wording visibly needs reassessment (3.1s)
+  ✓   30 [desktop] › tests/browser/journey.spec.js:49:1 › Institutional timing becomes a printable verification task instead of a resident question (3.4s)
+  ✓   31 [desktop] › tests/browser/journey.spec.js:50:1 › A follow-up using workplace wording supplements facts before a proposal (3.6s)
+  ✓   32 [desktop] › tests/browser/journey.spec.js:51:1 › An added goal with a mixed insertion gets a repair before comparison (2.5s)
+  ✓   33 [desktop] › tests/browser/journey.spec.js:52:1 › A stale commune in a legacy explanation requires a repaired replacement (1.6s)
+(node:13616) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13622) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   34 [mobile] › tests/browser/journey.spec.js:21:1 › Supplied personal facts are editable with clear roles before any comparison (3.0s)
+  ✓   35 [mobile] › tests/browser/journey.spec.js:24:1 › Workplace in Gland retains Saint-Cergue as the destination (3.1s)
+  ✓   36 [mobile] › tests/browser/journey.spec.js:23:1 › Adding employment preserves answers sources and completed departure through adoption (3.4s)
+  ✓   39 [mobile] › tests/browser/journey.spec.js:27:1 › Keyboard activation reaches facts map nodes and source details (1.1s)
+  ✓   37 [mobile] › tests/browser/journey.spec.js:25:1 › An ambiguous additional goal is confirmed and appended while retaining the original goals (3.8s)
+  ✓   38 [mobile] › tests/browser/journey.spec.js:26:1 › Explore changes and question answers remain isolated from the saved situation (3.7s)
+  ✓   40 [mobile] › tests/browser/journey.spec.js:28:1 › Open questions explain their affected paths and accept an explicit answer (2.8s)
+  ✓   42 [mobile] › tests/browser/journey.spec.js:30:1 › Malformed initial JSON is repaired once with its failed response retained (1.5s)
+  ✓   43 [mobile] › tests/browser/journey.spec.js:31:1 › Unknown input dependencies are repaired or leave the draft retryable (1.1s)
+  ✓   41 [mobile] › tests/browser/journey.spec.js:29:1 › Per-question confirmation blocks a misbound answer from generic adoption (3.1s)
+  ✓   45 [mobile] › tests/browser/journey.spec.js:33:1 › Cancellation preserves the draft and ignores a late initial response (1.1s)
+  ✓   46 [mobile] › tests/browser/journey.spec.js:34:1 › Provider authentication failure explains the problem and preserves the original draft (1.7s)
+  ✓   44 [mobile] › tests/browser/journey.spec.js:32:1 › Stale proposals and model metadata cannot overwrite the saved map (4.1s)
+  ✓   47 [mobile] › tests/browser/journey.spec.js:35:1 › A transport failure marks the connection unavailable while preserving the accepted map (3.0s)
+  ✓   48 [mobile] › tests/browser/journey.spec.js:36:1 › Completion extends accepted work and Undo restores the incomplete map (2.3s)
+  ✓   49 [mobile] › tests/browser/journey.spec.js:37:1 › A missing original source record can be refreshed explicitly and restored with Undo (1.1s)
+  ✓   50 [mobile] › tests/browser/journey.spec.js:38:1 › FR and EN switch visible labels without losing answers source records or completion (2.6s)
+  ✓   52 [mobile] › tests/browser/journey.spec.js:40:1 › Device-saving opt-out applies across tabs and prevents stale writes (2.1s)
+  ✓   51 [mobile] › tests/browser/journey.spec.js:39:1 › Saved language and questions survive reload; a rejected translation restores the old language (2.6s)
+  ✓   53 [mobile] › tests/browser/journey.spec.js:41:1 › Corrupted saved data has an accessible recovery through Start over (1.4s)
+  ✓   54 [mobile] › tests/browser/journey.spec.js:42:1 › Print includes all facts open questions source versions and unresolved verification gaps (2.7s)
+  ✓   55 [mobile] › tests/browser/journey.spec.js:43:1 › Rendered controls preserve mobile layout and accessible labels (2.8s)
+  ✓   58 [mobile] › tests/browser/journey.spec.js:46:320 › Ordinary en household wording retains five editable roles and school (989ms)
+  ✓   56 [mobile] › tests/browser/journey.spec.js:44:1 › An older zero-fact saved plan has an explicit reversible recovery to editable facts (3.3s)
+  ✓   59 [mobile] › tests/browser/journey.spec.js:46:320 › Ordinary fr household wording retains five editable roles and school (995ms)
+  ✓   57 [mobile] › tests/browser/journey.spec.js:45:1 › Restoring an archived scenario rebuilds alternatives and localizes its questions without losing completion (2.8s)
+  ✓   61 [mobile] › tests/browser/journey.spec.js:48:1 › A destination-dependent action with unchanged wording visibly needs reassessment (2.1s)
+  ✓   60 [mobile] › tests/browser/journey.spec.js:47:1 › An insurance goal keeps its source gap and prepared text attribution (2.8s)
+  ✓   62 [mobile] › tests/browser/journey.spec.js:49:1 › Institutional timing becomes a printable verification task instead of a resident question (2.3s)
+  ✓   63 [mobile] › tests/browser/journey.spec.js:50:1 › A follow-up using workplace wording supplements facts before a proposal (2.4s)
+  ✓   65 [mobile] › tests/browser/journey.spec.js:52:1 › A stale commune in a legacy explanation requires a repaired replacement (1.7s)
+  ✓   64 [mobile] › tests/browser/journey.spec.js:51:1 › An added goal with a mixed insertion gets a repair before comparison (2.5s)
+(node:13888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   66 [mobile] › tests/browser/journey.spec.js:22:1 › Ordinary pointer comparison supports source inspection Keep Adopt Undo and persisted completion (2.7s)
+(node:13970) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   67 [firefox] › tests/browser/journey.spec.js:24:1 › Workplace in Gland retains Saint-Cergue as the destination (4.2s)
+  ✓   68 [firefox] › tests/browser/journey.spec.js:25:1 › An ambiguous additional goal is confirmed and appended while retaining the original goals (2.8s)
+  ✓   69 [firefox] › tests/browser/journey.spec.js:26:1 › Explore changes and question answers remain isolated from the saved situation (2.3s)
+  ✓   70 [firefox] › tests/browser/journey.spec.js:27:1 › Keyboard activation reaches facts map nodes and source details (842ms)
+  ✓   71 [firefox] › tests/browser/journey.spec.js:28:1 › Open questions explain their affected paths and accept an explicit answer (990ms)
+  ✓   72 [firefox] › tests/browser/journey.spec.js:29:1 › Per-question confirmation blocks a misbound answer from generic adoption (1.2s)
+  ✓   73 [firefox] › tests/browser/journey.spec.js:30:1 › Malformed initial JSON is repaired once with its failed response retained (1.6s)
+  ✓   74 [firefox] › tests/browser/journey.spec.js:31:1 › Unknown input dependencies are repaired or leave the draft retryable (801ms)
+  ✓   75 [firefox] › tests/browser/journey.spec.js:32:1 › Stale proposals and model metadata cannot overwrite the saved map (1.0s)
+  ✓   76 [firefox] › tests/browser/journey.spec.js:33:1 › Cancellation preserves the draft and ignores a late initial response (2.0s)
+  ✓   77 [firefox] › tests/browser/journey.spec.js:34:1 › Provider authentication failure explains the problem and preserves the original draft (1.1s)
+(node:14134) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14145) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14150) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   78 [firefox] › tests/browser/journey.spec.js:35:1 › A transport failure marks the connection unavailable while preserving the accepted map (2.5s)
+  ✓   82 [firefox] › tests/browser/journey.spec.js:36:1 › Completion extends accepted work and Undo restores the incomplete map (16.3s)
+  ✓   79 [firefox] › tests/browser/journey.spec.js:21:1 › Supplied personal facts are editable with clear roles before any comparison (16.6s)
+  ✓   83 [firefox] › tests/browser/journey.spec.js:37:1 › A missing original source record can be refreshed explicitly and restored with Undo (7.2s)
+  ✓   81 [firefox] › tests/browser/journey.spec.js:23:1 › Adding employment preserves answers sources and completed departure through adoption (20.8s)
+  ✓   84 [firefox] › tests/browser/journey.spec.js:38:1 › FR and EN switch visible labels without losing answers source records or completion (2.7s)
+  ✓   85 [firefox] › tests/browser/journey.spec.js:39:1 › Saved language and questions survive reload; a rejected translation restores the old language (3.2s)
+  ✓   87 [firefox] › tests/browser/journey.spec.js:41:1 › Corrupted saved data has an accessible recovery through Start over (2.2s)
+  ✓   86 [firefox] › tests/browser/journey.spec.js:40:1 › Device-saving opt-out applies across tabs and prevents stale writes (3.9s)
+  ✓   88 [firefox] › tests/browser/journey.spec.js:42:1 › Print includes all facts open questions source versions and unresolved verification gaps (2.2s)
+  ✓   80 [firefox] › tests/browser/journey.spec.js:22:1 › Ordinary pointer comparison supports source inspection Keep Adopt Undo and persisted completion (28.7s)
+  ✓   92 [firefox] › tests/browser/journey.spec.js:46:320 › Ordinary en household wording retains five editable roles and school (2.7s)
+  ✓   90 [firefox] › tests/browser/journey.spec.js:44:1 › An older zero-fact saved plan has an explicit reversible recovery to editable facts (5.2s)
+  ✓   93 [firefox] › tests/browser/journey.spec.js:46:320 › Ordinary fr household wording retains five editable roles and school (1.3s)
+  ✓   89 [firefox] › tests/browser/journey.spec.js:43:1 › Rendered controls preserve mobile layout and accessible labels (8.7s)
+  ✓   94 [firefox] › tests/browser/journey.spec.js:47:1 › An insurance goal keeps its source gap and prepared text attribution (2.1s)
+  ✓   91 [firefox] › tests/browser/journey.spec.js:45:1 › Restoring an archived scenario rebuilds alternatives and localizes its questions without losing completion (6.9s)
+  ✓   95 [firefox] › tests/browser/journey.spec.js:48:1 › A destination-dependent action with unchanged wording visibly needs reassessment (2.9s)
+  ✓   96 [firefox] › tests/browser/journey.spec.js:49:1 › Institutional timing becomes a printable verification task instead of a resident question (3.5s)
+  ✓   97 [firefox] › tests/browser/journey.spec.js:50:1 › A follow-up using workplace wording supplements facts before a proposal (3.9s)
+  ✓   98 [firefox] › tests/browser/journey.spec.js:51:1 › An added goal with a mixed insertion gets a repair before comparison (4.2s)
+(node:14547) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   99 [firefox] › tests/browser/journey.spec.js:52:1 › A stale commune in a legacy explanation requires a repaired replacement (3.4s)
+(node:14550) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14576) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  100 [safari-mobile] › tests/browser/journey.spec.js:21:1 › Supplied personal facts are editable with clear roles before any comparison (4.1s)
+  ✓  103 [safari-mobile] › tests/browser/journey.spec.js:24:1 › Workplace in Gland retains Saint-Cergue as the destination (4.7s)
+  ✓  102 [safari-mobile] › tests/browser/journey.spec.js:23:1 › Adding employment preserves answers sources and completed departure through adoption (5.4s)
+  ✓  101 [safari-mobile] › tests/browser/journey.spec.js:22:1 › Ordinary pointer comparison supports source inspection Keep Adopt Undo and persisted completion (6.4s)
+  ✓  104 [safari-mobile] › tests/browser/journey.spec.js:25:1 › An ambiguous additional goal is confirmed and appended while retaining the original goals (2.4s)
+  ✓  106 [safari-mobile] › tests/browser/journey.spec.js:27:1 › Keyboard activation reaches facts map nodes and source details (1.2s)
+  ✓  105 [safari-mobile] › tests/browser/journey.spec.js:26:1 › Explore changes and question answers remain isolated from the saved situation (2.1s)
+  ✓  109 [safari-mobile] › tests/browser/journey.spec.js:30:1 › Malformed initial JSON is repaired once with its failed response retained (1.5s)
+  ✓  110 [safari-mobile] › tests/browser/journey.spec.js:31:1 › Unknown input dependencies are repaired or leave the draft retryable (1.5s)
+  ✓  108 [safari-mobile] › tests/browser/journey.spec.js:29:1 › Per-question confirmation blocks a misbound answer from generic adoption (2.2s)
+  ✓  107 [safari-mobile] › tests/browser/journey.spec.js:28:1 › Open questions explain their affected paths and accept an explicit answer (2.8s)
+  ✓  112 [safari-mobile] › tests/browser/journey.spec.js:33:1 › Cancellation preserves the draft and ignores a late initial response (1.6s)
+  ✓  113 [safari-mobile] › tests/browser/journey.spec.js:34:1 › Provider authentication failure explains the problem and preserves the original draft (1.5s)
+  ✓  111 [safari-mobile] › tests/browser/journey.spec.js:32:1 › Stale proposals and model metadata cannot overwrite the saved map (3.2s)
+  ✓  114 [safari-mobile] › tests/browser/journey.spec.js:35:1 › A transport failure marks the connection unavailable while preserving the accepted map (2.4s)
+  ✓  116 [safari-mobile] › tests/browser/journey.spec.js:37:1 › A missing original source record can be refreshed explicitly and restored with Undo (2.4s)
+  ✓  115 [safari-mobile] › tests/browser/journey.spec.js:36:1 › Completion extends accepted work and Undo restores the incomplete map (3.1s)
+  ✓  117 [safari-mobile] › tests/browser/journey.spec.js:38:1 › FR and EN switch visible labels without losing answers source records or completion (3.0s)
+  ✓  118 [safari-mobile] › tests/browser/journey.spec.js:39:1 › Saved language and questions survive reload; a rejected translation restores the old language (3.4s)
+  ✓  120 [safari-mobile] › tests/browser/journey.spec.js:41:1 › Corrupted saved data has an accessible recovery through Start over (2.2s)
+  ✓  119 [safari-mobile] › tests/browser/journey.spec.js:40:1 › Device-saving opt-out applies across tabs and prevents stale writes (4.5s)
+  ✓  121 [safari-mobile] › tests/browser/journey.spec.js:42:1 › Print includes all facts open questions source versions and unresolved verification gaps (3.1s)
+  ✓  125 [safari-mobile] › tests/browser/journey.spec.js:46:320 › Ordinary en household wording retains five editable roles and school (1.8s)
+  ✓  123 [safari-mobile] › tests/browser/journey.spec.js:44:1 › An older zero-fact saved plan has an explicit reversible recovery to editable facts (4.2s)
+  ✓  124 [safari-mobile] › tests/browser/journey.spec.js:45:1 › Restoring an archived scenario rebuilds alternatives and localizes its questions without losing completion (2.5s)
+  ✓  122 [safari-mobile] › tests/browser/journey.spec.js:43:1 › Rendered controls preserve mobile layout and accessible labels (5.8s)
+  ✓  126 [safari-mobile] › tests/browser/journey.spec.js:46:320 › Ordinary fr household wording retains five editable roles and school (2.1s)
+  ✓  129 [safari-mobile] › tests/browser/journey.spec.js:49:1 › Institutional timing becomes a printable verification task instead of a resident question (1.6s)
+  ✓  128 [safari-mobile] › tests/browser/journey.spec.js:48:1 › A destination-dependent action with unchanged wording visibly needs reassessment (2.8s)
+  ✓  127 [safari-mobile] › tests/browser/journey.spec.js:47:1 › An insurance goal keeps its source gap and prepared text attribution (3.6s)
+  ✓  130 [safari-mobile] › tests/browser/journey.spec.js:50:1 › A follow-up using workplace wording supplements facts before a proposal (2.4s)
+  ✓  131 [safari-mobile] › tests/browser/journey.spec.js:51:1 › An added goal with a mixed insertion gets a repair before comparison (1.7s)
+  ✓  132 [safari-mobile] › tests/browser/journey.spec.js:52:1 › A stale commune in a legacy explanation requires a repaired replacement (1.7s)
+
+  132 passed (2.7m)
