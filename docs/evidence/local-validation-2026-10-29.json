@@ -1,0 +1,71 @@
+{
+  "baseline": "42c625569003a9dc73c57613888b95fc595c32d8",
+  "command": "npm run test:all -- --workers=4",
+  "result": "passed",
+  "nodeTests": 126,
+  "storageRenderingRegressions": 30,
+  "browserTests": 136,
+  "browserConfigurations": [
+    "Chromium desktop",
+    "Chromium mobile",
+    "Firefox desktop",
+    "WebKit mobile"
+  ],
+  "modelProviderCalls": 0,
+  "additionalChecks": [
+    "generated contracts",
+    "generated catalogue",
+    "reviewed-note changes against baseline",
+    "git diff --check"
+  ],
+  "distinction": "Deterministic fixture results; not a live Apertus acceptance pass.",
+  "reviewCorrections": {
+    "reviewedCommit": "4efbf4aa9fe726e3245dbcd28adf4f7fb0306ced",
+    "findings": [
+      "restore alternatives",
+      "localize archived scenarios"
+    ],
+    "before": "Both new Node regressions failed before correction.",
+    "browserAssertionCorrection": "The first browser rerun passed 98/100; two new-test failures expected the desktop branch heading in mobile SVG text. The assertion now checks the localized mobile action and saved branch title."
+  },
+  "appSha256": "a5d54b76b60d174106744d57e676193d7f4ba493ef0b452e8f136a02f97501fb",
+  "contractSha256": "e59085864883d88be87a899bc2e9ede2098f45a6bdf8422c6a57ac1f4067974e",
+  "independentReviewAmendment": {
+    "reviewedCommit": "26a9008c9d266e1f2ba83732f4ab59d0e220a55a",
+    "findings": [
+      "structured action targets with exact qualified-ID validation",
+      "partial extraction and independent fact/need oracle",
+      "service-scoped sources and independent competent contacts",
+      "institutional verification tasks",
+      "field-level text provenance",
+      "dependency reassessment and preserved-action source scoping"
+    ],
+    "newCases": 2,
+    "additionalProviderCalls": 0,
+    "liveRetest": "Fresh core journey passed; independent twelve-case corpus passed nine and failed three; fixes await final-build live verification.",
+    "separateAvailabilityFollowUp": [
+      "published discovery mismatch",
+      "interactive recorded outage example"
+    ]
+  },
+  "latestReviewCorrections": {
+    "reviewedCommit": "9833dfe3bb7d1c6e47659fc648aa1827add712c3",
+    "findings": [
+      "reserve question IDs in action collision checks"
+    ],
+    "before": "Reproduced with a failing regression.",
+    "after": "95 targeted contract/catalogue/journey checks and all 126 Node tests passed."
+  },
+  "runLog": "local-validation-2026-10-29.txt",
+  "precedingBrowserRun": {
+    "passed": 127,
+    "failed": 5,
+    "failure": "30-second timeouts",
+    "individualSafariRerunPassed": 4,
+    "completeFourWorkerRerunPassed": 132
+  },
+  "nodeRunLog": "local-node-final-2026-10-29.txt",
+  "browserRunLog": "local-browser-final-2026-10-29.txt",
+  "browserBuildSha256": "a0ab2a9e8702405d3604928f17f2f0c66e9e49bda11dd0859cc5f1855ef08da5",
+  "browserValidationNote": "136 checks passed on 9833dfe. The subsequent identifier guard passes all 126 Node tests; submitted-commit browser verification is the PR CI gate."
+}

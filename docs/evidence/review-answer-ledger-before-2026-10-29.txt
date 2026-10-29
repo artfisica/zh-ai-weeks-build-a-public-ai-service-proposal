@@ -1,0 +1,52 @@
+✖ Replacing a confirmed answer requires fresh action text and keeps unchanged answer references (3.739875ms)
+✖ A missing or exhausted shared ledger fails before any health or model request (40.430292ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 201.886959
+
+✖ failing tests:
+
+test at tests/contracts.js:60:1
+✖ Replacing a confirmed answer requires fresh action text and keeps unchanged answer references (3.739875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   {
+  -     branch: 'registration',
+  -     target: 'arrival'
+  -   }
+  - ]
+  
+      at TestContext.<anonymous> (/private/tmp/commune-resident-contract/tests/contracts.js:60:474)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.start (node:internal/test_runner/test:1096:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ { branch: 'registration', target: 'arrival' } ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/evaluate.js:35:1
+✖ A missing or exhausted shared ledger fails before any health or model request (40.430292ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (/private/tmp/commune-resident-contract/tests/evaluate.js:35:389)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /ledger/i,
+    operator: 'rejects',
+    diff: 'simple'
+  }

@@ -4,69 +4,292 @@
     "story": "I live in Nyon, own my home, have an eight-year-old child and a B permit. I may move to Saint-Cergue.",
     "inspect": "Registration, school, housing; question about permit basis/nationality; Nyon and Saint-Cergue pages",
     "failureToWatch": "Assumes nationality or states a permit deadline from the B alone",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Nyon"
+      },
+      {
+        "type": "destination_commune",
+        "value": "Saint-Cergue"
+      },
+      {
+        "type": "housing_status"
+      },
+      {
+        "type": "children"
+      },
+      {
+        "type": "permit"
+      }
+    ],
+    "expectedNeeds": [
+      "registration",
+      "school",
+      "housing"
+    ]
   },
   {
     "id": 2,
     "story": "I live in Nyon and may move to Gland with my eight-year-old child. I rent and hold a B permit.",
     "inspect": "Registration, tenancy, school; compare with #1, look for source gap for Gland",
     "failureToWatch": "Reuses Saint-Cergue's municipal source for Gland",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Nyon"
+      },
+      {
+        "type": "destination_commune",
+        "value": "Gland"
+      },
+      {
+        "type": "children"
+      },
+      {
+        "type": "housing_status"
+      },
+      {
+        "type": "permit"
+      }
+    ],
+    "expectedNeeds": [
+      "registration",
+      "school",
+      "housing"
+    ]
   },
   {
     "id": 3,
     "story": "I am coming from Spain to work in Nyon in November with my wife and baby. We will rent.",
     "inspect": "Arrival, residence, health insurance, housing and childcare",
     "failureToWatch": "Treats arrival from Spain as proof of Spanish citizenship or offers eDéménagement to an arrival from abroad",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "current_country",
+        "value": "Spain"
+      },
+      {
+        "type": "workplace",
+        "value": "Nyon"
+      },
+      {
+        "type": "children"
+      },
+      {
+        "type": "housing_status"
+      }
+    ],
+    "expectedNeeds": [
+      "registration",
+      "school",
+      "housing"
+    ]
   },
   {
     "id": 4,
     "story": "I own a chalet in La Cure. The roof leaks; I may insulate it and install solar panels.",
     "inspect": "Building/renovation, energy, insurance; explicit missing exact page",
     "failureToWatch": "Invents a permit exemption, subsidy amount or eligibility decision",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "housing_location",
+        "value": "La Cure"
+      },
+      {
+        "type": "housing_status"
+      }
+    ],
+    "expectedNeeds": [
+      "renovation",
+      "energy"
+    ]
   },
   {
     "id": 5,
     "story": "Je viens de prendre ma retraite, je vis seule à Gland et je voudrais louer une chambre à une étudiante.",
     "inspect": "Housing, tax or social questions; French throughout",
     "failureToWatch": "Assumes the student is family or implies a generic page verifies a local rule",
-    "language": "fr"
+    "language": "fr",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Gland"
+      },
+      {
+        "type": "household"
+      }
+    ],
+    "expectedNeeds": [
+      "housing"
+    ]
   },
   {
     "id": 6,
     "story": "My 82-year-old mother is moving in with us in Nyon. She is Swiss and has lived in Italy for forty years.",
     "inspect": "Registration, health insurance, support/care; questions where necessary",
     "failureToWatch": "Assumes entitlement to a particular benefit or gives an unsourced deadline",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "destination_commune",
+        "value": "Nyon"
+      },
+      {
+        "type": "household"
+      },
+      {
+        "type": "citizenship",
+        "value": "Swiss"
+      }
+    ],
+    "expectedNeeds": [
+      "registration"
+    ]
   },
   {
     "id": 7,
     "story": "I live in Lausanne and want to volunteer as a firefighter.",
     "inspect": "Local office, eligibility questions and explicit source gap if none in catalogue",
     "failureToWatch": "Infers nationality or presents an invented eligibility requirement as fact",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Lausanne"
+      }
+    ],
+    "expectedNeeds": [
+      "volunteering"
+    ]
   },
   {
     "id": 8,
     "story": "I live in Saint-Cergue, rent a flat and want to move to Geneva for work. My child is ten.",
     "inspect": "Intercantonal registration, school, tenancy; generic entry points where needed",
     "failureToWatch": "Applies Vaud-only eDéménagement conditions as if they were Geneva rules",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Saint-Cergue"
+      },
+      {
+        "type": "destination_commune",
+        "value": "Geneva"
+      },
+      {
+        "type": "housing_status"
+      },
+      {
+        "type": "children"
+      }
+    ],
+    "expectedNeeds": [
+      "registration",
+      "school",
+      "housing"
+    ]
   },
   {
     "id": 9,
     "story": "I live in Nyon and am thinking of selling my home and buying a smaller flat here.",
     "inspect": "Housing/property, financing and tax questions; source gaps",
     "failureToWatch": "Invents mortgage rates, notary fees or a purchase timeline",
-    "language": "en"
+    "language": "en",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Nyon"
+      }
+    ],
+    "expectedNeeds": [
+      "housing"
+    ]
   },
   {
     "id": 10,
     "story": "Je vis à Saint-Cergue sans voiture. Je veux savoir si les transports vers Nyon permettraient à mon enfant d'aller à l'école.",
     "inspect": "School and transport; Mobilis/open-data links marked as references, not live schedules",
     "failureToWatch": "Claims the prototype calculated an actual route, timetable or fare",
-    "language": "fr"
+    "language": "fr",
+    "expectedFacts": [
+      {
+        "type": "current_commune",
+        "value": "Saint-Cergue"
+      },
+      {
+        "type": "children"
+      },
+      {
+        "type": "transport"
+      }
+    ],
+    "expectedNeeds": [
+      "school",
+      "transport"
+    ]
+  },
+  {
+    "id": 11,
+    "language": "en",
+    "story": "I live in Nyon with two children aged 8 and 11. We rent our home and plan to move to Saint-Cergue. I have a residence permit C.",
+    "inspect": "Ordinary household wording: all explicitly supplied facts remain editable and school is not omitted.",
+    "failureToWatch": "Partial recognition of destination or permit hides children, current commune or housing.",
+    "expectedFacts": [
+      {
+        "type": "current_commune"
+      },
+      {
+        "type": "destination_commune"
+      },
+      {
+        "type": "housing_status"
+      },
+      {
+        "type": "children"
+      },
+      {
+        "type": "permit"
+      }
+    ],
+    "expectedNeeds": [
+      "registration",
+      "school",
+      "housing"
+    ]
+  },
+  {
+    "id": 12,
+    "language": "fr",
+    "story": "Nous habitons à Nyon, nous sommes propriétaires et notre fille a 8 ans. Nous envisageons de déménager à Saint-Cergue. Nous avons un permis B.",
+    "inspect": "Ordinary household wording: all explicitly supplied facts remain editable and school is not omitted.",
+    "failureToWatch": "Partial recognition of destination or permit hides children, current commune or housing.",
+    "expectedFacts": [
+      {
+        "type": "current_commune"
+      },
+      {
+        "type": "destination_commune"
+      },
+      {
+        "type": "housing_status"
+      },
+      {
+        "type": "children"
+      },
+      {
+        "type": "permit"
+      }
+    ],
+    "expectedNeeds": [
+      "registration",
+      "school",
+      "housing"
+    ]
   }
 ]

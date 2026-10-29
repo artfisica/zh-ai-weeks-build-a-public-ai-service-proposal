@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Narrow pilot source inspection; HTTP success is recorded separately from content findings and human approval.",
+  "humanReview": "pending",
+  "records": [
+    {
+      "source": "nyon-cdh",
+      "url": "https://www.nyon.ch/nyon-officiel/administration/controle-des-habitants-1382",
+      "retrievedOn": "2026-10-29",
+      "httpStatus": 200,
+      "sha256": "0b0735fff0b9940ffc827332328a6db2e0a7000501171729740408c23972b5fc",
+      "section": "Contrôle des habitants",
+      "narrowFinding": "Nyon residents registry is the listed contact for arrivals, departures and changes in resident records.",
+      "applicability": "Current or prospective Nyon residents. This verifies an entry point, not an individual administrative decision.",
+      "exclusions": "Does not establish permit eligibility, full document lists or completion guarantees.",
+      "contentInspection": "agent-read; not human approval",
+      "humanReview": "pending"
+    },
+    {
+      "source": "stcergue-arrival",
+      "url": "https://www.st-cergue.ch/prestations-communales/113320",
+      "retrievedOn": "2026-10-29",
+      "httpStatus": 200,
+      "sha256": "7334a9b2a2d852627352fea2e786be911933234313f4ffb396f78643a5f5daf1",
+      "section": "Arrivée à St-Cergue",
+      "narrowFinding": "The arrival page describes a counter visit after departure from the previous commune.",
+      "applicability": "A prospective resident arriving in Saint-Cergue; individual conditions still need confirmation.",
+      "exclusions": "Does not establish school placement, permit eligibility or an automatic online replacement for a counter visit.",
+      "contentInspection": "agent-read; not human approval",
+      "humanReview": "pending"
+    },
+    {
+      "source": "gland-cdh",
+      "url": "https://www.gland.ch/ma-ville/administration-communale/service-de-la-population/controle-des-habitants/habitants",
+      "retrievedOn": "2026-10-29",
+      "httpStatus": 200,
+      "sha256": "5c0048e397a17a3f0e621dae47f81fa8eec9bcdc547d29a944e5b4c68eb92438",
+      "section": "Habitants",
+      "narrowFinding": "The page directs arriving and departing residents to Gland’s residents registry.",
+      "applicability": "Arriving in or departing from Gland. Documents for certificates elsewhere on the page are not arrival requirements.",
+      "exclusions": "Does not establish that every resident needs the documents listed for identity cards or certificates.",
+      "contentInspection": "agent-read; not human approval",
+      "humanReview": "pending"
+    },
+    {
+      "source": "vd-address",
+      "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
+      "retrievedOn": "2026-10-29",
+      "httpStatus": 200,
+      "sha256": "489be66c834891ca69a02a86bbddee73e3715c0017c78edf815a5940c1d130aa",
+      "section": "Description / Conditions",
+      "narrowFinding": "Online address change is an option with participating-commune, residence and nationality/permit conditions. The page warns against duplicate online and counter submissions.",
+      "applicability": "Principal-residence changes originating in participating Vaud communes; check citizenship, permit and destination handling before offering an online process.",
+      "exclusions": "Not a universal arrival-from-abroad service. A B permit alone does not prove eligibility. No duplicate standalone online-registration branch.",
+      "contentInspection": "agent-read; not human approval",
+      "humanReview": "pending"
+    },
+    {
+      "source": "sem-b-eu",
+      "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/eu_efta/ausweis_b_eu_efta.html",
+      "retrievedOn": "2026-10-29",
+      "httpStatus": 200,
+      "sha256": "737b00dba9ff39565f5a397c56e86a91ed90a0285c5c059c5aedad0118edc7be",
+      "section": "Permis B UE/AELE",
+      "narrowFinding": "The B EU/EFTA page describes a citizenship-specific residence category with conditions.",
+      "applicability": "Only after EU/EFTA citizenship is explicitly established; country of departure is insufficient.",
+      "exclusions": "Does not establish that a person coming from Spain is an EU/EFTA citizen or can take a particular residence path.",
+      "contentInspection": "agent-read; not human approval",
+      "humanReview": "pending"
+    },
+    {
+      "source": "sem-third",
+      "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
+      "retrievedOn": "2026-10-29",
+      "httpStatus": 200,
+      "sha256": "82f1671971a9278c974be38775c3a4c5572ed04e34e72d7698b83f0918dff3a1",
+      "section": "Permis de séjour pour non-ressortissants de l’UE/AELE",
+      "narrowFinding": "The page lists third-state residence-permit categories and links onward for L/B/C biometric permits.",
+      "applicability": "Third-state citizenship must be established; individual permit conditions remain unresolved.",
+      "exclusions": "Not evidence for a universal one-year B permit, business permission or a complete arrival procedure.",
+      "contentInspection": "agent-read; not human approval",
+      "humanReview": "pending"
+    }
+  ]
+}

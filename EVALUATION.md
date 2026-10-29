@@ -1,10 +1,12 @@
-# Manual rehearsal set — full run pending
+# Fictional journey evaluation
+
+29 October: see the [current validation record](docs/CORE-EXPERIENCE-VALIDATION-2026-10-29.md). A fresh real Public AI/Apertus browser journey passed every central acceptance stage, including additional insurance, Explore and Print, in eight requests. The stronger twelve-case corpus then passed nine cases and failed three extractions; proposed fixes require a targeted live retest and a fresh final-build journey. The public forwarding route currently returns HTTP 404. The user raised the combined allowance from forty to one hundred; 64 attempted provider calls have been recorded. Fixture results, provider usability and source correctness remain separate findings. Historical observations below describe their dated builds.
 
 6 October baseline on the currently published page: the Nyon → Saint-Cergue example produced a two-branch map (moving and school), and its Saint-Cergue arrival step opened the source panel. Proposing Gland as a custom alternative failed with “unreadable answer (brackets)”; the saved map remained visible. The accompanying update adds a bounded retry and partial-map recovery for malformed JSON. Those changes pass the local smoke test but need a fresh live retest after publishing. This is one partial run, not a pass for the ten cases below.
 
 8 October update: 44 dependency-free regression checks pass. Live Swisscom/Apertus tests exercised a generated Nyon-family map and Gland preview/Keep, plus a typed answered-permit fork with Adopt/Undo. The permit rehearsal initially failed because the model returned the question change in `changes[]`, and its prose included an unsupported assertion; the update now routes that shape correctly and excludes free-form question-answer prose. A separate later commune run encountered a network failure while retaining its accepted map. The ten-case manual set below remains uncompleted. Detailed limits and the review are in `docs/REVIEW-2026-10-08.md`.
 
-These ten fictional situations probe the journey map before the recorded session. The expected paths are **things to inspect**, not rules that the model must assert. Record the actual branches, open questions, source status, time and failure mode. Do not use real addresses or identifying details.
+The original ten fictional situations below probe the journey map before the recorded session. The expected paths are **things to inspect**, not rules that the model must assert. Record the actual branches, open questions, source status, time and failure mode. Do not use real addresses or identifying details.
 
 | # | Sentence to enter | Paths or questions to look for | Failure to watch for |
 | --- | --- | --- | --- |
@@ -24,3 +26,9 @@ These ten fictional situations probe the journey map before the recorded session
 For each case, record: date/time; FR or EN; whether a complete map appeared; response time; number and names of branches; whether a missing fact was asked rather than inferred; whether every linked page actually concerns the step; whether an unlinked step says so; and one screenshot if it fails.
 
 Prioritise **#1, #2, #3 and #7** before Thursday. For #1, change Saint-Cergue to Gland, inspect a dashed point, Keep, then Adopt and confirm that the saved sentence and answers follow the selected scenario. A passing smoke test checks code paths; it does not establish model quality or source accuracy. A one-branch map can be appropriate for a narrow situation; record it as a failure only when a relevant path is missing. If an answer is cut off, use a rehearsed case for the recorded demo.
+
+29 October independent-review amendment: `tests/evaluation-cases.json` now contains twelve cases, including natural English/French household paraphrases. Each declares expected fact roles (and exact values where unambiguous) and expected needs independently of extraction. Schema 3 reports missing expected facts as failures, even if all returned facts are literal. The earlier schema-2 live corpus did not test this stronger condition and is not a pass for the added cases. See the current validation record for the stronger corpus results, the approved total allowance and pending final-build live verification.
+
+## Shared request allowance
+
+Both live tools require an existing shared JSON ledger before any network request. Set `EVAL_TOTAL_BUDGET_FILE` to that file for every run. Its shape is `{"maxCalls":40,"calls":[]}` when a new forty-request experiment is explicitly authorised. An absent, malformed or exhausted ledger stops evaluation; a missing path is never silently recreated. Run evaluators sequentially against the same ledger. Extend only `maxCalls` after explicit authorisation, retaining every previous attempt. `--max-calls` is an additional per-run limit, not a replacement for the shared allowance.

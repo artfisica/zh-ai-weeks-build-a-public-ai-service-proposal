@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 3,
+  "startedAt": "2026-10-29T13:33:08.392Z",
+  "mode": "live-model",
+  "proxyOrigin": "https://gory-coffin-x77jgr967wcvx49-8788.app.github.dev",
+  "releaseApproved": false,
+  "humanReview": "pending",
+  "maxCalls": 10,
+  "calls": 0,
+  "requestedCases": [
+    5,
+    6,
+    10
+  ],
+  "selectionComplete": false,
+  "completeSet": false,
+  "cases": [],
+  "blocked": {
+    "stage": "health",
+    "status": 404,
+    "reason": "Proxy health returned HTTP 404"
+  },
+  "finishedAt": "2026-10-29T13:33:09.010Z"
+}

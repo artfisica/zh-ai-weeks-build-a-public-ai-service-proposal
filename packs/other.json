@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "other",
-  "version": 1,
+  "version": 2,
   "entries": [
     {
       "id": "otd",
@@ -26,7 +26,11 @@
         "canton": null,
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "transport"
+      ],
+      "contactFor": []
     }
   ]
 }

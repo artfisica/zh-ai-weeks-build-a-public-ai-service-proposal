@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "VD",
-  "version": 1,
+  "version": 3,
   "entries": [
     {
       "id": "vd-address",
       "level": "canton",
       "url": "https://www.vd.ch/prestation/annoncer-son-changement-dadresse-au-controle-des-habitants",
       "title": "État de Vaud — Annoncer son changement d’adresse (eDéménagement)",
-      "covers": "Vaud: online change of address, conditions by permit type, list of connected communes",
+      "covers": "Conditional online principal-residence address-change option; not a separate obligation or universal foreign-arrival service",
       "claims": [
         {
           "id": "c1",
@@ -18,8 +18,10 @@
           "status": "draft",
           "reviewer": null,
           "reviewedOn": null,
-          "sourceCheckedOn": null,
-          "recheckOn": null
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "Principal-residence changes originating in participating Vaud communes; check citizenship, permit and destination handling before offering an online process.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#vd-address"
         },
         {
           "id": "c2",
@@ -29,15 +31,21 @@
           "status": "draft",
           "reviewer": null,
           "reviewedOn": null,
-          "sourceCheckedOn": null,
-          "recheckOn": null
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "Principal-residence changes originating in participating Vaud communes; check citizenship, permit and destination handling before offering an online process.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#vd-address"
         }
       ],
       "jurisdiction": {
         "canton": "VD",
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "online_registration"
+      ],
+      "contactFor": []
     },
     {
       "id": "vd-tax-communes",
@@ -62,7 +70,9 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [],
+      "contactFor": []
     },
     {
       "id": "vd-vote-directive",
@@ -87,7 +97,9 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [],
+      "contactFor": []
     },
     {
       "id": "mobilis",
@@ -112,7 +124,11 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "transport"
+      ],
+      "contactFor": []
     },
     {
       "id": "jestime",
@@ -137,7 +153,9 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [],
+      "contactFor": []
     },
     {
       "id": "vd-root",
@@ -150,7 +168,11 @@
         "canton": "VD",
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "school"
+      ],
+      "contactFor": []
     }
   ]
 }

@@ -1,0 +1,29 @@
+Baseline: 42c625569003a9dc73c57613888b95fc595c32d8
+Command: APP_HTML=<baseline index.html> node --test --test-name-pattern="Initial map owns" tests/journey-contract.js
+Expected nonzero exit: supplied origin is not editable when map generation returns variables: [].
+
+✖ Initial map owns all supplied typed facts even when generation omits them (168.878875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 455.892125
+
+✖ failing tests:
+
+test at tests/journey-contract.js:13:1
+✖ Initial map owns all supplied typed facts even when generation omits them (168.878875ms)
+  AssertionError [ERR_ASSERTION]: origin
+      at TestContext.<anonymous> (<worktree>/tests/journey-contract.js:13:206)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

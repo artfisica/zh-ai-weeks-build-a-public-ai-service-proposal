@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "ch",
-  "version": 1,
+  "version": 3,
   "entries": [
     {
       "id": "ch-move",
@@ -26,7 +26,13 @@
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "departure",
+        "arrival",
+        "housing"
+      ],
+      "contactFor": []
     },
     {
       "id": "ch-move-checklist",
@@ -51,7 +57,13 @@
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "departure",
+        "arrival",
+        "housing"
+      ],
+      "contactFor": []
     },
     {
       "id": "sem-b-eu",
@@ -68,22 +80,28 @@
           "status": "draft",
           "reviewer": null,
           "reviewedOn": null,
-          "sourceCheckedOn": null,
-          "recheckOn": null
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "Only after EU/EFTA citizenship is explicitly established; country of departure is insufficient.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#sem-b-eu"
         }
       ],
       "jurisdiction": {
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "permit"
+      ],
+      "contactFor": []
     },
     {
       "id": "sem-third",
       "level": "confederation",
       "url": "https://www.sem.admin.ch/sem/fr/home/themen/aufenthalt/nicht_eu_efta.html",
       "title": "SEM — Permis de séjour, ressortissants d’États tiers",
-      "covers": "permits for non-EU nationals: B (1 year renewable), C, L; family reunification",
+      "covers": "Third-state residence-permit categories and official onward links; not an eligibility determination",
       "claims": [
         {
           "id": "c1",
@@ -93,15 +111,21 @@
           "status": "draft",
           "reviewer": null,
           "reviewedOn": null,
-          "sourceCheckedOn": null,
-          "recheckOn": null
+          "sourceCheckedOn": "2026-10-29",
+          "recheckOn": null,
+          "applicability": "Third-state citizenship must be established; individual permit conditions remain unresolved.",
+          "evidence": "docs/evidence/pilot-source-inspection-2026-10-29.json#sem-third"
         }
       ],
       "jurisdiction": {
         "canton": null,
         "commune": null
       },
-      "exact": true
+      "exact": true,
+      "services": [
+        "permit"
+      ],
+      "contactFor": []
     },
     {
       "id": "ch-root",
@@ -114,7 +138,11 @@
         "canton": null,
         "commune": null
       },
-      "exact": false
+      "exact": false,
+      "services": [
+        "permit"
+      ],
+      "contactFor": []
     }
   ]
 }
