@@ -5,7 +5,7 @@ Swiss {ai} Weeks, Zurich · **["Build a public AI service"](https://zh.ai-weeks.
 ![One sentence in, a proposed journey map out](demo.gif)
 
 ## See the complete Demo
-[![Silent demo, 3 minutes: one sentence in, a proposed journey map out](https://img.youtube.com/vi/FTBebfGJwR4/maxresdefault.jpg)](https://www.youtube.com/watch?v=FTBebfGJwR4)
+[A 3 minutes demo video: one sentence in, a proposed journey map out](https://www.youtube.com/watch?v=FTBebfGJwR4)
 
 Three-minute silent demo: six situations typed in, the maps Apertus draws, a source followed to vd.ch, French and English.
 
